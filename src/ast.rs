@@ -113,6 +113,7 @@ pub enum StmtDesc {
     // Control flow
     Label(Rc<String>),
     Goto(Rc<String>),
+    If(Vec<(Expr, Stmt)>, Option<Box<Stmt>>),
 }
 
 #[derive(Debug)]

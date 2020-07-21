@@ -136,6 +136,10 @@ pub fn step<H: Handler>(
             let lhs = stack.pop().unwrap();
             let ret = match op {
                 Binop::Add => Val::Number(lhs.expect_number()? + rhs.expect_number()?),
+                Binop::LessThan => Val::Bool(lhs.lt(&rhs)?),
+                Binop::LessThanOrEqual => Val::Bool(!rhs.lt(&lhs)?),
+                Binop::GreaterThan => Val::Bool(rhs.lt(&lhs)?),
+                Binop::GreaterThanOrEqual => Val::Bool(!lhs.lt(&rhs)?),
                 Binop::Append => {
                     let list = lhs.expect_list()?;
                     list.borrow_mut().push(rhs);
@@ -157,15 +161,15 @@ pub fn step<H: Handler>(
         Opcode::Goto(id) => {
             *i = code.label_map()[*id as usize];
         }
-        Opcode::GotoIf(id) => {
+        Opcode::GotoIfFalse(id) => {
             let item = stack.pop().unwrap();
-            if item.truthy() {
+            if !item.truthy() {
                 *i = code.label_map()[*id as usize];
             }
         }
-        Opcode::GotoIfNoPop(id) => {
+        Opcode::GotoIfFalseNoPop(id) => {
             let item = stack.last().unwrap();
-            if item.truthy() {
+            if !item.truthy() {
                 *i = code.label_map()[*id as usize];
             }
         }

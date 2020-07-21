@@ -8,12 +8,15 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 type Prec = i64;
-const ADD_PREC: Prec = 60;
-const MUL_PREC: Prec = 80;
-const UNARY_PREC: Prec = 100;
+const CMP_PREC: Prec = 100;
+const ADD_PREC: Prec = 120;
+const MUL_PREC: Prec = 160;
+const UNARY_PREC: Prec = 200;
 const POSTFIX_PREC: Prec = 1000;
 
-const KEYWORDS: &[&'static str] = &["fn", "import", "goto"];
+const KEYWORDS: &[&'static str] = &[
+    "fn", "import", "goto", "var", "if", "elif", "else", "end", "is", "not", "and", "or", "in",
+];
 
 pub fn parse(source: &Rc<Source>) -> Result<File, BasicError> {
     let toks = lex(source)?;
@@ -177,10 +180,18 @@ impl<'a> Parser<'a> {
         })
     }
     fn block(&mut self) -> Result<Stmt, BasicError> {
+        let block = self.block_body()?;
+        self.expect(Token::Name("end"))?;
+        Ok(block)
+    }
+    fn block_body(&mut self) -> Result<Stmt, BasicError> {
         let mark = self.mark();
         let mut stmts = Vec::new();
         self.consume_delim();
-        while !self.consume(Token::Name("end")) {
+        while !self.at(Token::Name("end"))
+            && !self.at(Token::Name("elif"))
+            && !self.at(Token::Name("else"))
+        {
             let new_stmts = self.maybe_labeled_stmt()?;
             self.delim()?;
             stmts.extend(new_stmts);
@@ -253,6 +264,39 @@ impl<'a> Parser<'a> {
                     desc: StmtDesc::Goto(label),
                 })
             }
+            Token::Name("var") => {
+                self.gettok();
+                let name = self.expect_name()?;
+                self.expect(Token::Eq)?;
+                let setexpr = self.expr(0)?;
+                Ok(Stmt {
+                    mark,
+                    desc: StmtDesc::DeclVar(name, setexpr),
+                })
+            }
+            Token::Name("if") => {
+                self.gettok();
+                let mut pairs = Vec::new();
+                let mut other = None;
+                loop {
+                    let cond = self.expr(0)?;
+                    self.delim()?;
+                    let body = self.block_body()?;
+                    pairs.push((cond, body));
+                    if !self.consume(Token::Name("elif")) {
+                        if self.consume(Token::Name("else")) {
+                            self.delim()?;
+                            other = Some(self.block_body()?.into());
+                        }
+                        self.expect(Token::Name("end"))?;
+                        break;
+                    }
+                }
+                Ok(Stmt {
+                    mark,
+                    desc: StmtDesc::If(pairs, other),
+                })
+            }
             Token::Name(name)
                 if !self.keywords.contains(name) && self.lookahead(1) == Some(&Token::Colon) =>
             {
@@ -274,7 +318,6 @@ impl<'a> Parser<'a> {
     }
     fn expr(&mut self, prec: Prec) -> Result<Expr, BasicError> {
         let mut e = self.atom()?;
-        println!("xx {:?}, {:?}", self.peek(), precof(self.peek()));
         while precof(self.peek()) >= prec {
             e = self.infix(e)?;
         }
@@ -310,7 +353,11 @@ impl<'a> Parser<'a> {
             | Token::Star
             | Token::Slash
             | Token::Slash2
-            | Token::Percent => {
+            | Token::Percent
+            | Token::LessThan
+            | Token::LessThanOrEqual
+            | Token::GreaterThan
+            | Token::GreaterThanOrEqual => {
                 let op = match token {
                     Token::Plus => Binop::Add,
                     Token::Minus => Binop::Subtract,
@@ -318,6 +365,10 @@ impl<'a> Parser<'a> {
                     Token::Slash => Binop::Divide,
                     Token::Slash2 => Binop::TruncDivide,
                     Token::Percent => Binop::Remainder,
+                    Token::LessThan => Binop::LessThan,
+                    Token::LessThanOrEqual => Binop::LessThanOrEqual,
+                    Token::GreaterThan => Binop::GreaterThan,
+                    Token::GreaterThanOrEqual => Binop::GreaterThanOrEqual,
                     _ => panic!("binop {:?}", token),
                 };
                 let prec = precof(&token);
@@ -327,6 +378,19 @@ impl<'a> Parser<'a> {
                     desc: ExprDesc::Binop(op, e.into(), rhs.into()),
                 })
             }
+            Token::Eq => match &e.desc {
+                ExprDesc::GetVar(name) => {
+                    let rhs = self.expr(0)?;
+                    Ok(Expr {
+                        mark,
+                        desc: ExprDesc::SetVar(name.clone(), rhs.into()),
+                    })
+                }
+                _ => Err(BasicError {
+                    marks: vec![e.mark.clone()],
+                    message: format!("The left hand side is not assignable"),
+                }),
+            },
             _ => Err(BasicError {
                 marks: vec![mark],
                 message: format!("Expected infix operator"),
@@ -391,6 +455,10 @@ impl<'a> Parser<'a> {
                     desc: ExprDesc::GetVar(name),
                 })
             }
+            Token::Name(name) if self.keywords.contains(name) => Err(BasicError {
+                marks: vec![mark],
+                message: format!("Expected expression but got keyword {:?}", name),
+            }),
             _ => Err(BasicError {
                 marks: vec![mark],
                 message: format!("Expected expression but got {:?}", self.peek()),
@@ -423,6 +491,12 @@ impl<'a> Parser<'a> {
 
 fn precof<'a>(tok: &Token<'a>) -> Prec {
     match tok {
+        Token::Name("is")
+        | Token::Eq
+        | Token::LessThan
+        | Token::LessThanOrEqual
+        | Token::GreaterThan
+        | Token::GreaterThanOrEqual => CMP_PREC,
         Token::Minus | Token::Plus => ADD_PREC,
         Token::Star | Token::Slash | Token::Slash2 | Token::Percent => MUL_PREC,
         Token::LParen | Token::Dot => POSTFIX_PREC,

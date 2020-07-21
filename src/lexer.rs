@@ -32,6 +32,11 @@ pub enum Token<'a> {
     Slash2,
     Eq,
     Bar,
+
+    LessThan,
+    GreaterThan,
+    LessThanOrEqual,
+    GreaterThanOrEqual,
 }
 
 impl<'a> Token<'a> {
@@ -128,8 +133,26 @@ pub fn lex(source: &Rc<Source>) -> Result<Vec<(Token, Mark)>, BasicError> {
                             },
                         ),
                         '%' => Some(Token::Percent),
-                        '=' => Some(Token::Eq),
                         '|' => Some(Token::Bar),
+                        '<' => Some(Token::LessThan),
+                        '>' => Some(Token::GreaterThan),
+                        '=' => Some({
+                            if last_ig_ws < i - 1 {
+                                match ret.last() {
+                                    Some((Token::LessThan, _)) => {
+                                        ret.pop().unwrap();
+                                        Token::LessThanOrEqual
+                                    }
+                                    Some((Token::GreaterThan, _)) => {
+                                        ret.pop().unwrap();
+                                        Token::GreaterThanOrEqual
+                                    }
+                                    _ => Token::Eq,
+                                }
+                            } else {
+                                Token::Eq
+                            }
+                        }),
                         _ => None,
                     };
                     if let Some(tok) = tok {

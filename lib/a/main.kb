@@ -10,3 +10,17 @@ end
 
 foo()
 foo()
+
+
+var i = 0
+var total = 0
+
+10 if i < 100
+    i = i + 1
+    total = total + i
+    goto 10
+else
+    print('** Finishing loop **')
+end
+
+print(total)

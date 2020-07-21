@@ -77,6 +77,27 @@ impl Val {
             Err(Val::String("Expected func".to_owned().into()))
         }
     }
+    pub fn lt(&self, other: &Self) -> Result<bool, Val> {
+        match (self, other) {
+            (Self::Number(a), Self::Number(b)) => Ok(a < b),
+            (Self::String(a), Self::String(b)) => Ok(a < b),
+            (Self::List(a), Self::List(b)) => Ok({
+                let a = a.borrow();
+                let b = b.borrow();
+                for (x, y) in a.iter().zip(b.iter()) {
+                    if x.lt(y)? {
+                        return Ok(true);
+                    } else if y.lt(x)? {
+                        return Ok(false);
+                    }
+                }
+                a.len() < b.len()
+            }),
+            _ => Err(Val::String(
+                format!("{} and {} are not comparable", self, other).into(),
+            )),
+        }
+    }
 }
 
 impl fmt::Debug for Val {

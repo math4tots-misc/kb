@@ -27,8 +27,8 @@ pub enum Opcode {
     // control flow
     Label(u32),
     Goto(u32),
-    GotoIf(u32),
-    GotoIfNoPop(u32),
+    GotoIfFalse(u32),
+    GotoIfFalseNoPop(u32),
 
     // operators
     Return,
@@ -47,6 +47,12 @@ pub enum Binop {
     Divide,
     TruncDivide,
     Remainder,
+
+    // comparison
+    LessThan,
+    LessThanOrEqual,
+    GreaterThan,
+    GreaterThanOrEqual,
 
     // list
     Append,

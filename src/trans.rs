@@ -115,6 +115,14 @@ fn prepare_vars_for_stmt(
                 desc: ExprDesc::SetVar(name.clone(), setexpr.into()),
             });
         }
+        StmtDesc::If(pairs, other) => {
+            for (_cond, body) in pairs {
+                prepare_vars_for_stmt(out, body, prefix)?;
+            }
+            if let Some(other) = other {
+                prepare_vars_for_stmt(out, other, prefix)?;
+            }
+        }
         StmtDesc::Print(_)
         | StmtDesc::Expr(_)
         | StmtDesc::Return(_)
@@ -187,13 +195,30 @@ fn translate_stmt(code: &mut Code, scope: &mut Scope, stmt: &Stmt) -> Result<(),
         }
         StmtDesc::Label(label) => {
             let loc = code.len();
-            let id = scope.get_label_id(label);
             scope.update_label(label, loc);
-            code.add(Opcode::Label(id), stmt.mark.clone());
+            // let id = scope.get_label_id(label);
+            // code.add(Opcode::Label(id), stmt.mark.clone());
         }
         StmtDesc::Goto(label) => {
             let id = scope.get_label_id(label);
             code.add(Opcode::Goto(id), stmt.mark.clone());
+        }
+        StmtDesc::If(pairs, other) => {
+            let end_label = scope.new_label();
+            let end_label_id = scope.get_label_id(&end_label);
+            for (cond, body) in pairs {
+                let next_label = scope.new_label();
+                let next_label_id = scope.get_label_id(&next_label);
+                translate_expr(code, scope, cond)?;
+                code.add(Opcode::GotoIfFalse(next_label_id), cond.mark.clone());
+                translate_stmt(code, scope, body)?;
+                code.add(Opcode::Goto(end_label_id), body.mark.clone());
+                scope.update_label(&next_label, code.len());
+            }
+            if let Some(other) = other {
+                translate_stmt(code, scope, other)?;
+            }
+            scope.update_label(&end_label, code.len());
         }
     }
     Ok(())
@@ -320,20 +345,26 @@ impl Scope {
             .and_then(|locals| locals.get(qualified_name))
             .or_else(|| self.globals.get(qualified_name))
     }
-    fn new_label(&mut self, name: Rc<String>) -> u32 {
+    fn new_label_with_name(&mut self, name: Rc<String>) -> u32 {
         let (labels, map, ptrs) = self.labels.last_mut().unwrap();
+        assert!(!map.contains_key(&name));
         let id = labels.len();
         labels.push(name.clone());
         map.insert(name, id);
         ptrs.push(INVALID_LABEL_LOC);
         id as u32
     }
+    pub fn new_label(&mut self) -> Rc<String> {
+        let name: Rc<String> = format!("#{}", self.labels.last().unwrap().0.len()).into();
+        self.new_label_with_name(name.clone());
+        name
+    }
     pub fn get_label_id(&mut self, name: &Rc<String>) -> u32 {
         let (_labels, map, _ptrs) = self.labels.last().unwrap();
         if let Some(id) = map.get(name) {
             *id as u32
         } else {
-            self.new_label(name.clone())
+            self.new_label_with_name(name.clone())
         }
     }
     pub fn update_label(&mut self, name: &Rc<String>, loc: usize) {
