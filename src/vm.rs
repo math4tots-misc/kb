@@ -135,17 +135,28 @@ pub fn step<H: Handler>(
             let rhs = stack.pop().unwrap();
             let lhs = stack.pop().unwrap();
             let ret = match op {
+                // arithmetic operators
                 Binop::Add => Val::Number(lhs.expect_number()? + rhs.expect_number()?),
+                Binop::Subtract => Val::Number(lhs.expect_number()? - rhs.expect_number()?),
+                Binop::Multiply => Val::Number(lhs.expect_number()? * rhs.expect_number()?),
+                Binop::Divide => Val::Number(lhs.expect_number()? / rhs.expect_number()?),
+                Binop::TruncDivide => {
+                    Val::Number((lhs.expect_number()? / rhs.expect_number()?).trunc())
+                }
+                Binop::Remainder => Val::Number(lhs.expect_number()? % rhs.expect_number()?),
+
+                // comparison operators
                 Binop::LessThan => Val::Bool(lhs.lt(&rhs)?),
                 Binop::LessThanOrEqual => Val::Bool(!rhs.lt(&lhs)?),
                 Binop::GreaterThan => Val::Bool(rhs.lt(&lhs)?),
                 Binop::GreaterThanOrEqual => Val::Bool(!lhs.lt(&rhs)?),
+
+                // list
                 Binop::Append => {
                     let list = lhs.expect_list()?;
                     list.borrow_mut().push(rhs);
                     lhs
                 }
-                _ => panic!("TODO: Binop {:?}", op),
             };
             stack.push(ret);
         }

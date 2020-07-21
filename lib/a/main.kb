@@ -24,3 +24,6 @@ else
 end
 
 print(total)
+print(-25 % 19)
+print(-25 * 19)
+print(-25 - 19)
