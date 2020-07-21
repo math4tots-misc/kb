@@ -155,6 +155,8 @@ impl cmp::PartialEq for Func {
     }
 }
 
+impl cmp::Eq for Func {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
