@@ -5,6 +5,7 @@ use super::Code;
 use super::Opcode;
 use super::VarScope;
 use super::INVALID_LABEL_LOC;
+use super::RcStr;
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -91,7 +92,7 @@ fn prepare_vars_for_func(func: &mut FuncDisplay) -> Result<(), BasicError> {
 fn prepare_vars_for_stmt(
     out: &mut Vec<Var>,
     stmt: &mut Stmt,
-    prefix: Option<&Rc<String>>,
+    prefix: Option<&RcStr>,
 ) -> Result<(), BasicError> {
     match &mut stmt.desc {
         StmtDesc::Block(stmts) => {
@@ -132,7 +133,7 @@ fn prepare_vars_for_stmt(
     Ok(())
 }
 
-fn mkvar(mark: Mark, name: &Rc<String>, file_name: Option<&Rc<String>>, index: usize) -> Var {
+fn mkvar(mark: Mark, name: &RcStr, file_name: Option<&RcStr>, index: usize) -> Var {
     let index = index as u32;
     if let Some(file_name) = file_name {
         Var {
@@ -288,10 +289,10 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
 }
 
 struct Scope {
-    file_name: Rc<String>,
-    globals: HashMap<Rc<String>, Item>,
-    locals: Option<HashMap<Rc<String>, Item>>,
-    labels: Vec<(Vec<Rc<String>>, HashMap<Rc<String>, usize>, Vec<usize>)>,
+    file_name: RcStr,
+    globals: HashMap<RcStr, Item>,
+    locals: Option<HashMap<RcStr, Item>>,
+    labels: Vec<(Vec<RcStr>, HashMap<RcStr, usize>, Vec<usize>)>,
 }
 
 impl Scope {
@@ -319,7 +320,7 @@ impl Scope {
             Ok(())
         }
     }
-    pub fn getvar_or_error(&self, mark: &Mark, name: &String) -> Result<&Var, BasicError> {
+    pub fn getvar_or_error(&self, mark: &Mark, name: &str) -> Result<&Var, BasicError> {
         match self.rget(name) {
             None => {
                 println!("{:?}", self.globals);
@@ -335,17 +336,17 @@ impl Scope {
             Some(Item::Var(var)) => Ok(var),
         }
     }
-    pub fn rget(&self, name: &String) -> Option<&Item> {
+    pub fn rget(&self, name: &str) -> Option<&Item> {
         self.qget(name)
             .or_else(|| self.qget(&format!("{}#{}", self.file_name, name)))
     }
-    pub fn qget(&self, qualified_name: &String) -> Option<&Item> {
+    pub fn qget(&self, qualified_name: &str) -> Option<&Item> {
         self.locals
             .as_ref()
             .and_then(|locals| locals.get(qualified_name))
             .or_else(|| self.globals.get(qualified_name))
     }
-    fn new_label_with_name(&mut self, name: Rc<String>) -> u32 {
+    fn new_label_with_name(&mut self, name: RcStr) -> u32 {
         let (labels, map, ptrs) = self.labels.last_mut().unwrap();
         assert!(!map.contains_key(&name));
         let id = labels.len();
@@ -354,12 +355,12 @@ impl Scope {
         ptrs.push(INVALID_LABEL_LOC);
         id as u32
     }
-    pub fn new_label(&mut self) -> Rc<String> {
-        let name: Rc<String> = format!("#{}", self.labels.last().unwrap().0.len()).into();
+    pub fn new_label(&mut self) -> RcStr {
+        let name: RcStr = format!("#{}", self.labels.last().unwrap().0.len()).into();
         self.new_label_with_name(name.clone());
         name
     }
-    pub fn get_label_id(&mut self, name: &Rc<String>) -> u32 {
+    pub fn get_label_id(&mut self, name: &RcStr) -> u32 {
         let (_labels, map, _ptrs) = self.labels.last().unwrap();
         if let Some(id) = map.get(name) {
             *id as u32
@@ -367,7 +368,7 @@ impl Scope {
             self.new_label_with_name(name.clone())
         }
     }
-    pub fn update_label(&mut self, name: &Rc<String>, loc: usize) {
+    pub fn update_label(&mut self, name: &RcStr, loc: usize) {
         let id = self.get_label_id(name) as usize;
         self.labels.last_mut().unwrap().2[id] = loc;
     }
@@ -388,7 +389,7 @@ impl Scope {
     pub fn label_map(&self) -> &Vec<usize> {
         &self.labels.last().unwrap().2
     }
-    pub fn label_names(&self) -> &Vec<Rc<String>> {
+    pub fn label_names(&self) -> &Vec<RcStr> {
         &self.labels.last().unwrap().0
     }
 }
@@ -406,7 +407,7 @@ impl Item {
             Self::Import(imp) => &imp.mark,
         }
     }
-    pub fn name(&self) -> &Rc<String> {
+    pub fn name(&self) -> &RcStr {
         match self {
             Self::Var(var) => &var.name,
             Self::Import(imp) => &imp.unique_name,

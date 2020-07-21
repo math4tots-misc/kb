@@ -10,6 +10,7 @@ mod parser;
 mod trans;
 mod val;
 mod vm;
+mod rcstr;
 
 pub use ast::*;
 pub use code::*;
@@ -21,6 +22,7 @@ pub use parser::*;
 pub use trans::*;
 pub use val::*;
 pub use vm::*;
+pub use rcstr::*;
 
 #[derive(Debug)]
 pub struct BasicError {

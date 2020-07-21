@@ -1,6 +1,7 @@
 use super::Mark;
 use super::Var;
 use super::VarScope;
+use super::RcStr;
 use std::fmt;
 use std::rc::Rc;
 
@@ -12,7 +13,7 @@ pub enum Opcode {
     Nil,
     Bool(bool),
     Number(f64),
-    String(Rc<String>),
+    String(RcStr),
     NewList,
     NewFunc(Rc<Code>),
 
@@ -66,13 +67,13 @@ pub enum Unop {
 }
 
 pub struct Code {
-    name: Rc<String>,
+    name: RcStr,
     nparams: usize,
     vars: Vec<Var>,
     ops: Vec<Opcode>,
     marks: Vec<Mark>,
     label_map: Vec<usize>,
-    label_names: Vec<Rc<String>>,
+    label_names: Vec<RcStr>,
 }
 
 impl fmt::Debug for Code {
@@ -82,7 +83,7 @@ impl fmt::Debug for Code {
 }
 
 impl Code {
-    pub fn new(name: Rc<String>, nparams: usize, vars: Vec<Var>) -> Self {
+    pub fn new(name: RcStr, nparams: usize, vars: Vec<Var>) -> Self {
         Self {
             name,
             nparams,
@@ -98,20 +99,20 @@ impl Code {
         self.marks.push(mark);
         assert_eq!(self.ops.len(), self.marks.len());
     }
-    pub fn set_label_data(&mut self, map: Vec<usize>, names: Vec<Rc<String>>) {
+    pub fn set_label_data(&mut self, map: Vec<usize>, names: Vec<RcStr>) {
         self.label_map = map;
         self.label_names = names;
     }
     pub fn label_map(&self) -> &Vec<usize> {
         &self.label_map
     }
-    pub fn label_names(&self) -> &Vec<Rc<String>> {
+    pub fn label_names(&self) -> &Vec<RcStr> {
         &self.label_names
     }
     pub fn len(&self) -> usize {
         self.ops.len()
     }
-    pub fn name(&self) -> &Rc<String> {
+    pub fn name(&self) -> &RcStr {
         &self.name
     }
     pub fn nparams(&self) -> usize {

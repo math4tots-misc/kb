@@ -6,6 +6,7 @@ use super::Opcode;
 use super::Unop;
 use super::Val;
 use super::Var;
+use super::RcStr;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -206,7 +207,7 @@ impl Scope {
             locals: vec![],
         }
     }
-    pub fn get_name(&self, vscope: VarScope, index: u32) -> &Rc<String> {
+    pub fn get_name(&self, vscope: VarScope, index: u32) -> &RcStr {
         match vscope {
             VarScope::Global => self.globals.get_key(index).unwrap(),
             VarScope::Local => self.locals.last().unwrap().get_key(index).unwrap(),
@@ -239,7 +240,7 @@ impl Scope {
 
 pub struct IndexedMap {
     values: Vec<Val>,
-    map: HashMap<Rc<String>, u32>,
+    map: HashMap<RcStr, u32>,
 }
 
 impl IndexedMap {
@@ -249,19 +250,19 @@ impl IndexedMap {
             map: HashMap::new(),
         }
     }
-    pub fn insert(&mut self, key: Rc<String>, val: Val) -> u32 {
+    pub fn insert(&mut self, key: RcStr, val: Val) -> u32 {
         let i = self.values.len() as u32;
         self.values.push(val);
         self.map.insert(key, i);
         i
     }
-    pub fn get_by_key(&self, key: &Rc<String>) -> Option<&Val> {
+    pub fn get_by_key(&self, key: &RcStr) -> Option<&Val> {
         self.map.get(key).map(|i| &self.values[*i as usize])
     }
     pub fn get_by_index(&self, i: u32) -> Option<&Val> {
         self.values.get(i as usize)
     }
-    pub fn get_key(&self, index: u32) -> Option<&Rc<String>> {
+    pub fn get_key(&self, index: u32) -> Option<&RcStr> {
         for (key, i) in &self.map {
             if *i == index {
                 return Some(key);

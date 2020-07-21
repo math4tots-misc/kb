@@ -3,11 +3,11 @@ use super::BasicError;
 use super::DefaultHandler;
 use super::Loader;
 use super::Vm;
-use std::rc::Rc;
+use super::RcStr;
 
 pub fn main() {
     let mut loader = Loader::new();
-    let mut module_name: Option<Rc<String>> = None;
+    let mut module_name: Option<RcStr> = None;
     let mut state = State::Normal;
 
     for arg in std::env::args() {
@@ -40,7 +40,7 @@ pub fn main() {
     }
 }
 
-fn run(loader: &mut Loader, module_name: &Rc<String>) -> Result<(), BasicError> {
+fn run(loader: &mut Loader, module_name: &RcStr) -> Result<(), BasicError> {
     let files = loader.load(&module_name)?;
     let code = translate_files(files)?;
     let mut vm = Vm::new(DefaultHandler);

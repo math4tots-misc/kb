@@ -2,6 +2,7 @@ use super::parse;
 use super::BasicError;
 use super::File;
 use super::Source;
+use super::RcStr;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -9,7 +10,7 @@ use std::rc::Rc;
 
 pub struct Loader {
     source_roots: Vec<PathBuf>,
-    map: HashMap<Rc<String>, Rc<Source>>,
+    map: HashMap<RcStr, Rc<Source>>,
 }
 
 impl Loader {
@@ -30,7 +31,7 @@ impl Loader {
 
     pub fn find_source(
         &mut self,
-        module_name: &Rc<String>,
+        module_name: &RcStr,
     ) -> Result<Option<&Rc<Source>>, BasicError> {
         if !self.map.contains_key(module_name) {
             let mut relpath = PathBuf::new();
@@ -59,10 +60,10 @@ impl Loader {
         Ok(self.map.get(module_name))
     }
 
-    pub fn load(&mut self, module_name: &Rc<String>) -> Result<Vec<File>, BasicError> {
+    pub fn load(&mut self, module_name: &RcStr) -> Result<Vec<File>, BasicError> {
         let mut files = Vec::new();
         let mut stack = vec![module_name.clone()];
-        let mut seen: HashSet<Rc<String>> = stack.clone().into_iter().collect();
+        let mut seen: HashSet<RcStr> = stack.clone().into_iter().collect();
         while let Some(name) = stack.pop() {
             let source = match self.find_source(&name)? {
                 Some(source) => source,

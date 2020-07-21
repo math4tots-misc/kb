@@ -1,13 +1,14 @@
 use super::Binop;
 use super::Unop;
 use super::VarScope;
+use super::RcStr;
 use std::fmt;
 use std::fmt::Write;
 use std::rc::Rc;
 
 pub struct Source {
-    pub name: Rc<String>,
-    pub data: Rc<String>,
+    pub name: RcStr,
+    pub data: RcStr,
 }
 
 impl fmt::Debug for Source {
@@ -58,7 +59,7 @@ pub struct File {
 }
 
 impl File {
-    pub fn name(&self) -> &Rc<String> {
+    pub fn name(&self) -> &RcStr {
         &self.source.name
     }
 }
@@ -66,7 +67,7 @@ impl File {
 #[derive(Debug, Clone)]
 pub struct Var {
     pub mark: Mark,
-    pub name: Rc<String>, // unique in the scope it is declared
+    pub name: RcStr, // unique in the scope it is declared
     pub vscope: VarScope,
     pub index: u32,
 }
@@ -74,17 +75,17 @@ pub struct Var {
 #[derive(Debug, Clone)]
 pub struct Import {
     pub mark: Mark,
-    pub module_name: Rc<String>,
-    pub alias: Rc<String>,
+    pub module_name: RcStr,
+    pub alias: RcStr,
 
     // annotated data
-    pub unique_name: Rc<String>,
+    pub unique_name: RcStr,
 }
 
 pub struct FuncDisplay {
     pub mark: Mark,
-    pub short_name: Rc<String>,
-    pub params: Vec<Rc<String>>,
+    pub short_name: RcStr,
+    pub params: Vec<RcStr>,
     pub body: Stmt,
 
     // annotated data
@@ -93,7 +94,7 @@ pub struct FuncDisplay {
 }
 
 impl FuncDisplay {
-    pub fn full_name(&self) -> &Rc<String> {
+    pub fn full_name(&self) -> &RcStr {
         &self.as_var.as_ref().unwrap().name
     }
 }
@@ -106,13 +107,13 @@ pub struct Stmt {
 pub enum StmtDesc {
     Block(Vec<Stmt>),
     Return(Option<Expr>),
-    DeclVar(Rc<String>, Expr),
+    DeclVar(RcStr, Expr),
     Expr(Expr),
     Print(Expr),
 
     // Control flow
-    Label(Rc<String>),
-    Goto(Rc<String>),
+    Label(RcStr),
+    Goto(RcStr),
     If(Vec<(Expr, Stmt)>, Option<Box<Stmt>>),
 }
 
@@ -127,12 +128,12 @@ pub enum ExprDesc {
     Nil,
     Bool(bool),
     Number(f64),
-    String(Rc<String>),
+    String(RcStr),
     List(Vec<Expr>),
 
-    GetVar(Rc<String>),
-    SetVar(Rc<String>, Box<Expr>),
-    GetAttr(Box<Expr>, Rc<String>),
+    GetVar(RcStr),
+    SetVar(RcStr, Box<Expr>),
+    GetAttr(Box<Expr>, RcStr),
 
     CallFunc(Box<Expr>, Vec<Expr>),
 

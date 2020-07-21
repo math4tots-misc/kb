@@ -4,6 +4,7 @@ use super::BasicError;
 use super::Binop;
 use super::Mark;
 use super::Unop;
+use super::RcStr;
 use std::collections::HashSet;
 use std::rc::Rc;
 
@@ -67,7 +68,7 @@ impl<'a> Parser<'a> {
             })
         }
     }
-    fn expect_name(&mut self) -> Result<Rc<String>, BasicError> {
+    fn expect_name(&mut self) -> Result<RcStr, BasicError> {
         let mark = self.mark();
         let token = self.expect(Pat::Name)?;
         let name = token.name_or_keyword().unwrap();
@@ -80,7 +81,7 @@ impl<'a> Parser<'a> {
             Ok(name.to_owned().into())
         }
     }
-    fn expect_label(&mut self) -> Result<Rc<String>, BasicError> {
+    fn expect_label(&mut self) -> Result<RcStr, BasicError> {
         match self.peek() {
             Token::Number(x) => {
                 let x = *x;
@@ -422,10 +423,9 @@ impl<'a> Parser<'a> {
                 })
             }
             Token::RawString(s) => {
-                let s = Rc::new((*s).to_owned());
                 Ok(Expr {
                     mark,
-                    desc: ExprDesc::String(s),
+                    desc: ExprDesc::String((*s).into()),
                 })
             }
             Token::Minus | Token::Plus => {

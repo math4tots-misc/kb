@@ -1,4 +1,5 @@
 use super::Code;
+use super::RcStr;
 use std::cell::RefCell;
 use std::cmp;
 use std::fmt;
@@ -13,10 +14,10 @@ pub enum Val {
     Bool(bool),
     Number(f64),
 
-    /// Use of Rc<String> over Rc<str> is by design --
+    /// Use of RcStr over Rc<str> is by design --
     /// this allows kb to interoperate with rest of mtots
     /// without copying the String all over the place
-    String(Rc<String>),
+    String(RcStr),
 
     List(Rc<RefCell<Vec<Val>>>),
 

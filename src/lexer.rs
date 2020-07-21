@@ -2,13 +2,14 @@ use super::BasicError;
 use super::Mark;
 use super::Source;
 use std::rc::Rc;
+use super::RcStr;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token<'a> {
     Name(&'a str),
     Number(f64),
     RawString(&'a str),
-    String(Rc<String>),
+    String(RcStr),
     EOF,
 
     // Single character symbols
@@ -64,7 +65,7 @@ impl<'a> Token<'a> {
         }
     }
     #[allow(dead_code)]
-    pub fn string(self) -> Option<Rc<String>> {
+    pub fn string(self) -> Option<RcStr> {
         if let Token::String(x) = self {
             Some(x)
         } else {
