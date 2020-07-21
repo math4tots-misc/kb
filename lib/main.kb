@@ -1,4 +1,4 @@
-print("Hell world!")
+print("Hello world!")
 
 def foo()
     print("foo")
