@@ -81,7 +81,7 @@ impl<'a> Parser<'a> {
                 Token::Name("def") => funcs.push(self.func()?),
                 _ => stmts.push(self.stmt()?),
             }
-            self.consume_delim();
+            self.delim()?;
         }
         Ok(File {
             source: self.source.clone(),
@@ -142,8 +142,10 @@ impl<'a> Parser<'a> {
     fn block(&mut self) -> Result<Stmt, BasicError> {
         let mark = self.mark();
         let mut stmts = Vec::new();
+        self.consume_delim();
         while !self.consume(Token::Name("end")) {
             let stmt = self.stmt()?;
+            self.delim()?;
             stmts.push(stmt);
         }
         Ok(Stmt {
@@ -164,7 +166,6 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 let expr = self.expr(0)?;
-                self.delim()?;
                 Ok(Stmt {
                     mark,
                     desc: StmtDesc::Expr(expr),
@@ -303,7 +304,7 @@ impl<'a> Parser<'a> {
     }
     fn delim(&mut self) -> Result<(), BasicError> {
         match self.peek() {
-            Token::RBrace | Token::EOF | Token::Semicolon | Token::Newline => (),
+            Token::Name("end") | Token::EOF | Token::Semicolon | Token::Newline => (),
             t => {
                 return Err(BasicError {
                     marks: vec![self.mark()],

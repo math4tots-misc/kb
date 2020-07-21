@@ -21,9 +21,9 @@ pub fn translate_files(mut files: Vec<File>) -> Result<Code, BasicError> {
         for imp in &file.imports {
             scope.decl(Item::Import(imp.clone()))?;
         }
-        for var in &file.vars {
-            scope.decl(Item::Var(var.clone()))?;
-        }
+    }
+    for var in &global_vars {
+        scope.decl(Item::Var(var.clone()))?;
     }
 
     let mut code = Code {
@@ -40,9 +40,9 @@ pub fn translate_files(mut files: Vec<File>) -> Result<Code, BasicError> {
         scope.file_name = file.name().clone();
         for func in &file.funcs {
             let func_code = translate_func(&mut scope, func)?;
-            code.ops.push(Opcode::NewFunc(Rc::new(func_code)));
+            code.add(Opcode::NewFunc(Rc::new(func_code)), func.mark.clone());
             let var = func.as_var.as_ref().unwrap();
-            code.ops.push(Opcode::Set(var.vscope, var.index));
+            code.add(Opcode::Set(var.vscope, var.index), func.mark.clone());
         }
     }
 
@@ -274,15 +274,19 @@ impl Scope {
                 message: format!("{} is defined more than once", item.name()),
             })
         } else {
+            map.insert(item.name().clone(), item);
             Ok(())
         }
     }
     pub fn getvar_or_error(&self, mark: &Mark, name: &String) -> Result<&Var, BasicError> {
         match self.rget(name) {
-            None => Err(BasicError {
-                marks: vec![mark.clone()],
-                message: format!("Variable {} not found", name),
-            }),
+            None => {
+                println!("{:?}", self.globals);
+                Err(BasicError {
+                    marks: vec![mark.clone()],
+                    message: format!("Variable {} not found", name),
+                })
+            }
             Some(Item::Import(..)) => Err(BasicError {
                 marks: vec![mark.clone()],
                 message: format!("{} is an import, not a variable", name),
@@ -302,6 +306,7 @@ impl Scope {
     }
 }
 
+#[derive(Debug)]
 enum Item {
     Var(Var),
     Import(Import),

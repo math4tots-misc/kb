@@ -2,8 +2,8 @@ use super::Binop;
 use super::Unop;
 use super::VarScope;
 use std::fmt;
-use std::rc::Rc;
 use std::fmt::Write;
+use std::rc::Rc;
 
 pub struct Source {
     pub name: Rc<String>,
@@ -63,7 +63,7 @@ impl File {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Var {
     pub mark: Mark,
     pub name: Rc<String>, // unique in the scope it is declared
@@ -71,7 +71,7 @@ pub struct Var {
     pub index: u32,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Import {
     pub mark: Mark,
     pub module_name: Rc<String>,

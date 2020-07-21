@@ -26,15 +26,13 @@ pub fn main() {
     }
 
     match module_name {
-        Some(module_name) => {
-            match run(&mut loader, &module_name) {
-                Ok(()) => {}
-                Err(error) => {
-                    eprintln!("{}", error.format());
-                    std::process::exit(1);
-                }
+        Some(module_name) => match run(&mut loader, &module_name) {
+            Ok(()) => {}
+            Err(error) => {
+                eprintln!("{}", error.format());
+                std::process::exit(1);
             }
-        }
+        },
         None => {
             eprintln!("Module name not specified");
             std::process::exit(1);

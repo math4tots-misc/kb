@@ -1,8 +1,8 @@
 use super::Mark;
 use super::Var;
 use super::VarScope;
-use std::rc::Rc;
 use std::fmt;
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub enum Opcode {

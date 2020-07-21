@@ -82,7 +82,7 @@ pub fn lex(source: &Rc<Source>) -> Result<Vec<(Token, Mark)>, BasicError> {
         };
         match state {
             State::Neutral => {
-                if (c == '\n' && pstack.ignore_newline()) || c.is_whitespace() {
+                if c.is_whitespace() && (c != '\n' || pstack.ignore_newline()) {
                     // skip whitespace
                     // We also keep track of the last ignored whitespace
                     // to figure out when tokens should be combined
@@ -170,7 +170,13 @@ pub fn lex(source: &Rc<Source>) -> Result<Vec<(Token, Mark)>, BasicError> {
                     state = State::Number(start);
                 } else {
                     let n: f64 = s[start..i].parse().unwrap();
-                    ret.push((Token::Number(n), mark));
+                    ret.push((
+                        Token::Number(n),
+                        Mark {
+                            source: source.clone(),
+                            pos: start,
+                        },
+                    ));
                     chars.put_back(c);
                     state = State::Neutral;
                 }
@@ -179,14 +185,26 @@ pub fn lex(source: &Rc<Source>) -> Result<Vec<(Token, Mark)>, BasicError> {
                 if c == '_' || c.is_alphanumeric() {
                     state = State::Name(start);
                 } else {
-                    ret.push((Token::Name(&s[start..i]), mark));
+                    ret.push((
+                        Token::Name(&s[start..i]),
+                        Mark {
+                            source: source.clone(),
+                            pos: start,
+                        },
+                    ));
                     chars.put_back(c);
                     state = State::Neutral;
                 }
             }
             State::RawString(q, start) => {
                 if c == q {
-                    ret.push((Token::RawString(&s[start..i]), mark));
+                    ret.push((
+                        Token::RawString(&s[start..i]),
+                        Mark {
+                            source: source.clone(),
+                            pos: start,
+                        },
+                    ));
                     state = State::Neutral;
                 } else {
                     state = State::RawString(q, start);
