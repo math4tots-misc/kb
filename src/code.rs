@@ -4,6 +4,8 @@ use super::VarScope;
 use std::fmt;
 use std::rc::Rc;
 
+pub const INVALID_LABEL_LOC: usize = usize::MAX;
+
 #[derive(Debug)]
 pub enum Opcode {
     // Load constants
@@ -21,6 +23,12 @@ pub enum Opcode {
     Get(VarScope, u32),
     Set(VarScope, u32),
     Tee(VarScope, u32),
+
+    // control flow
+    Label(u32),
+    Goto(u32),
+    GotoIf(u32),
+    GotoIfNoPop(u32),
 
     // operators
     Return,
@@ -52,11 +60,13 @@ pub enum Unop {
 }
 
 pub struct Code {
-    pub name: Rc<String>,
-    pub nparams: usize,
-    pub vars: Vec<Var>,
-    pub ops: Vec<Opcode>,
-    pub marks: Vec<Mark>,
+    name: Rc<String>,
+    nparams: usize,
+    vars: Vec<Var>,
+    ops: Vec<Opcode>,
+    marks: Vec<Mark>,
+    label_map: Vec<usize>,
+    label_names: Vec<Rc<String>>,
 }
 
 impl fmt::Debug for Code {
@@ -66,9 +76,54 @@ impl fmt::Debug for Code {
 }
 
 impl Code {
+    pub fn new(name: Rc<String>, nparams: usize, vars: Vec<Var>) -> Self {
+        Self {
+            name,
+            nparams,
+            vars,
+            ops: vec![],
+            marks: vec![],
+            label_map: vec![],
+            label_names: vec![],
+        }
+    }
     pub fn add(&mut self, op: Opcode, mark: Mark) {
         self.ops.push(op);
         self.marks.push(mark);
         assert_eq!(self.ops.len(), self.marks.len());
+    }
+    pub fn set_label_data(&mut self, map: Vec<usize>, names: Vec<Rc<String>>) {
+        self.label_map = map;
+        self.label_names = names;
+    }
+    pub fn label_map(&self) -> &Vec<usize> {
+        &self.label_map
+    }
+    pub fn label_names(&self) -> &Vec<Rc<String>> {
+        &self.label_names
+    }
+    pub fn len(&self) -> usize {
+        self.ops.len()
+    }
+    pub fn name(&self) -> &Rc<String> {
+        &self.name
+    }
+    pub fn nparams(&self) -> usize {
+        self.nparams
+    }
+    pub fn vars(&self) -> &Vec<Var> {
+        &self.vars
+    }
+    pub fn ops(&self) -> &Vec<Opcode> {
+        &self.ops
+    }
+    pub fn ops_mut(&mut self) -> &mut Vec<Opcode> {
+        &mut self.ops
+    }
+    pub fn marks(&self) -> &Vec<Mark> {
+        &self.marks
+    }
+    pub fn fetch(&self, i: usize) -> &Opcode {
+        &self.ops[i]
     }
 }

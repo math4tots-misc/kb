@@ -1,8 +1,0 @@
-print("Hello world!")
-
-def foo()
-    print("foo")
-end
-
-foo()
-foo()

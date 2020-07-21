@@ -23,7 +23,7 @@ impl<H: Handler> Vm<H> {
         }
     }
     pub fn exec(&mut self, code: &Code) -> Result<(), Val> {
-        for var in &code.vars {
+        for var in code.vars() {
             self.scope.globals.insert(var.name.clone(), Val::Nil);
         }
         exec(&mut self.scope, &mut self.handler, code)?;
@@ -37,12 +37,12 @@ pub fn callfunc<H: Handler>(
     func: &Code,
     args: Vec<Val>,
 ) -> Result<Val, Val> {
-    if args.len() != func.nparams {
+    if args.len() != func.nparams() {
         return Err(Val::String(
-            format!("Expected {} args but got {}", func.nparams, args.len()).into(),
+            format!("Expected {} args but got {}", func.nparams(), args.len()).into(),
         ));
     }
-    scope.push(&func.vars);
+    scope.push(func.vars());
     for (i, arg) in args.into_iter().enumerate() {
         scope.set(VarScope::Local, i as u32, arg);
     }
@@ -54,7 +54,7 @@ pub fn callfunc<H: Handler>(
 pub fn exec<H: Handler>(scope: &mut Scope, handler: &mut H, code: &Code) -> Result<Val, Val> {
     let mut i = 0;
     let mut stack = Vec::new();
-    while i < code.ops.len() {
+    while i < code.len() {
         if let Some(ret) = step(scope, handler, code, &mut i, &mut stack)? {
             return Ok(ret);
         }
@@ -70,7 +70,7 @@ pub fn step<H: Handler>(
     i: &mut usize,
     stack: &mut Vec<Val>,
 ) -> Result<Option<Val>, Val> {
-    let op = &code.ops[*i];
+    let op = code.fetch(*i);
     *i += 1;
     match op {
         Opcode::Nil => {
@@ -152,6 +152,22 @@ pub fn step<H: Handler>(
                 Unop::Positive => Val::Number(val.expect_number()?),
             };
             stack.push(ret);
+        }
+        Opcode::Label(_) => {}
+        Opcode::Goto(id) => {
+            *i = code.label_map()[*id as usize];
+        }
+        Opcode::GotoIf(id) => {
+            let item = stack.pop().unwrap();
+            if item.truthy() {
+                *i = code.label_map()[*id as usize];
+            }
+        }
+        Opcode::GotoIfNoPop(id) => {
+            let item = stack.last().unwrap();
+            if item.truthy() {
+                *i = code.label_map()[*id as usize];
+            }
         }
     }
     Ok(None)

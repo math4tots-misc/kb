@@ -8,7 +8,7 @@ pub enum Token<'a> {
     Name(&'a str),
     Number(f64),
     RawString(&'a str),
-    String(String),
+    String(Rc<String>),
     EOF,
 
     // Single character symbols
@@ -21,6 +21,7 @@ pub enum Token<'a> {
     RBrace,
     Dollar,
     Dot,
+    Colon,
     Comma,
     Semicolon,
     Percent,
@@ -34,7 +35,7 @@ pub enum Token<'a> {
 }
 
 impl<'a> Token<'a> {
-    pub fn name(&self) -> Option<&str> {
+    pub fn name_or_keyword(&self) -> Option<&str> {
         if let Token::Name(s) = self {
             Some(s)
         } else {
@@ -58,7 +59,7 @@ impl<'a> Token<'a> {
         }
     }
     #[allow(dead_code)]
-    pub fn string(self) -> Option<String> {
+    pub fn string(self) -> Option<Rc<String>> {
         if let Token::String(x) = self {
             Some(x)
         } else {
@@ -111,6 +112,7 @@ pub fn lex(source: &Rc<Source>) -> Result<Vec<(Token, Mark)>, BasicError> {
                         '}' => Some(Token::RBrace),
                         '$' => Some(Token::Dollar),
                         '.' => Some(Token::Dot),
+                        ':' => Some(Token::Colon),
                         ',' => Some(Token::Comma),
                         ';' => Some(Token::Semicolon),
                         '+' => Some(Token::Plus),
@@ -213,7 +215,7 @@ pub fn lex(source: &Rc<Source>) -> Result<Vec<(Token, Mark)>, BasicError> {
             State::String(q, mut string) => {
                 if c == q {
                     ret.push((
-                        Token::String(string),
+                        Token::String(string.into()),
                         Mark {
                             source: source.clone(),
                             pos: i,

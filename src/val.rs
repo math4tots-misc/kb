@@ -24,6 +24,17 @@ pub enum Val {
 }
 
 impl Val {
+    pub fn truthy(&self) -> bool {
+        match self {
+            Self::Invalid => panic!("Val::Invalid.truthy()"),
+            Self::Nil => false,
+            Self::Bool(x) => *x,
+            Self::Number(x) => *x != 0.0,
+            Self::String(x) => x.len() > 0,
+            Self::List(x) => x.borrow().len() > 0,
+            Self::Func(_) => true,
+        }
+    }
     pub fn number(&self) -> Option<f64> {
         if let Self::Number(x) = self {
             Some(*x)
@@ -100,7 +111,7 @@ impl fmt::Debug for Val {
                 }
                 write!(f, "]")
             }
-            Val::Func(func) => write!(f, "<func {}>", func.0.name),
+            Val::Func(func) => write!(f, "<func {}>", func.0.name()),
         }
     }
 }

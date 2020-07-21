@@ -1,0 +1,4 @@
+
+fn foo()
+    print "inside foo"
+end

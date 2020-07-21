@@ -1,0 +1,12 @@
+import a.other
+
+print "Hello world!"
+
+other.foo()
+
+fn foo()
+    print "foo"
+end
+
+foo()
+foo()

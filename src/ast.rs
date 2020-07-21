@@ -109,13 +109,19 @@ pub enum StmtDesc {
     DeclVar(Rc<String>, Expr),
     Expr(Expr),
     Print(Expr),
+
+    // Control flow
+    Label(Rc<String>),
+    Goto(Rc<String>),
 }
 
+#[derive(Debug)]
 pub struct Expr {
     pub mark: Mark,
     pub desc: ExprDesc,
 }
 
+#[derive(Debug)]
 pub enum ExprDesc {
     Nil,
     Bool(bool),

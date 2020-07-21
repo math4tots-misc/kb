@@ -4,6 +4,7 @@ use super::BasicError;
 use super::Binop;
 use super::Mark;
 use super::Unop;
+use std::collections::HashSet;
 use std::rc::Rc;
 
 type Prec = i64;
@@ -12,12 +13,16 @@ const MUL_PREC: Prec = 80;
 const UNARY_PREC: Prec = 100;
 const POSTFIX_PREC: Prec = 1000;
 
+const KEYWORDS: &[&'static str] = &["fn", "import", "goto"];
+
 pub fn parse(source: &Rc<Source>) -> Result<File, BasicError> {
     let toks = lex(source)?;
+    let keywords: HashSet<&'static str> = KEYWORDS.iter().map(|s| *s).collect();
     let mut parser = Parser {
         source: source.clone(),
         toks,
         i: 0,
+        keywords,
     };
     let file = parser.file()?;
     Ok(file)
@@ -27,11 +32,15 @@ struct Parser<'a> {
     source: Rc<Source>,
     toks: Vec<(Token<'a>, Mark)>,
     i: usize,
+    keywords: HashSet<&'static str>,
 }
 
 impl<'a> Parser<'a> {
     fn peek(&self) -> &Token<'a> {
         &self.toks[self.i].0
+    }
+    fn lookahead(&self, n: usize) -> Option<&Token<'a>> {
+        self.toks.get(self.i + n).map(|pair| &pair.0)
     }
     fn mark(&self) -> Mark {
         self.toks[self.i].1.clone()
@@ -42,7 +51,7 @@ impl<'a> Parser<'a> {
     }
     fn gettok(&mut self) -> Token<'a> {
         self.i += 1;
-        std::mem::replace(&mut self.toks[self.i - 1].0, Token::EOF)
+        self.toks[self.i - 1].0.clone()
     }
     fn expect<'b, P: Into<Pat<'b>>>(&mut self, p: P) -> Result<Token<'a>, BasicError> {
         let p = p.into();
@@ -56,7 +65,34 @@ impl<'a> Parser<'a> {
         }
     }
     fn expect_name(&mut self) -> Result<Rc<String>, BasicError> {
-        Ok(self.expect(Pat::Name)?.name().unwrap().to_owned().into())
+        let mark = self.mark();
+        let token = self.expect(Pat::Name)?;
+        let name = token.name_or_keyword().unwrap();
+        if self.keywords.contains(&name) {
+            Err(BasicError {
+                marks: vec![mark],
+                message: format!("Expected name but got keyword"),
+            })
+        } else {
+            Ok(name.to_owned().into())
+        }
+    }
+    fn expect_label(&mut self) -> Result<Rc<String>, BasicError> {
+        match self.peek() {
+            Token::Number(x) => {
+                let x = *x;
+                self.gettok();
+                Ok(format!("{}", x).into())
+            }
+            Token::Name(_) => {
+                let name = self.expect_name()?;
+                Ok(name)
+            }
+            _ => Err(BasicError {
+                marks: vec![self.mark()],
+                message: format!("Expected label but got {:?}", self.peek()),
+            }),
+        }
     }
     fn consume<P: Into<Pat<'a>>>(&mut self, p: P) -> bool {
         if self.at(p) {
@@ -78,8 +114,8 @@ impl<'a> Parser<'a> {
         while !self.at(Token::EOF) {
             match self.peek() {
                 Token::Name("import") => imports.push(self.import_()?),
-                Token::Name("def") => funcs.push(self.func()?),
-                _ => stmts.push(self.stmt()?),
+                Token::Name("fn") => funcs.push(self.func()?),
+                _ => stmts.extend(self.maybe_labeled_stmt()?),
             }
             self.delim()?;
         }
@@ -96,6 +132,7 @@ impl<'a> Parser<'a> {
     }
     fn import_(&mut self) -> Result<Import, BasicError> {
         let mark = self.mark();
+        self.expect(Token::Name("import"))?;
         let mut module_name = self.expect_name()?;
         let mut last_part = module_name.clone();
         while self.consume(Token::Dot) {
@@ -114,7 +151,7 @@ impl<'a> Parser<'a> {
     }
     fn func(&mut self) -> Result<FuncDisplay, BasicError> {
         let mark = self.mark();
-        self.expect(Token::Name("def"))?;
+        self.expect(Token::Name("fn"))?;
         let name = self.expect_name()?;
         let params = {
             let mut params = Vec::new();
@@ -144,14 +181,58 @@ impl<'a> Parser<'a> {
         let mut stmts = Vec::new();
         self.consume_delim();
         while !self.consume(Token::Name("end")) {
-            let stmt = self.stmt()?;
+            let new_stmts = self.maybe_labeled_stmt()?;
             self.delim()?;
-            stmts.push(stmt);
+            stmts.extend(new_stmts);
         }
         Ok(Stmt {
             mark,
             desc: StmtDesc::Block(stmts),
         })
+    }
+    fn maybe_labeled_stmt(&mut self) -> Result<Vec<Stmt>, BasicError> {
+        let mut ret = Vec::new();
+
+        // check for
+        //   <label-name> :
+        // style labels
+        match self.peek() {
+            Token::Name(name)
+                if !self.keywords.contains(name) && self.lookahead(1) == Some(&Token::Colon) =>
+            {
+                let mark = self.mark();
+                let label = self.expect_label()?;
+                self.expect(Token::Colon)?;
+                self.consume_delim();
+                ret.push(Stmt {
+                    mark,
+                    desc: StmtDesc::Label(label),
+                })
+            }
+            _ => {}
+        }
+
+        // check for line number labels
+        // we check to see if a Number is immediately followed
+        // by a Name (keyword or otherwise) or open parentheses
+        // if this is not the case, we assume there is no line number
+        if self.peek().number().is_some()
+            && self
+                .lookahead(1)
+                .map(|t| t.name_or_keyword().is_some() || t == &Token::LParen)
+                .unwrap_or(false)
+        {
+            let mark = self.mark();
+            let label = self.expect_label()?;
+            ret.push(Stmt {
+                mark,
+                desc: StmtDesc::Label(label),
+            });
+        }
+
+        ret.push(self.stmt()?);
+
+        Ok(ret)
     }
     fn stmt(&mut self) -> Result<Stmt, BasicError> {
         let mark = self.mark();
@@ -162,6 +243,24 @@ impl<'a> Parser<'a> {
                 Ok(Stmt {
                     mark,
                     desc: StmtDesc::Print(arg.into()),
+                })
+            }
+            Token::Name("goto") => {
+                self.gettok();
+                let label = self.expect_label()?;
+                Ok(Stmt {
+                    mark,
+                    desc: StmtDesc::Goto(label),
+                })
+            }
+            Token::Name(name)
+                if !self.keywords.contains(name) && self.lookahead(1) == Some(&Token::Colon) =>
+            {
+                let label = self.expect_label()?;
+                self.expect(Token::Colon)?;
+                Ok(Stmt {
+                    mark,
+                    desc: StmtDesc::Label(label),
                 })
             }
             _ => {
@@ -175,6 +274,7 @@ impl<'a> Parser<'a> {
     }
     fn expr(&mut self, prec: Prec) -> Result<Expr, BasicError> {
         let mut e = self.atom()?;
+        println!("xx {:?}, {:?}", self.peek(), precof(self.peek()));
         while precof(self.peek()) >= prec {
             e = self.infix(e)?;
         }
@@ -284,7 +384,7 @@ impl<'a> Parser<'a> {
                     desc: ExprDesc::Nil,
                 })
             }
-            Token::Name(_) => {
+            Token::Name(name) if !self.keywords.contains(name) => {
                 let name = self.expect_name()?;
                 Ok(Expr {
                     mark,
@@ -302,18 +402,22 @@ impl<'a> Parser<'a> {
             self.gettok();
         }
     }
-    fn delim(&mut self) -> Result<(), BasicError> {
+    fn at_delim(&self) -> bool {
         match self.peek() {
-            Token::Name("end") | Token::EOF | Token::Semicolon | Token::Newline => (),
-            t => {
-                return Err(BasicError {
-                    marks: vec![self.mark()],
-                    message: format!("Expected delimiter but got {:?}", t),
-                })
-            }
+            Token::Name("end") | Token::EOF | Token::Semicolon | Token::Newline => true,
+            _ => false,
         }
-        self.consume_delim();
-        Ok(())
+    }
+    fn delim(&mut self) -> Result<(), BasicError> {
+        if self.at_delim() {
+            self.consume_delim();
+            Ok(())
+        } else {
+            Err(BasicError {
+                marks: vec![self.mark()],
+                message: format!("Expected delimiter but got {:?}", self.peek()),
+            })
+        }
     }
 }
 
@@ -321,7 +425,7 @@ fn precof<'a>(tok: &Token<'a>) -> Prec {
     match tok {
         Token::Minus | Token::Plus => ADD_PREC,
         Token::Star | Token::Slash | Token::Slash2 | Token::Percent => MUL_PREC,
-        Token::LParen => POSTFIX_PREC,
+        Token::LParen | Token::Dot => POSTFIX_PREC,
         _ => -1,
     }
 }
