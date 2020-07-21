@@ -157,7 +157,7 @@ pub fn step<H: Handler>(
     Ok(None)
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum VarScope {
     Local,
     Global,

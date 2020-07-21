@@ -10,6 +10,7 @@ type Prec = i64;
 const ADD_PREC: Prec = 60;
 const MUL_PREC: Prec = 80;
 const UNARY_PREC: Prec = 100;
+const POSTFIX_PREC: Prec = 1000;
 
 pub fn parse(source: &Rc<Source>) -> Result<File, BasicError> {
     let toks = lex(source)?;
@@ -153,6 +154,14 @@ impl<'a> Parser<'a> {
     fn stmt(&mut self) -> Result<Stmt, BasicError> {
         let mark = self.mark();
         match self.peek() {
+            Token::Name("print") => {
+                self.gettok();
+                let arg = self.expr(0)?;
+                Ok(Stmt {
+                    mark,
+                    desc: StmtDesc::Print(arg.into()),
+                })
+            }
             _ => {
                 let expr = self.expr(0)?;
                 self.delim()?;
@@ -240,6 +249,20 @@ impl<'a> Parser<'a> {
                     desc: ExprDesc::Number(x),
                 })
             }
+            Token::String(_) => {
+                let s = self.gettok().string().unwrap();
+                Ok(Expr {
+                    mark,
+                    desc: ExprDesc::String(s.into()),
+                })
+            }
+            Token::RawString(s) => {
+                let s = Rc::new((*s).to_owned());
+                Ok(Expr {
+                    mark,
+                    desc: ExprDesc::String(s),
+                })
+            }
             Token::Minus | Token::Plus => {
                 let tok = self.gettok();
                 let op = match tok {
@@ -260,9 +283,16 @@ impl<'a> Parser<'a> {
                     desc: ExprDesc::Nil,
                 })
             }
+            Token::Name(_) => {
+                let name = self.expect_name()?;
+                Ok(Expr {
+                    mark,
+                    desc: ExprDesc::GetVar(name),
+                })
+            }
             _ => Err(BasicError {
                 marks: vec![mark],
-                message: format!("Expected expression"),
+                message: format!("Expected expression but got {:?}", self.peek()),
             }),
         }
     }
@@ -277,7 +307,7 @@ impl<'a> Parser<'a> {
             t => {
                 return Err(BasicError {
                     marks: vec![self.mark()],
-                    message: format!("Expected dlimiter but got {:?}", t),
+                    message: format!("Expected delimiter but got {:?}", t),
                 })
             }
         }
@@ -290,6 +320,7 @@ fn precof<'a>(tok: &Token<'a>) -> Prec {
     match tok {
         Token::Minus | Token::Plus => ADD_PREC,
         Token::Star | Token::Slash | Token::Slash2 | Token::Percent => MUL_PREC,
+        Token::LParen => POSTFIX_PREC,
         _ => -1,
     }
 }

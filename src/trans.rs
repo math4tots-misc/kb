@@ -116,7 +116,7 @@ fn prepare_vars_for_stmt(
                 desc: ExprDesc::SetVar(name.clone(), setexpr.into()),
             });
         }
-        StmtDesc::Expr(_) | StmtDesc::Return(_) => {}
+        StmtDesc::Print(_) | StmtDesc::Expr(_) | StmtDesc::Return(_) => {}
     }
     Ok(())
 }
@@ -176,6 +176,10 @@ fn translate_stmt(code: &mut Code, scope: &mut Scope, stmt: &Stmt) -> Result<(),
         StmtDesc::Expr(expr) => {
             translate_expr(code, scope, expr)?;
             code.add(Opcode::Pop, stmt.mark.clone());
+        }
+        StmtDesc::Print(arg) => {
+            translate_expr(code, scope, arg)?;
+            code.add(Opcode::Print, stmt.mark.clone());
         }
     }
     Ok(())

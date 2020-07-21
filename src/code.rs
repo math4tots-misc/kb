@@ -2,7 +2,9 @@ use super::Mark;
 use super::Var;
 use super::VarScope;
 use std::rc::Rc;
+use std::fmt;
 
+#[derive(Debug)]
 pub enum Opcode {
     // Load constants
     Nil,
@@ -55,6 +57,12 @@ pub struct Code {
     pub vars: Vec<Var>,
     pub ops: Vec<Opcode>,
     pub marks: Vec<Mark>,
+}
+
+impl fmt::Debug for Code {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Code({})", self.name)
+    }
 }
 
 impl Code {

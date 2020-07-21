@@ -5,6 +5,7 @@ mod code;
 mod handler;
 mod lexer;
 mod loader;
+mod m;
 mod parser;
 mod trans;
 mod val;
@@ -15,6 +16,7 @@ pub use code::*;
 pub use handler::*;
 pub use lexer::*;
 pub use loader::*;
+pub use m::*;
 pub use parser::*;
 pub use trans::*;
 pub use val::*;
@@ -32,5 +34,18 @@ impl From<std::io::Error> for BasicError {
             marks: vec![],
             message: format!("{:?}", e),
         }
+    }
+}
+
+impl BasicError {
+    pub fn format(&self) -> String {
+        use std::fmt::Write;
+        let mut ret = String::new();
+        let out = &mut ret;
+        for mark in &self.marks {
+            write!(out, "{}", mark.format()).unwrap();
+        }
+        writeln!(out, "{}", self.message).unwrap();
+        ret
     }
 }

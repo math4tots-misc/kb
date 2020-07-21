@@ -3,6 +3,7 @@ use super::Unop;
 use super::VarScope;
 use std::fmt;
 use std::rc::Rc;
+use std::fmt::Write;
 
 pub struct Source {
     pub name: Rc<String>,
@@ -19,6 +20,31 @@ impl fmt::Debug for Source {
 pub struct Mark {
     pub source: Rc<Source>,
     pub pos: usize,
+}
+
+impl Mark {
+    pub fn format(&self) -> String {
+        let mut ret = String::new();
+        let out = &mut ret;
+        writeln!(out, "on line {}", self.lineno()).unwrap();
+        let start = self.source.data[..self.pos]
+            .rfind('\n')
+            .map(|x| x + 1)
+            .unwrap_or(0);
+        let end = self.source.data[self.pos..]
+            .find('\n')
+            .map(|x| x + self.pos)
+            .unwrap_or(self.source.data.len());
+        writeln!(out, "{}", &self.source.data[start..end]).unwrap();
+        for _ in start..self.pos {
+            write!(out, " ").unwrap();
+        }
+        writeln!(out, "*").unwrap();
+        ret
+    }
+    pub fn lineno(&self) -> usize {
+        self.source.data[..self.pos].matches('\n').count() + 1
+    }
 }
 
 pub struct File {
@@ -82,6 +108,7 @@ pub enum StmtDesc {
     Return(Option<Expr>),
     DeclVar(Rc<String>, Expr),
     Expr(Expr),
+    Print(Expr),
 }
 
 pub struct Expr {
