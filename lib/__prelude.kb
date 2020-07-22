@@ -1,0 +1,4 @@
+
+fn print(x)
+    PRINT x
+end

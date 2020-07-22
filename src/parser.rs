@@ -16,7 +16,10 @@ const UNARY_PREC: Prec = 200;
 const POSTFIX_PREC: Prec = 1000;
 
 const KEYWORDS: &[&'static str] = &[
-    "fn", "import", "goto", "var", "if", "elif", "else", "end", "is", "not", "and", "or", "in",
+    "fn", "import", "var", "if", "elif", "else", "end", "is", "not", "and", "or", "in",
+
+    // legacy names
+    "PRINT", "GOTO",
 ];
 
 pub fn parse(source: &Rc<Source>) -> Result<File, BasicError> {
@@ -249,7 +252,7 @@ impl<'a> Parser<'a> {
     fn stmt(&mut self) -> Result<Stmt, BasicError> {
         let mark = self.mark();
         match self.peek() {
-            Token::Name("print") => {
+            Token::Name("PRINT") => {
                 self.gettok();
                 let arg = self.expr(0)?;
                 Ok(Stmt {
@@ -257,7 +260,7 @@ impl<'a> Parser<'a> {
                     desc: StmtDesc::Print(arg.into()),
                 })
             }
-            Token::Name("goto") => {
+            Token::Name("GOTO") => {
                 self.gettok();
                 let label = self.expect_label()?;
                 Ok(Stmt {

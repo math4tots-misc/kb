@@ -1,11 +1,11 @@
 import a.other
 
-print "Hello world!"
+PRINT "Hello world!"
 
 other.foo()
 
 fn foo()
-    print "foo"
+    PRINT "foo"
 end
 
 foo()
@@ -18,15 +18,15 @@ var total = 0
 10 if i < 100
     i = i + 1
     total = total + i
-    goto 10
+    GOTO 10
 else
-    print('** Finishing loop **')
+    PRINT '** Finishing loop **'
 end
 
-print(total)
-print(-25 % 19)
-print(-25 * 19)
-print(-25 - 19)
+PRINT total
+PRINT -25 % 19
+PRINT -25 * 19
+PRINT -25 - 19
 
 i = 0
 total = 0
@@ -34,4 +34,4 @@ while i < 1000
     i = i + 1
     total = total + i
 end
-print(total)
+PRINT total
