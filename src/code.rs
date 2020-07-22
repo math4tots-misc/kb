@@ -142,11 +142,12 @@ impl Code {
                 pos += 1;
             }
         }
+        let old_ops = std::mem::replace(&mut self.ops, vec![]);
+        let old_marks = std::mem::replace(&mut self.marks, vec![]);
         let mut new_ops = Vec::new();
+        let mut new_marks = Vec::new();
         pos = 0;
-        for (i, mut op) in std::mem::replace(&mut self.ops, vec![])
-            .into_iter()
-            .enumerate()
+        for (i, (mut op, mark)) in old_ops.into_iter().zip(old_marks).enumerate()
         {
             if let Opcode::Label(_) = op {
                 continue;
@@ -177,10 +178,12 @@ impl Code {
                 _ => {}
             }
             new_ops.push(op);
+            new_marks.push(mark);
             pos += 1;
         }
         self.label_map = labels;
         self.ops = new_ops;
+        self.marks = new_marks;
         Ok(())
     }
     pub fn add(&mut self, op: Opcode, mark: Mark) {
