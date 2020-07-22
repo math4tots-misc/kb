@@ -29,7 +29,12 @@ pub fn translate_files(mut files: Vec<File>) -> Result<Code, BasicError> {
         scope.decl(Item::Var(var.clone()))?;
     }
 
-    let mut code = Code::new(format!("[main]").into(), ArgSpec::empty(), global_vars);
+    let mut code = Code::new(
+        false,
+        format!("[main]").into(),
+        ArgSpec::empty(),
+        global_vars,
+    );
 
     // translate all statements inside functions and
     // initialize all functions at the global scope
@@ -165,6 +170,7 @@ fn mkvar(mark: Mark, name: &RcStr, file_name: Option<&RcStr>, index: usize) -> V
 
 fn translate_func(scope: &mut Scope, func: &FuncDisplay) -> Result<Code, BasicError> {
     let mut code = Code::new(
+        func.generator,
         func.full_name().clone(),
         func.argspec.clone(),
         func.vars.clone(),
@@ -302,6 +308,14 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
         ExprDesc::Unop(unop, subexpr) => {
             translate_expr(code, scope, subexpr)?;
             code.add(Opcode::Unop(*unop), expr.mark.clone());
+        }
+        ExprDesc::Yield(yieldexpr) => {
+            translate_expr(code, scope, yieldexpr)?;
+            code.add(Opcode::Yield, expr.mark.clone());
+        }
+        ExprDesc::Next(genexpr) => {
+            translate_expr(code, scope, genexpr)?;
+            code.add(Opcode::Next, expr.mark.clone());
         }
     }
     Ok(())

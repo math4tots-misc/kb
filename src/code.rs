@@ -33,6 +33,8 @@ pub enum Opcode {
 
     // operators
     Return,
+    Yield,
+    Next,
     CallFunc(u32),
     Print,
     Binop(Binop),
@@ -90,6 +92,7 @@ impl ArgSpec {
 }
 
 pub struct Code {
+    generator: bool,
     name: RcStr,
     argspec: ArgSpec,
     vars: Vec<Var>,
@@ -112,8 +115,9 @@ fn not_found(mark: Mark, name: &RcStr) -> BasicError {
 }
 
 impl Code {
-    pub fn new(name: RcStr, argspec: ArgSpec, vars: Vec<Var>) -> Self {
+    pub fn new(generator: bool, name: RcStr, argspec: ArgSpec, vars: Vec<Var>) -> Self {
         Self {
+            generator,
             name,
             argspec,
             vars,
@@ -121,6 +125,9 @@ impl Code {
             marks: vec![],
             label_map: HashMap::new(),
         }
+    }
+    pub fn generator(&self) -> bool {
+        self.generator
     }
     pub fn resolve_labels(&mut self) -> Result<(), BasicError> {
         let mut labels = HashMap::new();

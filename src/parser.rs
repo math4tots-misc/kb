@@ -18,9 +18,9 @@ const UNARY_PREC: Prec = 200;
 const POSTFIX_PREC: Prec = 1000;
 
 const KEYWORDS: &[&'static str] = &[
-    "fn", "import", "var", "if", "elif", "else", "end", "is", "not", "and", "or", "in",
-    // legacy names
-    "PRINT", "GOTO", "DIM",
+    "fn", "import", "var", "if", "elif", "else", "end", "is", "not", "and", "or", "in", "yield",
+    // (mostly) legacy all-caps keywords
+    "PRINT", "GOTO", "DIM", "NEXT",
 ];
 
 pub fn parse(source: &Rc<Source>) -> Result<File, BasicError> {
@@ -160,6 +160,7 @@ impl<'a> Parser<'a> {
     fn func(&mut self) -> Result<FuncDisplay, BasicError> {
         let mark = self.mark();
         self.expect(Token::Name("fn"))?;
+        let generator = self.consume(Token::Star);
         let name = self.expect_name()?;
         let argspec = {
             let mut req = Vec::new();
@@ -206,6 +207,7 @@ impl<'a> Parser<'a> {
         let body = self.block()?;
         Ok(FuncDisplay {
             mark,
+            generator,
             short_name: name,
             argspec,
             body,
@@ -516,6 +518,25 @@ impl<'a> Parser<'a> {
                 Ok(Expr {
                     mark,
                     desc: ExprDesc::Nil,
+                })
+            }
+            Token::Name("yield") => {
+                self.gettok();
+                let yieldexpr = self.expr(0)?;
+                Ok(Expr {
+                    mark,
+                    desc: ExprDesc::Yield(yieldexpr.into()),
+                })
+            }
+            Token::Name("NEXT") => {
+                self.gettok();
+                self.expect(Token::LParen)?;
+                let genexpr = self.expr(0)?;
+                self.consume(Token::Comma);
+                self.expect(Token::RParen)?;
+                Ok(Expr {
+                    mark,
+                    desc: ExprDesc::Next(genexpr.into()),
                 })
             }
             Token::Name(name) if !self.keywords.contains(name) => {

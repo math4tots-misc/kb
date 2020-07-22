@@ -36,3 +36,16 @@ while i < 1000
     total = total + i
 end
 PRINT total
+
+fn* gen()
+    yield 1
+    yield 2 + 3
+    yield 'hi'
+end
+
+DIM g = gen()
+PRINT g
+PRINT NEXT(g)
+PRINT NEXT(g)
+PRINT NEXT(g)
+PRINT NEXT(g)

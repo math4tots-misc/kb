@@ -28,7 +28,7 @@ impl Mark {
     pub fn format(&self) -> String {
         let mut ret = String::new();
         let out = &mut ret;
-        writeln!(out, "on line {}", self.lineno()).unwrap();
+        writeln!(out, "in {:?} on line {}", self.source.name, self.lineno()).unwrap();
         let start = self.source.data[..self.pos]
             .rfind('\n')
             .map(|x| x + 1)
@@ -85,6 +85,7 @@ pub struct Import {
 
 pub struct FuncDisplay {
     pub mark: Mark,
+    pub generator: bool,
     pub short_name: RcStr,
     pub argspec: ArgSpec,
     pub body: Stmt,
@@ -141,4 +142,7 @@ pub enum ExprDesc {
 
     Binop(Binop, Box<Expr>, Box<Expr>),
     Unop(Unop, Box<Expr>),
+
+    Yield(Box<Expr>),
+    Next(Box<Expr>), // gets [next-or-nil, has_next] from a generator
 }

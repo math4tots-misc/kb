@@ -1,4 +1,5 @@
 use super::Code;
+use super::GenObj;
 use super::RcStr;
 use std::cell::RefCell;
 use std::cmp;
@@ -22,6 +23,8 @@ pub enum Val {
     List(Rc<RefCell<Vec<Val>>>),
 
     Func(Func),
+
+    GenObj(GenObjPtr),
 }
 
 impl Val {
@@ -33,7 +36,7 @@ impl Val {
             Self::Number(x) => *x != 0.0,
             Self::String(x) => x.len() > 0,
             Self::List(x) => x.borrow().len() > 0,
-            Self::Func(_) => true,
+            Self::Func(_) | Self::GenObj(_) => true,
         }
     }
     pub fn number(&self) -> Option<f64> {
@@ -64,18 +67,32 @@ impl Val {
             Err(Val::String("Expected list".to_owned().into()))
         }
     }
-    pub fn func(&self) -> Option<Rc<Code>> {
+    pub fn func(&self) -> Option<&Rc<Code>> {
         if let Self::Func(x) = self {
-            Some(x.0.clone())
+            Some(&x.0)
         } else {
             None
         }
     }
-    pub fn expect_func(&self) -> Result<Rc<Code>, Val> {
+    pub fn expect_func(&self) -> Result<&Rc<Code>, Val> {
         if let Some(x) = self.func() {
             Ok(x)
         } else {
             Err(Val::String("Expected func".to_owned().into()))
+        }
+    }
+    pub fn genobj(&self) -> Option<&GenObjPtr> {
+        if let Self::GenObj(x) = self {
+            Some(x)
+        } else {
+            None
+        }
+    }
+    pub fn expect_genobj(&self) -> Result<&GenObjPtr, Val> {
+        if let Some(x) = self.genobj() {
+            Ok(x)
+        } else {
+            Err(Val::String("Expected generator object".to_owned().into()))
         }
     }
     pub fn lt(&self, other: &Self) -> Result<bool, Val> {
@@ -98,6 +115,30 @@ impl Val {
                 format!("{} and {} are not comparable", self, other).into(),
             )),
         }
+    }
+}
+
+impl From<&str> for Val {
+    fn from(s: &str) -> Self {
+        Self::String(s.into())
+    }
+}
+
+impl From<String> for Val {
+    fn from(s: String) -> Self {
+        Self::String(s.into())
+    }
+}
+
+impl From<&RcStr> for Val {
+    fn from(s: &RcStr) -> Self {
+        Self::String(s.clone())
+    }
+}
+
+impl From<RcStr> for Val {
+    fn from(s: RcStr) -> Self {
+        Self::String(s.into())
     }
 }
 
@@ -140,6 +181,7 @@ impl fmt::Debug for Val {
                 write!(f, "]")
             }
             Val::Func(func) => write!(f, "<func {}>", func.0.name()),
+            Val::GenObj(_) => write!(f, "<genobj>"),
         }
     }
 }
@@ -163,6 +205,17 @@ impl cmp::PartialEq for Func {
 }
 
 impl cmp::Eq for Func {}
+
+#[derive(Clone)]
+pub struct GenObjPtr(pub Rc<RefCell<GenObj>>);
+
+impl cmp::PartialEq for GenObjPtr {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::as_ptr(&self.0) == Rc::as_ptr(&other.0)
+    }
+}
+
+impl cmp::Eq for GenObjPtr {}
 
 #[cfg(test)]
 mod tests {

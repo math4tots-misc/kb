@@ -1,6 +1,8 @@
+use super::ArgSpec;
 use super::Binop;
 use super::Code;
 use super::Func;
+use super::GenObjPtr;
 use super::Handler;
 use super::Mark;
 use super::Opcode;
@@ -44,6 +46,31 @@ pub fn callfunc<H: Handler>(
 ) -> Result<Val, Val> {
     // match args against parameters
     let spec = func.argspec();
+    prepare_args(spec, &mut args)?;
+
+    // initialize args: save the values into local vars
+    scope.push(func.vars());
+    for (i, arg) in args.into_iter().enumerate() {
+        scope.set(VarScope::Local, i as u32, arg);
+    }
+    let ret = exec(scope, handler, func)?;
+    scope.pop();
+    Ok(ret)
+}
+
+fn mkgenobj(func: Rc<Code>, mut args: Vec<Val>) -> Result<Val, Val> {
+    prepare_args(func.argspec(), &mut args)?;
+    let locals = new_locals_from_vars(func.vars());
+    let genobj = GenObj {
+        code: func,
+        locals,
+        i: 0,
+        stack: vec![],
+    };
+    Ok(Val::GenObj(GenObjPtr(Rc::new(RefCell::new(genobj)))))
+}
+
+fn prepare_args(spec: &ArgSpec, args: &mut Vec<Val>) -> Result<(), Val> {
     if spec.var.is_some() || spec.def.len() > 0 {
         // has variadic parameter or at least one default parameter
         let argc = args.len();
@@ -83,36 +110,36 @@ pub fn callfunc<H: Handler>(
             ));
         }
     }
-
-    // initialize args: save the values into local vars
-    scope.push(func.vars());
-    for (i, arg) in args.into_iter().enumerate() {
-        scope.set(VarScope::Local, i as u32, arg);
-    }
-    let ret = exec(scope, handler, func)?;
-    scope.pop();
-    Ok(ret)
+    Ok(())
 }
 
 pub fn exec<H: Handler>(scope: &mut Scope, handler: &mut H, code: &Code) -> Result<Val, Val> {
     let mut i = 0;
     let mut stack = Vec::new();
     while i < code.len() {
-        if let Some(ret) = step(scope, handler, code, &mut i, &mut stack)? {
-            return Ok(ret);
+        match step(scope, handler, code, &mut i, &mut stack)? {
+            StepVal::Return(val) => return Ok(val),
+            StepVal::Yield(_) => return Err("Yielding does not make sense here".into()),
+            StepVal::None => {}
         }
     }
     assert!(stack.is_empty());
     Ok(Val::Nil)
 }
 
-pub fn step<H: Handler>(
+enum StepVal {
+    Return(Val),
+    Yield(Val),
+    None,
+}
+
+fn step<H: Handler>(
     scope: &mut Scope,
     handler: &mut H,
     code: &Code,
     i: &mut usize,
     stack: &mut Vec<Val>,
-) -> Result<Option<Val>, Val> {
+) -> Result<StepVal, Val> {
     let op = code.fetch(*i);
     *i += 1;
     match op {
@@ -160,17 +187,39 @@ pub fn step<H: Handler>(
         }
         Opcode::Return => {
             let val = stack.pop().unwrap();
-            return Ok(Some(val));
+            return Ok(StepVal::Return(val));
+        }
+        Opcode::Yield => {
+            let val = stack.pop().unwrap();
+            return Ok(StepVal::Yield(val));
+        }
+        Opcode::Next => {
+            let genobj = stack.pop().unwrap();
+            let genobj = genobj.expect_genobj()?;
+            let mut genobj = genobj.0.borrow_mut();
+            match genobj.resume(scope, handler, Val::Nil)? {
+                Some(val) => stack.push(vec![val, Val::Bool(true)].into()),
+                None => stack.push(vec![Val::Nil, Val::Bool(false)].into()),
+            }
         }
         Opcode::CallFunc(argc) => {
             let old_len = stack.len();
             let new_len = old_len - (*argc as usize);
             let args: Vec<Val> = stack.drain(new_len..).collect();
-            let func = stack.pop().unwrap().expect_func()?;
+            let func = stack.pop().unwrap();
+            let func = func.expect_func()?;
+
             scope.push_trace(code.marks()[*i - 1].clone());
-            let ret = callfunc(scope, handler, &func, args)?;
+            if func.generator() {
+                // generator; create a generator object
+                let genobj = mkgenobj(func.clone(), args)?;
+                stack.push(genobj);
+            } else {
+                // this is a normal function, call it
+                let ret = callfunc(scope, handler, &func, args)?;
+                stack.push(ret);
+            }
             scope.pop_trace();
-            stack.push(ret);
         }
         Opcode::Print => {
             let x = stack.pop().unwrap();
@@ -235,7 +284,7 @@ pub fn step<H: Handler>(
             panic!("Unresolved opcode: {:?}", op);
         }
     }
-    Ok(None)
+    Ok(StepVal::None)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -277,11 +326,9 @@ impl Scope {
         }
     }
     pub fn push(&mut self, locals: &Vec<Var>) {
-        let mut map = IndexedMap::new();
-        for var in locals {
-            let index = map.insert(var.name.clone(), Val::Nil);
-            assert_eq!(index, var.index);
-        }
+        self.locals.push(new_locals_from_vars(locals));
+    }
+    pub fn push_existing_locals(&mut self, map: IndexedMap) {
         self.locals.push(map);
     }
     pub fn pop(&mut self) {
@@ -293,6 +340,15 @@ impl Scope {
     pub fn pop_trace(&mut self) {
         self.trace.pop();
     }
+}
+
+fn new_locals_from_vars(vars: &Vec<Var>) -> IndexedMap {
+    let mut map = IndexedMap::new();
+    for var in vars {
+        let index = map.insert(var.name.clone(), Val::Nil);
+        assert_eq!(index, var.index);
+    }
+    map
 }
 
 pub struct IndexedMap {
@@ -326,5 +382,58 @@ impl IndexedMap {
             }
         }
         None
+    }
+    pub fn len(&self) -> usize {
+        self.values.len()
+    }
+}
+
+/// generator object
+/// created by calling generator functions
+pub struct GenObj {
+    code: Rc<Code>,
+    locals: IndexedMap,
+    i: usize,
+    stack: Vec<Val>,
+}
+
+impl GenObj {
+    pub fn resume<H: Handler>(
+        &mut self,
+        scope: &mut Scope,
+        handler: &mut H,
+        val: Val,
+    ) -> Result<Option<Val>, Val> {
+        if self.i >= self.code.len() {
+            return Ok(None);
+        }
+        scope.push_existing_locals(std::mem::replace(&mut self.locals, IndexedMap::new()));
+        self.stack.push(val);
+        let result = self.loop_(scope, handler);
+        scope.pop();
+        result
+    }
+    fn loop_<H: Handler>(
+        &mut self,
+        scope: &mut Scope,
+        handler: &mut H,
+    ) -> Result<Option<Val>, Val> {
+        while self.i < self.code.len() {
+            match step(scope, handler, &self.code, &mut self.i, &mut self.stack)? {
+                StepVal::Return(_) => {
+                    self.i = self.code.len();
+                    self.clear(); // release all local vars etc
+                    return Ok(None);
+                }
+                StepVal::Yield(val) => return Ok(Some(val)),
+                StepVal::None => {}
+            }
+        }
+        self.clear();
+        Ok(None)
+    }
+    fn clear(&mut self) {
+        self.stack = vec![];
+        self.locals = IndexedMap::new();
     }
 }
