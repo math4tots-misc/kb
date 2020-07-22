@@ -27,3 +27,11 @@ print(total)
 print(-25 % 19)
 print(-25 * 19)
 print(-25 - 19)
+
+i = 0
+total = 0
+while i < 1000
+    i = i + 1
+    total = total + i
+end
+print(total)

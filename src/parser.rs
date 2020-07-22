@@ -298,6 +298,16 @@ impl<'a> Parser<'a> {
                     desc: StmtDesc::If(pairs, other),
                 })
             }
+            Token::Name("while") => {
+                self.gettok();
+                let cond = self.expr(0)?;
+                self.delim()?;
+                let body = self.block()?;
+                Ok(Stmt {
+                    mark,
+                    desc: StmtDesc::While(cond, body.into()),
+                })
+            }
             Token::Name(name)
                 if !self.keywords.contains(name) && self.lookahead(1) == Some(&Token::Colon) =>
             {

@@ -115,6 +115,7 @@ pub enum StmtDesc {
     Label(RcStr),
     Goto(RcStr),
     If(Vec<(Expr, Stmt)>, Option<Box<Stmt>>),
+    While(Expr, Box<Stmt>),
 }
 
 #[derive(Debug)]

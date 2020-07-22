@@ -124,6 +124,9 @@ fn prepare_vars_for_stmt(
                 prepare_vars_for_stmt(out, other, prefix)?;
             }
         }
+        StmtDesc::While(_cond, body) => {
+            prepare_vars_for_stmt(out, body, prefix)?;
+        }
         StmtDesc::Print(_)
         | StmtDesc::Expr(_)
         | StmtDesc::Return(_)
@@ -219,6 +222,18 @@ fn translate_stmt(code: &mut Code, scope: &mut Scope, stmt: &Stmt) -> Result<(),
             if let Some(other) = other {
                 translate_stmt(code, scope, other)?;
             }
+            scope.update_label(&end_label, code.len());
+        }
+        StmtDesc::While(cond, body) => {
+            let start_label = scope.new_label();
+            let start_label_id = scope.get_label_id(&start_label);
+            let end_label = scope.new_label();
+            let end_label_id = scope.get_label_id(&end_label);
+            scope.update_label(&start_label, code.len());
+            translate_expr(code, scope, cond)?;
+            code.add(Opcode::GotoIfFalse(end_label_id), cond.mark.clone());
+            translate_stmt(code, scope, body)?;
+            code.add(Opcode::Goto(start_label_id), stmt.mark.clone());
             scope.update_label(&end_label, code.len());
         }
     }
