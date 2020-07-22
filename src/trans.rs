@@ -1,7 +1,6 @@
 use super::ast::*;
 use super::ArgSpec;
 use super::BasicError;
-use super::Binop;
 use super::Code;
 use super::Opcode;
 use super::RcStr;
