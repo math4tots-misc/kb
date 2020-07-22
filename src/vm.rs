@@ -155,8 +155,10 @@ fn step<H: Handler>(
         Opcode::String(x) => {
             stack.push(Val::String(x.clone()));
         }
-        Opcode::NewList => {
-            stack.push(Val::List(Rc::new(RefCell::new(vec![]))));
+        Opcode::MakeList(len) => {
+            let start = stack.len() - *len as usize;
+            let list: Vec<_> = stack.drain(start..).collect();
+            stack.push(Val::List(Rc::new(RefCell::new(list))));
         }
         Opcode::NewFunc(code) => {
             stack.push(Val::Func(Func(code.clone())));
@@ -198,8 +200,14 @@ fn step<H: Handler>(
             let genobj = genobj.expect_genobj()?;
             let mut genobj = genobj.0.borrow_mut();
             match genobj.resume(scope, handler, Val::Nil)? {
-                Some(val) => stack.push(vec![val, Val::Bool(true)].into()),
-                None => stack.push(vec![Val::Nil, Val::Bool(false)].into()),
+                Some(val) => {
+                    stack.push(val);
+                    stack.push(true.into());
+                }
+                None => {
+                    stack.push(Val::Nil);
+                    stack.push(false.into());
+                }
             }
         }
         Opcode::CallFunc(argc) => {

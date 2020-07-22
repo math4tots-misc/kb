@@ -118,6 +118,12 @@ impl Val {
     }
 }
 
+impl From<bool> for Val {
+    fn from(x: bool) -> Self {
+        Self::Bool(x)
+    }
+}
+
 impl From<&str> for Val {
     fn from(s: &str) -> Self {
         Self::String(s.into())

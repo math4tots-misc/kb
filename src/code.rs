@@ -15,7 +15,7 @@ pub enum Opcode {
     Bool(bool),
     Number(f64),
     String(RcStr),
-    NewList,
+    MakeList(u32),
     NewFunc(Rc<Code>),
 
     // stack manipulation

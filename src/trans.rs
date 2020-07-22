@@ -257,11 +257,10 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
         ExprDesc::Number(x) => code.add(Opcode::Number(*x), expr.mark.clone()),
         ExprDesc::String(x) => code.add(Opcode::String(x.clone()), expr.mark.clone()),
         ExprDesc::List(items) => {
-            code.add(Opcode::NewList, expr.mark.clone());
             for item in items {
                 translate_expr(code, scope, item)?;
-                code.add(Opcode::Binop(Binop::Append), expr.mark.clone());
             }
+            code.add(Opcode::MakeList(items.len() as u32), expr.mark.clone());
         }
         ExprDesc::GetVar(name) => {
             let var = scope.getvar_or_error(&expr.mark, name)?;
@@ -316,6 +315,7 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
         ExprDesc::Next(genexpr) => {
             translate_expr(code, scope, genexpr)?;
             code.add(Opcode::Next, expr.mark.clone());
+            code.add(Opcode::MakeList(2), expr.mark.clone());
         }
     }
     Ok(())
