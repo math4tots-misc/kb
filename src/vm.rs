@@ -2,6 +2,7 @@ use super::Binop;
 use super::Code;
 use super::Func;
 use super::Handler;
+use super::Mark;
 use super::Opcode;
 use super::RcStr;
 use super::Unop;
@@ -30,19 +31,60 @@ impl<H: Handler> Vm<H> {
         exec(&mut self.scope, &mut self.handler, code)?;
         Ok(())
     }
+    pub fn trace(&self) -> &Vec<Mark> {
+        &self.scope.trace
+    }
 }
 
 pub fn callfunc<H: Handler>(
     scope: &mut Scope,
     handler: &mut H,
     func: &Code,
-    args: Vec<Val>,
+    mut args: Vec<Val>,
 ) -> Result<Val, Val> {
-    if args.len() != func.nparams() {
-        return Err(Val::String(
-            format!("Expected {} args but got {}", func.nparams(), args.len()).into(),
-        ));
+    // match args against parameters
+    let spec = func.argspec();
+    if spec.var.is_some() || spec.def.len() > 0 {
+        // has variadic parameter or at least one default parameter
+        let argc = args.len();
+        let argmin = spec.req.len();
+        let argmax = argmin + spec.def.len();
+        if spec.var.is_some() {
+            if argc < argmin {
+                return Err(Val::String(
+                    format!("Expected at least {} args but got {}", argmin, argc).into(),
+                ));
+            }
+        } else {
+            if argc < argmin || argc > argmax {
+                return Err(Val::String(
+                    format!("Expected {} to {} args but got {}", argmin, argmax, argc).into(),
+                ));
+            }
+        }
+        let def = &spec.def;
+        for i in argc..argmax {
+            let default_val = def[i - argmin].1.clone();
+            args.push(default_val);
+        }
+        if spec.var.is_some() {
+            let rem_args: Vec<Val> = if argmax < argc {
+                args.drain(argmax..argc).collect()
+            } else {
+                vec![]
+            };
+            args.push(rem_args.into());
+        }
+    } else {
+        // no variadic parameter and no default parameters
+        if args.len() != spec.req.len() {
+            return Err(Val::String(
+                format!("Expected {} args but got {}", spec.req.len(), args.len()).into(),
+            ));
+        }
     }
+
+    // initialize args: save the values into local vars
     scope.push(func.vars());
     for (i, arg) in args.into_iter().enumerate() {
         scope.set(VarScope::Local, i as u32, arg);
@@ -125,7 +167,9 @@ pub fn step<H: Handler>(
             let new_len = old_len - (*argc as usize);
             let args: Vec<Val> = stack.drain(new_len..).collect();
             let func = stack.pop().unwrap().expect_func()?;
+            scope.push_trace(code.marks()[*i - 1].clone());
             let ret = callfunc(scope, handler, &func, args)?;
+            scope.pop_trace();
             stack.push(ret);
         }
         Opcode::Print => {
@@ -203,6 +247,7 @@ pub enum VarScope {
 pub struct Scope {
     globals: IndexedMap,
     locals: Vec<IndexedMap>,
+    trace: Vec<Mark>,
 }
 
 impl Scope {
@@ -210,6 +255,7 @@ impl Scope {
         Self {
             globals: IndexedMap::new(),
             locals: vec![],
+            trace: vec![],
         }
     }
     pub fn get_name(&self, vscope: VarScope, index: u32) -> &RcStr {
@@ -240,6 +286,12 @@ impl Scope {
     }
     pub fn pop(&mut self) {
         self.locals.pop().unwrap();
+    }
+    pub fn push_trace(&mut self, mark: Mark) {
+        self.trace.push(mark);
+    }
+    pub fn pop_trace(&mut self) {
+        self.trace.pop();
     }
 }
 

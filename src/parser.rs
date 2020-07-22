@@ -1,10 +1,12 @@
 use super::ast::*;
 use super::lexer::*;
+use super::ArgSpec;
 use super::BasicError;
 use super::Binop;
 use super::Mark;
 use super::RcStr;
 use super::Unop;
+use super::Val;
 use std::collections::HashSet;
 use std::rc::Rc;
 
@@ -17,7 +19,6 @@ const POSTFIX_PREC: Prec = 1000;
 
 const KEYWORDS: &[&'static str] = &[
     "fn", "import", "var", "if", "elif", "else", "end", "is", "not", "and", "or", "in",
-
     // legacy names
     "PRINT", "GOTO",
 ];
@@ -160,25 +161,54 @@ impl<'a> Parser<'a> {
         let mark = self.mark();
         self.expect(Token::Name("fn"))?;
         let name = self.expect_name()?;
-        let params = {
-            let mut params = Vec::new();
+        let argspec = {
+            let mut req = Vec::new();
+            let mut def = Vec::new();
+            let mut var = None;
             self.expect(Token::LParen)?;
-            while !self.consume(Token::RParen) {
-                params.push(self.expect_name()?);
-                if !self.consume(Token::Comma) {
-                    self.expect(Token::RParen)?;
-                    break;
+            'fin: loop {
+                // required parameters
+                while self.at(Pat::Name) && self.lookahead(1) != Some(&Token::Eq) {
+                    req.push(self.expect_name()?);
+
+                    // no comma => parameter spec is done
+                    if !self.consume(Token::Comma) {
+                        self.expect(Token::RParen)?;
+                        break 'fin;
+                    }
                 }
+
+                // default parameters
+                while self.at(Pat::Name) {
+                    let name = self.expect_name()?;
+                    self.expect(Token::Eq)?;
+                    let val = self.constexpr()?;
+                    def.push((name, val));
+
+                    // no comma => parameter spec is done
+                    if !self.consume(Token::Comma) {
+                        self.expect(Token::RParen)?;
+                        break 'fin;
+                    }
+                }
+
+                // variadic parameter
+                if self.consume(Token::Star) {
+                    var = Some(self.expect_name()?);
+                }
+
+                self.consume(Token::Comma);
+                self.expect(Token::RParen)?;
+                break;
             }
-            params
+            ArgSpec { req, def, var }
         };
         let body = self.block()?;
         Ok(FuncDisplay {
             mark,
             short_name: name,
-            params,
+            argspec,
             body,
-
             vars: vec![],
             as_var: None,
         })
@@ -328,6 +358,20 @@ impl<'a> Parser<'a> {
                     desc: StmtDesc::Expr(expr),
                 })
             }
+        }
+    }
+    fn constexpr(&mut self) -> Result<Val, BasicError> {
+        let expr = self.expr(0)?;
+        let mark = expr.mark;
+        match expr.desc {
+            ExprDesc::Nil => Ok(Val::Nil),
+            ExprDesc::Bool(b) => Ok(Val::Bool(b)),
+            ExprDesc::Number(x) => Ok(Val::Number(x)),
+            ExprDesc::String(x) => Ok(Val::String(x)),
+            _ => Err(BasicError {
+                marks: vec![mark],
+                message: format!("Expected a constant expression here"),
+            }),
         }
     }
     fn expr(&mut self, prec: Prec) -> Result<Expr, BasicError> {

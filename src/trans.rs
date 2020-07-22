@@ -1,4 +1,5 @@
 use super::ast::*;
+use super::ArgSpec;
 use super::BasicError;
 use super::Binop;
 use super::Code;
@@ -28,7 +29,7 @@ pub fn translate_files(mut files: Vec<File>) -> Result<Code, BasicError> {
         scope.decl(Item::Var(var.clone()))?;
     }
 
-    let mut code = Code::new(format!("[main]").into(), 0, global_vars);
+    let mut code = Code::new(format!("[main]").into(), ArgSpec::empty(), global_vars);
 
     // translate all statements inside functions and
     // initialize all functions at the global scope
@@ -78,7 +79,16 @@ fn prepare_vars_for_file(out: &mut Vec<Var>, file: &mut File) -> Result<(), Basi
 
 fn prepare_vars_for_func(func: &mut FuncDisplay) -> Result<(), BasicError> {
     let mut vars = Vec::new();
-    for param in &func.params {
+    let spec = &func.argspec;
+    for param in &spec.req {
+        let var = mkvar(func.mark.clone(), param, None, vars.len());
+        vars.push(var);
+    }
+    for (param, _) in &spec.def {
+        let var = mkvar(func.mark.clone(), param, None, vars.len());
+        vars.push(var);
+    }
+    if let Some(param) = &spec.var {
         let var = mkvar(func.mark.clone(), param, None, vars.len());
         vars.push(var);
     }
@@ -156,7 +166,7 @@ fn mkvar(mark: Mark, name: &RcStr, file_name: Option<&RcStr>, index: usize) -> V
 fn translate_func(scope: &mut Scope, func: &FuncDisplay) -> Result<Code, BasicError> {
     let mut code = Code::new(
         func.full_name().clone(),
-        func.params.len(),
+        func.argspec.clone(),
         func.vars.clone(),
     );
     scope.enter_local();
@@ -204,7 +214,10 @@ fn translate_stmt(code: &mut Code, scope: &mut Scope, stmt: &Stmt) -> Result<(),
             for (cond, body) in pairs {
                 let next_label = scope.new_label();
                 translate_expr(code, scope, cond)?;
-                code.add(Opcode::UnresolvedGotoIfFalse(next_label.clone()), cond.mark.clone());
+                code.add(
+                    Opcode::UnresolvedGotoIfFalse(next_label.clone()),
+                    cond.mark.clone(),
+                );
                 translate_stmt(code, scope, body)?;
                 code.add(Opcode::UnresolvedGoto(end_label.clone()), body.mark.clone());
                 code.add(Opcode::Label(next_label), cond.mark.clone());
@@ -219,7 +232,10 @@ fn translate_stmt(code: &mut Code, scope: &mut Scope, stmt: &Stmt) -> Result<(),
             let end_label = scope.new_label();
             code.add(Opcode::Label(start_label.clone()), stmt.mark.clone());
             translate_expr(code, scope, cond)?;
-            code.add(Opcode::UnresolvedGotoIfFalse(end_label.clone()), cond.mark.clone());
+            code.add(
+                Opcode::UnresolvedGotoIfFalse(end_label.clone()),
+                cond.mark.clone(),
+            );
             translate_stmt(code, scope, body)?;
             code.add(Opcode::UnresolvedGoto(start_label), stmt.mark.clone());
             code.add(Opcode::Label(end_label), stmt.mark.clone());
@@ -325,12 +341,10 @@ impl Scope {
     }
     pub fn getvar_or_error(&self, mark: &Mark, name: &str) -> Result<&Var, BasicError> {
         match self.rget(name) {
-            None => {
-                Err(BasicError {
-                    marks: vec![mark.clone()],
-                    message: format!("Variable {} not found", name),
-                })
-            }
+            None => Err(BasicError {
+                marks: vec![mark.clone()],
+                message: format!("Variable {} not found", name),
+            }),
             Some(Item::Import(..)) => Err(BasicError {
                 marks: vec![mark.clone()],
                 message: format!("{} is an import, not a variable", name),

@@ -44,10 +44,15 @@ impl BasicError {
         use std::fmt::Write;
         let mut ret = String::new();
         let out = &mut ret;
+        writeln!(out, "=================").unwrap();
+        writeln!(out, "== STACK TRACE ==").unwrap();
+        writeln!(out, "=================").unwrap();
         for mark in &self.marks {
             write!(out, "{}", mark.format()).unwrap();
         }
-        writeln!(out, "{}", self.message).unwrap();
+        writeln!(out, "###############").unwrap();
+        writeln!(out, "## ERROR: {}", self.message).unwrap();
+        writeln!(out, "###############").unwrap();
         ret
     }
 }

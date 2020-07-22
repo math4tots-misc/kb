@@ -1,11 +1,12 @@
 use super::BasicError;
 use super::Mark;
 use super::RcStr;
+use super::Val;
 use super::Var;
 use super::VarScope;
+use std::collections::HashMap;
 use std::fmt;
 use std::rc::Rc;
-use std::collections::HashMap;
 
 #[derive(Debug)]
 pub enum Opcode {
@@ -71,9 +72,26 @@ pub enum Unop {
     Positive,
 }
 
+#[derive(Clone)]
+pub struct ArgSpec {
+    pub req: Vec<RcStr>,        // required parameters
+    pub def: Vec<(RcStr, Val)>, // default parameters
+    pub var: Option<RcStr>,     // variadic parameter
+}
+
+impl ArgSpec {
+    pub fn empty() -> Self {
+        Self {
+            req: vec![],
+            def: vec![],
+            var: None,
+        }
+    }
+}
+
 pub struct Code {
     name: RcStr,
-    nparams: usize,
+    argspec: ArgSpec,
     vars: Vec<Var>,
     ops: Vec<Opcode>,
     marks: Vec<Mark>,
@@ -94,10 +112,10 @@ fn not_found(mark: Mark, name: &RcStr) -> BasicError {
 }
 
 impl Code {
-    pub fn new(name: RcStr, nparams: usize, vars: Vec<Var>) -> Self {
+    pub fn new(name: RcStr, argspec: ArgSpec, vars: Vec<Var>) -> Self {
         Self {
             name,
-            nparams,
+            argspec,
             vars,
             ops: vec![],
             marks: vec![],
@@ -116,7 +134,10 @@ impl Code {
         }
         let mut new_ops = Vec::new();
         pos = 0;
-        for (i, mut op) in std::mem::replace(&mut self.ops, vec![]).into_iter().enumerate() {
+        for (i, mut op) in std::mem::replace(&mut self.ops, vec![])
+            .into_iter()
+            .enumerate()
+        {
             if let Opcode::Label(_) = op {
                 continue;
             }
@@ -163,8 +184,8 @@ impl Code {
     pub fn name(&self) -> &RcStr {
         &self.name
     }
-    pub fn nparams(&self) -> usize {
-        self.nparams
+    pub fn argspec(&self) -> &ArgSpec {
+        &self.argspec
     }
     pub fn vars(&self) -> &Vec<Var> {
         &self.vars

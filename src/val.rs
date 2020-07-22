@@ -101,6 +101,12 @@ impl Val {
     }
 }
 
+impl From<Vec<Val>> for Val {
+    fn from(vec: Vec<Val>) -> Self {
+        Self::List(RefCell::new(vec).into())
+    }
+}
+
 impl fmt::Debug for Val {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

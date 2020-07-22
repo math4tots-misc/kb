@@ -4,12 +4,15 @@ PRINT "Hello world!"
 
 other.foo()
 
-fn foo()
+fn foo(a, x=22, *rest)
     PRINT "foo"
+    PRINT x
+    PRINT rest
 end
 
-foo()
-foo()
+foo(2, 32, 1, 2, 3)
+foo(4)
+foo(4, 'hi')
 
 
 var i = 0

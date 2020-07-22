@@ -1,3 +1,4 @@
+use super::ArgSpec;
 use super::Binop;
 use super::RcStr;
 use super::Unop;
@@ -85,7 +86,7 @@ pub struct Import {
 pub struct FuncDisplay {
     pub mark: Mark,
     pub short_name: RcStr,
-    pub params: Vec<RcStr>,
+    pub argspec: ArgSpec,
     pub body: Stmt,
 
     // annotated data
