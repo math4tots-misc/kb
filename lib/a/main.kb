@@ -5,9 +5,7 @@ PRINT "Hello world!"
 other.foo()
 
 fn foo(a, x=22, *rest)
-    PRINT "foo"
-    PRINT x
-    PRINT rest
+    PRINT ["foo", x, rest]
 end
 
 foo(2, 32, 1, 2, 3)
@@ -15,8 +13,8 @@ foo(4)
 foo(4, 'hi')
 
 
-var i = 0
-var total = 0
+DIM i = 0
+DIM total = 0
 
 10 if i < 100
     i = i + 1

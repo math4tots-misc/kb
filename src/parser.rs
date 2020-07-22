@@ -20,7 +20,7 @@ const POSTFIX_PREC: Prec = 1000;
 const KEYWORDS: &[&'static str] = &[
     "fn", "import", "var", "if", "elif", "else", "end", "is", "not", "and", "or", "in",
     // legacy names
-    "PRINT", "GOTO",
+    "PRINT", "GOTO", "DIM",
 ];
 
 pub fn parse(source: &Rc<Source>) -> Result<File, BasicError> {
@@ -298,7 +298,7 @@ impl<'a> Parser<'a> {
                     desc: StmtDesc::Goto(label),
                 })
             }
-            Token::Name("var") => {
+            Token::Name("var") | Token::Name("DIM") => {
                 self.gettok();
                 let name = self.expect_name()?;
                 self.expect(Token::Eq)?;
@@ -483,6 +483,21 @@ impl<'a> Parser<'a> {
                 mark,
                 desc: ExprDesc::String((*s).into()),
             }),
+            Token::LBracket => {
+                self.gettok();
+                let mut exprs = Vec::new();
+                while !self.consume(Token::RBracket) {
+                    exprs.push(self.expr(0)?);
+                    if !self.consume(Token::Comma) {
+                        self.expect(Token::RBracket)?;
+                        break;
+                    }
+                }
+                Ok(Expr {
+                    mark,
+                    desc: ExprDesc::List(exprs),
+                })
+            }
             Token::Minus | Token::Plus => {
                 let tok = self.gettok();
                 let op = match tok {
