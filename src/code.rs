@@ -51,13 +51,7 @@ pub enum Opcode {
 
 #[derive(Debug, Clone, Copy)]
 pub enum Binop {
-    // arithmetic
-    Add,
-    Subtract,
-    Multiply,
-    Divide,
-    TruncDivide,
-    Remainder,
+    Arithmetic(ArithmeticBinop),
 
     // comparison
     LessThan,
@@ -70,8 +64,22 @@ pub enum Binop {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub enum ArithmeticBinop {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    TruncDivide,
+    Remainder,
+}
+
+#[derive(Debug, Clone, Copy)]
 pub enum Unop {
-    // arithmetic
+    Arithmetic(ArithmeticUnop),
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ArithmeticUnop {
     Negative,
     Positive,
 }
@@ -147,8 +155,7 @@ impl Code {
         let mut new_ops = Vec::new();
         let mut new_marks = Vec::new();
         pos = 0;
-        for (i, (mut op, mark)) in old_ops.into_iter().zip(old_marks).enumerate()
-        {
+        for (i, (mut op, mark)) in old_ops.into_iter().zip(old_marks).enumerate() {
             if let Opcode::Label(_) = op {
                 continue;
             }

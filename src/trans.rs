@@ -171,7 +171,11 @@ fn prepare_vars_for_stmt(
     Ok(())
 }
 
-fn prepare_vars_for_target(out: &mut Vars, target: &AssignTarget, prefix: Option<&RcStr>) -> Result<(), BasicError> {
+fn prepare_vars_for_target(
+    out: &mut Vars,
+    target: &AssignTarget,
+    prefix: Option<&RcStr>,
+) -> Result<(), BasicError> {
     match &target.desc {
         AssignTargetDesc::Name(name) => {
             out.add(mkvar(target.mark.clone(), name, prefix, out.len()));
@@ -291,7 +295,12 @@ fn translate_stmt(code: &mut Code, scope: &mut Scope, stmt: &Stmt) -> Result<(),
 
 /// When called, assumes the value to assign to the variable is on the top of the stack
 /// the 'consume' flag whether the top of the stack value will be consumed
-fn translate_assign(code: &mut Code, scope: &mut Scope, target: &AssignTarget, consume: bool) -> Result<(), BasicError> {
+fn translate_assign(
+    code: &mut Code,
+    scope: &mut Scope,
+    target: &AssignTarget,
+    consume: bool,
+) -> Result<(), BasicError> {
     match &target.desc {
         AssignTargetDesc::Name(name) => {
             let var = scope.getvar_or_error(&target.mark, name)?;

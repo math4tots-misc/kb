@@ -1,8 +1,8 @@
 use super::Code;
 use super::GenObj;
 use super::RcStr;
-use std::cell::RefCell;
 use std::cell::Ref;
+use std::cell::RefCell;
 use std::cell::RefMut;
 use std::cmp;
 use std::fmt;
@@ -152,7 +152,12 @@ impl From<RcStr> for Val {
 
 impl From<Vec<Val>> for Val {
     fn from(vec: Vec<Val>) -> Self {
-        Self::List(List { vec: RefCell::new(vec) }.into())
+        Self::List(
+            List {
+                vec: RefCell::new(vec),
+            }
+            .into(),
+        )
     }
 }
 

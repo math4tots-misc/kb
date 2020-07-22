@@ -1,6 +1,8 @@
 use super::ast::*;
 use super::lexer::*;
 use super::ArgSpec;
+use super::ArithmeticBinop;
+use super::ArithmeticUnop;
 use super::BasicError;
 use super::Binop;
 use super::Mark;
@@ -435,12 +437,12 @@ impl<'a> Parser<'a> {
             | Token::GreaterThan
             | Token::GreaterThanOrEqual => {
                 let op = match token {
-                    Token::Plus => Binop::Add,
-                    Token::Minus => Binop::Subtract,
-                    Token::Star => Binop::Multiply,
-                    Token::Slash => Binop::Divide,
-                    Token::Slash2 => Binop::TruncDivide,
-                    Token::Percent => Binop::Remainder,
+                    Token::Plus => Binop::Arithmetic(ArithmeticBinop::Add),
+                    Token::Minus => Binop::Arithmetic(ArithmeticBinop::Subtract),
+                    Token::Star => Binop::Arithmetic(ArithmeticBinop::Multiply),
+                    Token::Slash => Binop::Arithmetic(ArithmeticBinop::Divide),
+                    Token::Slash2 => Binop::Arithmetic(ArithmeticBinop::TruncDivide),
+                    Token::Percent => Binop::Arithmetic(ArithmeticBinop::Remainder),
                     Token::LessThan => Binop::LessThan,
                     Token::LessThanOrEqual => Binop::LessThanOrEqual,
                     Token::GreaterThan => Binop::GreaterThan,
@@ -507,8 +509,8 @@ impl<'a> Parser<'a> {
             Token::Minus | Token::Plus => {
                 let tok = self.gettok();
                 let op = match tok {
-                    Token::Minus => Unop::Negative,
-                    Token::Plus => Unop::Positive,
+                    Token::Minus => Unop::Arithmetic(ArithmeticUnop::Negative),
+                    Token::Plus => Unop::Arithmetic(ArithmeticUnop::Positive),
                     _ => panic!("parse unop: {:?}", tok),
                 };
                 let expr = self.expr(UNARY_PREC)?;
@@ -606,11 +608,14 @@ fn expr_to_assign_target(expr: Expr) -> Result<AssignTarget, BasicError> {
         _ => Err(BasicError {
             marks: vec![expr.mark],
             message: format!("The left hand side is not assignable"),
-            help: Some(concat!(
-                "An assignable expression is either a name or a list of other assignable ",
-                "expressions. For example, 'x' or '[a, b, [x, y]]'",
-            ).into()),
-        })
+            help: Some(
+                concat!(
+                    "An assignable expression is either a name or a list of other assignable ",
+                    "expressions. For example, 'x' or '[a, b, [x, y]]'",
+                )
+                .into(),
+            ),
+        }),
     }
 }
 

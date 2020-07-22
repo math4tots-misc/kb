@@ -1,4 +1,6 @@
 use super::ArgSpec;
+use super::ArithmeticBinop;
+use super::ArithmeticUnop;
 use super::Binop;
 use super::Code;
 use super::Func;
@@ -175,11 +177,14 @@ fn step<H: Handler>(
             if let Some(list) = elements.list() {
                 if list.borrow().len() != *n as usize {
                     scope.push_trace(code.marks()[*i - 1].clone());
-                    return Err(Val::String(format!(
-                        "Expected {} values, but got a list with {} values",
-                        n,
-                        list.borrow().len(),
-                    ).into()))
+                    return Err(Val::String(
+                        format!(
+                            "Expected {} values, but got a list with {} values",
+                            n,
+                            list.borrow().len(),
+                        )
+                        .into(),
+                    ));
                 }
                 for item in list.borrow().iter() {
                     stack.push(item.clone());
@@ -190,11 +195,9 @@ fn step<H: Handler>(
                 let vec = genobj.to_vec(scope, handler)?;
                 if vec.len() != *n as usize {
                     scope.push_trace(code.marks()[*i - 1].clone());
-                    return Err(Val::String(format!(
-                        "Expected {} values, but got {} values",
-                        n,
-                        vec.len(),
-                    ).into()))
+                    return Err(Val::String(
+                        format!("Expected {} values, but got {} values", n, vec.len(),).into(),
+                    ));
                 }
                 stack.extend(vec);
             }
@@ -271,14 +274,42 @@ fn step<H: Handler>(
             let lhs = stack.pop().unwrap();
             let ret = match op {
                 // arithmetic operators
-                Binop::Add => Val::Number(lhs.expect_number()? + rhs.expect_number()?),
-                Binop::Subtract => Val::Number(lhs.expect_number()? - rhs.expect_number()?),
-                Binop::Multiply => Val::Number(lhs.expect_number()? * rhs.expect_number()?),
-                Binop::Divide => Val::Number(lhs.expect_number()? / rhs.expect_number()?),
-                Binop::TruncDivide => {
-                    Val::Number((lhs.expect_number()? / rhs.expect_number()?).trunc())
+                Binop::Arithmetic(aop) => {
+                    let lhs = if let Some(lhs) = lhs.number() {
+                        lhs
+                    } else {
+                        scope.push_trace(code.marks()[*i - 1].clone());
+                        return Err(format!(
+                            concat!(
+                                "The left hand side of this arithmetic operation ",
+                                "should be a number but got {:?}"
+                            ),
+                            lhs
+                        )
+                        .into());
+                    };
+                    let rhs = if let Some(rhs) = rhs.number() {
+                        rhs
+                    } else {
+                        scope.push_trace(code.marks()[*i - 1].clone());
+                        return Err(format!(
+                            concat!(
+                                "The right hand side of this arithmetic operation ",
+                                "should be a number but got {:?}"
+                            ),
+                            rhs
+                        )
+                        .into());
+                    };
+                    match aop {
+                        ArithmeticBinop::Add => Val::Number(lhs + rhs),
+                        ArithmeticBinop::Subtract => Val::Number(lhs - rhs),
+                        ArithmeticBinop::Multiply => Val::Number(lhs * rhs),
+                        ArithmeticBinop::Divide => Val::Number(lhs / rhs),
+                        ArithmeticBinop::TruncDivide => Val::Number((lhs / rhs).trunc()),
+                        ArithmeticBinop::Remainder => Val::Number(lhs % rhs),
+                    }
                 }
-                Binop::Remainder => Val::Number(lhs.expect_number()? % rhs.expect_number()?),
 
                 // comparison operators
                 Binop::LessThan => Val::Bool(lhs.lt(&rhs)?),
@@ -298,8 +329,25 @@ fn step<H: Handler>(
         Opcode::Unop(op) => {
             let val = stack.pop().unwrap();
             let ret = match op {
-                Unop::Negative => Val::Number(-val.expect_number()?),
-                Unop::Positive => Val::Number(val.expect_number()?),
+                Unop::Arithmetic(aop) => {
+                    let val = if let Some(val) = val.number() {
+                        val
+                    } else {
+                        scope.push_trace(code.marks()[*i - 1].clone());
+                        return Err(format!(
+                            concat!(
+                                "The argument to this unary arithmetic operator ",
+                                "should be a number but got {:?}"
+                            ),
+                            val
+                        )
+                        .into());
+                    };
+                    match aop {
+                        ArithmeticUnop::Negative => Val::Number(-val),
+                        ArithmeticUnop::Positive => Val::Number(val),
+                    }
+                }
             };
             stack.push(ret);
         }
@@ -454,7 +502,11 @@ impl GenObj {
         scope.pop();
         result
     }
-    pub fn to_vec<H: Handler>(&mut self, scope: &mut Scope, handler: &mut H) -> Result<Vec<Val>, Val> {
+    pub fn to_vec<H: Handler>(
+        &mut self,
+        scope: &mut Scope,
+        handler: &mut H,
+    ) -> Result<Vec<Val>, Val> {
         let mut ret = Vec::new();
         while let Some(val) = self.resume(scope, handler, Val::Nil)? {
             ret.push(val);
