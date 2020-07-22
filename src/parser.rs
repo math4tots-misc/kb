@@ -20,7 +20,10 @@ const POSTFIX_PREC: Prec = 1000;
 const KEYWORDS: &[&'static str] = &[
     "fn", "import", "var", "if", "elif", "else", "end", "is", "not", "and", "or", "in", "yield",
     // (mostly) legacy all-caps keywords
-    "PRINT", "GOTO", "DIM", "NEXT",
+    "PRINT", "GOTO", "DIM", "LET",
+    // NEXT has been changed from its original meaning -- it will instead resume a generator object
+    // and return a [next-val-or-nil, has-next] pair
+    "NEXT",
 ];
 
 pub fn parse(source: &Rc<Source>) -> Result<File, BasicError> {
@@ -300,7 +303,7 @@ impl<'a> Parser<'a> {
                     desc: StmtDesc::Goto(label),
                 })
             }
-            Token::Name("var") | Token::Name("DIM") => {
+            Token::Name("var") | Token::Name("DIM") | Token::Name("LET") => {
                 self.gettok();
                 let name = self.expect_name()?;
                 self.expect(Token::Eq)?;
@@ -355,10 +358,26 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 let expr = self.expr(0)?;
-                Ok(Stmt {
-                    mark,
-                    desc: StmtDesc::Expr(expr),
-                })
+                if self.consume(Token::Eq) {
+                    match &expr.desc {
+                        ExprDesc::GetVar(name) => {
+                            let rhs = self.expr(0)?;
+                            Ok(Stmt {
+                                mark,
+                                desc: StmtDesc::DeclVar(name.clone(), rhs.into()),
+                            })
+                        }
+                        _ => Err(BasicError {
+                            marks: vec![expr.mark.clone()],
+                            message: format!("The left hand side is not assignable"),
+                        }),
+                    }
+                } else {
+                    Ok(Stmt {
+                        mark,
+                        desc: StmtDesc::Expr(expr),
+                    })
+                }
             }
         }
     }
@@ -438,19 +457,6 @@ impl<'a> Parser<'a> {
                     desc: ExprDesc::Binop(op, e.into(), rhs.into()),
                 })
             }
-            Token::Eq => match &e.desc {
-                ExprDesc::GetVar(name) => {
-                    let rhs = self.expr(0)?;
-                    Ok(Expr {
-                        mark,
-                        desc: ExprDesc::SetVar(name.clone(), rhs.into()),
-                    })
-                }
-                _ => Err(BasicError {
-                    marks: vec![e.mark.clone()],
-                    message: format!("The left hand side is not assignable"),
-                }),
-            },
             _ => Err(BasicError {
                 marks: vec![mark],
                 message: format!("Expected infix operator"),
@@ -583,7 +589,6 @@ impl<'a> Parser<'a> {
 fn precof<'a>(tok: &Token<'a>) -> Prec {
     match tok {
         Token::Name("is")
-        | Token::Eq
         | Token::LessThan
         | Token::LessThanOrEqual
         | Token::GreaterThan

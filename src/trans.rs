@@ -12,7 +12,7 @@ use std::rc::Rc;
 pub fn translate_files(mut files: Vec<File>) -> Result<Code, BasicError> {
     // enumerate all variables in files and functions,
     // compute full/unique names for all variables and functions
-    let mut global_vars = Vec::new();
+    let mut global_vars = Vars::new();
     for file in &mut files {
         prepare_vars_for_file(&mut global_vars, file)?;
     }
@@ -24,7 +24,7 @@ pub fn translate_files(mut files: Vec<File>) -> Result<Code, BasicError> {
             scope.decl(Item::Import(imp.clone()))?;
         }
     }
-    for var in &global_vars {
+    for var in &global_vars.list {
         scope.decl(Item::Var(var.clone()))?;
     }
 
@@ -32,7 +32,7 @@ pub fn translate_files(mut files: Vec<File>) -> Result<Code, BasicError> {
         false,
         format!("[main]").into(),
         ArgSpec::empty(),
-        global_vars,
+        global_vars.list,
     );
 
     // translate all statements inside functions and
@@ -58,7 +58,43 @@ pub fn translate_files(mut files: Vec<File>) -> Result<Code, BasicError> {
     Ok(code)
 }
 
-fn prepare_vars_for_file(out: &mut Vec<Var>, file: &mut File) -> Result<(), BasicError> {
+struct Vars {
+    list: Vec<Var>,
+    map: HashMap<RcStr, Var>,
+}
+
+impl Vars {
+    fn new() -> Self {
+        Self {
+            list: vec![],
+            map: HashMap::new(),
+        }
+    }
+    fn add(&mut self, var: Var) {
+        if !self.map.contains_key(&var.name) {
+            self.force_add(var).unwrap();
+        }
+    }
+    fn force_add(&mut self, var: Var) -> Result<(), BasicError> {
+        assert_eq!(self.list.len(), self.map.len());
+        if let Some(oldvar) = self.map.get(&var.name) {
+            Err(BasicError {
+                marks: vec![var.mark.clone(), oldvar.mark.clone()],
+                message: format!("Conflicting definition of {}", var.name),
+            })
+        } else {
+            self.map.insert(var.name.clone(), var.clone());
+            self.list.push(var);
+            Ok(())
+        }
+    }
+    fn len(&self) -> usize {
+        assert_eq!(self.list.len(), self.map.len());
+        self.list.len()
+    }
+}
+
+fn prepare_vars_for_file(out: &mut Vars, file: &mut File) -> Result<(), BasicError> {
     let file_name = file.name().clone();
 
     for imp in &mut file.imports {
@@ -74,7 +110,7 @@ fn prepare_vars_for_file(out: &mut Vec<Var>, file: &mut File) -> Result<(), Basi
             out.len(),
         );
         func.as_var = Some(var.clone());
-        out.push(var);
+        out.add(var);
     }
 
     prepare_vars_for_stmt(out, &mut file.body, Some(&file_name))?;
@@ -82,27 +118,27 @@ fn prepare_vars_for_file(out: &mut Vec<Var>, file: &mut File) -> Result<(), Basi
 }
 
 fn prepare_vars_for_func(func: &mut FuncDisplay) -> Result<(), BasicError> {
-    let mut vars = Vec::new();
+    let mut vars = Vars::new();
     let spec = &func.argspec;
     for param in &spec.req {
         let var = mkvar(func.mark.clone(), param, None, vars.len());
-        vars.push(var);
+        vars.force_add(var)?;
     }
     for (param, _) in &spec.def {
         let var = mkvar(func.mark.clone(), param, None, vars.len());
-        vars.push(var);
+        vars.force_add(var)?;
     }
     if let Some(param) = &spec.var {
         let var = mkvar(func.mark.clone(), param, None, vars.len());
-        vars.push(var);
+        vars.force_add(var)?;
     }
     prepare_vars_for_stmt(&mut vars, &mut func.body, None)?;
-    func.vars = vars;
+    func.vars = vars.list;
     Ok(())
 }
 
 fn prepare_vars_for_stmt(
-    out: &mut Vec<Var>,
+    out: &mut Vars,
     stmt: &mut Stmt,
     prefix: Option<&RcStr>,
 ) -> Result<(), BasicError> {
@@ -112,21 +148,8 @@ fn prepare_vars_for_stmt(
                 prepare_vars_for_stmt(out, stmt, prefix)?;
             }
         }
-        StmtDesc::DeclVar(name, setexpr) => {
-            out.push(mkvar(stmt.mark.clone(), name, prefix, out.len()));
-
-            // convert this DeclVar into a SetVar
-            let setexpr = std::mem::replace(
-                setexpr,
-                Expr {
-                    mark: stmt.mark.clone(),
-                    desc: ExprDesc::Nil,
-                },
-            );
-            stmt.desc = StmtDesc::Expr(Expr {
-                mark: stmt.mark.clone(),
-                desc: ExprDesc::SetVar(name.clone(), setexpr.into()),
-            });
+        StmtDesc::DeclVar(name, _) => {
+            out.add(mkvar(stmt.mark.clone(), name, prefix, out.len()));
         }
         StmtDesc::If(pairs, other) => {
             for (_cond, body) in pairs {
@@ -199,7 +222,12 @@ fn translate_stmt(code: &mut Code, scope: &mut Scope, stmt: &Stmt) -> Result<(),
             }
             code.add(Opcode::Return, stmt.mark.clone());
         }
-        StmtDesc::DeclVar(..) => panic!("translate_stmt: DeclVar should've become Set"),
+        StmtDesc::DeclVar(name, expr) => {
+            let var = scope.getvar_or_error(&stmt.mark, name)?;
+            let op = Opcode::Set(var.vscope, var.index);
+            translate_expr(code, scope, expr)?;
+            code.add(op, stmt.mark.clone());
+        }
         StmtDesc::Expr(expr) => {
             translate_expr(code, scope, expr)?;
             code.add(Opcode::Pop, stmt.mark.clone());
@@ -264,11 +292,6 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
         ExprDesc::GetVar(name) => {
             let var = scope.getvar_or_error(&expr.mark, name)?;
             code.add(Opcode::Get(var.vscope, var.index), expr.mark.clone());
-        }
-        ExprDesc::SetVar(name, setexpr) => {
-            translate_expr(code, scope, setexpr)?;
-            let var = scope.getvar_or_error(&expr.mark, name)?;
-            code.add(Opcode::Tee(var.vscope, var.index), expr.mark.clone());
         }
         ExprDesc::GetAttr(owner, attr) => {
             let imp = match &owner.desc {

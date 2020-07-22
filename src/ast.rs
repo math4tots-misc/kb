@@ -135,7 +135,6 @@ pub enum ExprDesc {
     List(Vec<Expr>),
 
     GetVar(RcStr),
-    SetVar(RcStr, Box<Expr>),
     GetAttr(Box<Expr>, RcStr),
 
     CallFunc(Box<Expr>, Vec<Expr>),
