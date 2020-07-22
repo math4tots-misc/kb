@@ -23,6 +23,15 @@ enum Chars {
 }
 
 impl RcStr {
+    fn new(s: String) -> Self {
+        s.into()
+    }
+    unsafe fn new_ascii(string: String) -> Self {
+        Self(Rc::new(Str {
+            string,
+            chars: RefCell::new(Some(Chars::ASCII)),
+        }))
+    }
     pub fn len(&self) -> usize {
         self.0.string.len()
     }
@@ -36,6 +45,22 @@ impl RcStr {
             });
         }
         Ref::map(self.0.chars.borrow(), |chars| chars.as_ref().unwrap())
+    }
+    pub fn charlen(&self) -> usize {
+        let chars = self.chars();
+        let chars: &Chars = &chars;
+        match chars {
+            Chars::ASCII => self.len(),
+            Chars::Chars(chars) => chars.len(),
+        }
+    }
+    pub fn charslice(&self, start: usize, end: usize) -> RcStr {
+        let chars = self.chars();
+        let chars: &Chars = &chars;
+        match chars {
+            Chars::ASCII => unsafe { Self::new_ascii(self.0.string[start..end].to_owned()) },
+            Chars::Chars(chars) => Self::new(chars[start..end].iter().collect()),
+        }
     }
     pub fn getchar(&self, index: usize) -> Option<char> {
         let chars = self.chars();
