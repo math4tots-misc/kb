@@ -109,7 +109,7 @@ pub struct Stmt {
 pub enum StmtDesc {
     Block(Vec<Stmt>),
     Return(Option<Expr>),
-    Assign(RcStr, Expr),
+    Assign(AssignTarget, Expr),
     Expr(Expr),
     Print(Expr),
 
@@ -118,6 +118,16 @@ pub enum StmtDesc {
     Goto(RcStr),
     If(Vec<(Expr, Stmt)>, Option<Box<Stmt>>),
     While(Expr, Box<Stmt>),
+}
+
+pub struct AssignTarget {
+    pub mark: Mark,
+    pub desc: AssignTargetDesc,
+}
+
+pub enum AssignTargetDesc {
+    Name(RcStr),
+    List(Vec<AssignTarget>),
 }
 
 #[derive(Debug)]

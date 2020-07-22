@@ -72,6 +72,7 @@ impl<'a> Parser<'a> {
             Err(BasicError {
                 marks: vec![self.mark()],
                 message: format!("Expected {:?} but got {:?}", p, self.peek()),
+                help: None,
             })
         }
     }
@@ -83,6 +84,7 @@ impl<'a> Parser<'a> {
             Err(BasicError {
                 marks: vec![mark],
                 message: format!("Expected name but got keyword"),
+                help: None,
             })
         } else {
             Ok(name.to_owned().into())
@@ -99,10 +101,10 @@ impl<'a> Parser<'a> {
                 let name = self.expect_name()?;
                 Ok(name)
             }
-            _ => Err(BasicError {
-                marks: vec![self.mark()],
-                message: format!("Expected label but got {:?}", self.peek()),
-            }),
+            _ => Err(BasicError::new(
+                vec![self.mark()],
+                format!("Expected label but got {:?}", self.peek()),
+            )),
         }
     }
     fn consume<P: Into<Pat<'a>>>(&mut self, p: P) -> bool {
@@ -305,12 +307,13 @@ impl<'a> Parser<'a> {
             }
             Token::Name("var") | Token::Name("DIM") | Token::Name("LET") => {
                 self.gettok();
-                let name = self.expect_name()?;
+                let lhs = self.expr(0)?;
+                let target = expr_to_assign_target(lhs)?;
                 self.expect(Token::Eq)?;
                 let setexpr = self.expr(0)?;
                 Ok(Stmt {
                     mark,
-                    desc: StmtDesc::Assign(name, setexpr),
+                    desc: StmtDesc::Assign(target, setexpr),
                 })
             }
             Token::Name("if") => {
@@ -359,19 +362,12 @@ impl<'a> Parser<'a> {
             _ => {
                 let expr = self.expr(0)?;
                 if self.consume(Token::Eq) {
-                    match &expr.desc {
-                        ExprDesc::GetVar(name) => {
-                            let rhs = self.expr(0)?;
-                            Ok(Stmt {
-                                mark,
-                                desc: StmtDesc::Assign(name.clone(), rhs.into()),
-                            })
-                        }
-                        _ => Err(BasicError {
-                            marks: vec![expr.mark.clone()],
-                            message: format!("The left hand side is not assignable"),
-                        }),
-                    }
+                    let target = expr_to_assign_target(expr)?;
+                    let rhs = self.expr(0)?;
+                    Ok(Stmt {
+                        mark,
+                        desc: StmtDesc::Assign(target, rhs.into()),
+                    })
                 } else {
                     Ok(Stmt {
                         mark,
@@ -392,6 +388,7 @@ impl<'a> Parser<'a> {
             _ => Err(BasicError {
                 marks: vec![mark],
                 message: format!("Expected a constant expression here"),
+                help: None,
             }),
         }
     }
@@ -460,6 +457,7 @@ impl<'a> Parser<'a> {
             _ => Err(BasicError {
                 marks: vec![mark],
                 message: format!("Expected infix operator"),
+                help: None,
             }),
         }
     }
@@ -555,10 +553,12 @@ impl<'a> Parser<'a> {
             Token::Name(name) if self.keywords.contains(name) => Err(BasicError {
                 marks: vec![mark],
                 message: format!("Expected expression but got keyword {:?}", name),
+                help: None,
             }),
             _ => Err(BasicError {
                 marks: vec![mark],
                 message: format!("Expected expression but got {:?}", self.peek()),
+                help: None,
             }),
         }
     }
@@ -581,8 +581,36 @@ impl<'a> Parser<'a> {
             Err(BasicError {
                 marks: vec![self.mark()],
                 message: format!("Expected delimiter but got {:?}", self.peek()),
+                help: None,
             })
         }
+    }
+}
+
+fn expr_to_assign_target(expr: Expr) -> Result<AssignTarget, BasicError> {
+    match expr.desc {
+        ExprDesc::GetVar(name) => Ok(AssignTarget {
+            mark: expr.mark,
+            desc: AssignTargetDesc::Name(name),
+        }),
+        ExprDesc::List(exprs) => {
+            let mut targets = Vec::new();
+            for expr in exprs {
+                targets.push(expr_to_assign_target(expr)?);
+            }
+            Ok(AssignTarget {
+                mark: expr.mark,
+                desc: AssignTargetDesc::List(targets),
+            })
+        }
+        _ => Err(BasicError {
+            marks: vec![expr.mark],
+            message: format!("The left hand side is not assignable"),
+            help: Some(concat!(
+                "An assignable expression is either a name or a list of other assignable ",
+                "expressions. For example, 'x' or '[a, b, [x, y]]'",
+            ).into()),
+        })
     }
 }
 

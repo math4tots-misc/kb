@@ -49,6 +49,7 @@ fn run(loader: &mut Loader, module_name: &RcStr) -> Result<(), BasicError> {
         Err(error) => Err(BasicError {
             marks: vm.trace().clone(),
             message: format!("{}", error),
+            help: None,
         }),
     }
 }

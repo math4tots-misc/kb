@@ -166,6 +166,7 @@ pub fn lex(source: &Rc<Source>) -> Result<Vec<(Token, Mark)>, BasicError> {
                                     return Err(BasicError {
                                         marks: vec![mark],
                                         message,
+                                        help: None,
                                     })
                                 }
                             },
@@ -177,6 +178,7 @@ pub fn lex(source: &Rc<Source>) -> Result<Vec<(Token, Mark)>, BasicError> {
                         return Err(BasicError {
                             marks: vec![mark],
                             message: format!("Unrecognized token: {}", c),
+                            help: None,
                         });
                     }
                 }
@@ -268,6 +270,7 @@ pub fn lex(source: &Rc<Source>) -> Result<Vec<(Token, Mark)>, BasicError> {
                                 pos: i,
                             }],
                             message: format!("Invalid string escape ({})", c),
+                            help: None,
                         })
                     }
                 };
@@ -285,6 +288,7 @@ pub fn lex(source: &Rc<Source>) -> Result<Vec<(Token, Mark)>, BasicError> {
                 pos: s.len(),
             }],
             message: format!("Expected more input: {:?}", state),
+            help: None,
         })
     }
 }

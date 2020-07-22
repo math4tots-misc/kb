@@ -78,10 +78,10 @@ impl Vars {
     fn force_add(&mut self, var: Var) -> Result<(), BasicError> {
         assert_eq!(self.list.len(), self.map.len());
         if let Some(oldvar) = self.map.get(&var.name) {
-            Err(BasicError {
-                marks: vec![var.mark.clone(), oldvar.mark.clone()],
-                message: format!("Conflicting definition of {}", var.name),
-            })
+            Err(BasicError::new(
+                vec![var.mark.clone(), oldvar.mark.clone()],
+                format!("Conflicting definition of {}", var.name),
+            ))
         } else {
             self.map.insert(var.name.clone(), var.clone());
             self.list.push(var);
@@ -148,8 +148,8 @@ fn prepare_vars_for_stmt(
                 prepare_vars_for_stmt(out, stmt, prefix)?;
             }
         }
-        StmtDesc::Assign(name, _) => {
-            out.add(mkvar(stmt.mark.clone(), name, prefix, out.len()));
+        StmtDesc::Assign(target, _) => {
+            prepare_vars_for_target(out, target, prefix)?;
         }
         StmtDesc::If(pairs, other) => {
             for (_cond, body) in pairs {
@@ -167,6 +167,20 @@ fn prepare_vars_for_stmt(
         | StmtDesc::Return(_)
         | StmtDesc::Label(_)
         | StmtDesc::Goto(_) => {}
+    }
+    Ok(())
+}
+
+fn prepare_vars_for_target(out: &mut Vars, target: &AssignTarget, prefix: Option<&RcStr>) -> Result<(), BasicError> {
+    match &target.desc {
+        AssignTargetDesc::Name(name) => {
+            out.add(mkvar(target.mark.clone(), name, prefix, out.len()));
+        }
+        AssignTargetDesc::List(list) => {
+            for subtarget in list {
+                prepare_vars_for_target(out, subtarget, prefix)?;
+            }
+        }
     }
     Ok(())
 }
@@ -222,11 +236,9 @@ fn translate_stmt(code: &mut Code, scope: &mut Scope, stmt: &Stmt) -> Result<(),
             }
             code.add(Opcode::Return, stmt.mark.clone());
         }
-        StmtDesc::Assign(name, expr) => {
-            let var = scope.getvar_or_error(&stmt.mark, name)?;
-            let op = Opcode::Set(var.vscope, var.index);
+        StmtDesc::Assign(target, expr) => {
             translate_expr(code, scope, expr)?;
-            code.add(op, stmt.mark.clone());
+            translate_assign(code, scope, target, true)?;
         }
         StmtDesc::Expr(expr) => {
             translate_expr(code, scope, expr)?;
@@ -277,6 +289,31 @@ fn translate_stmt(code: &mut Code, scope: &mut Scope, stmt: &Stmt) -> Result<(),
     Ok(())
 }
 
+/// When called, assumes the value to assign to the variable is on the top of the stack
+/// the 'consume' flag whether the top of the stack value will be consumed
+fn translate_assign(code: &mut Code, scope: &mut Scope, target: &AssignTarget, consume: bool) -> Result<(), BasicError> {
+    match &target.desc {
+        AssignTargetDesc::Name(name) => {
+            let var = scope.getvar_or_error(&target.mark, name)?;
+            if consume {
+                code.add(Opcode::Set(var.vscope, var.index), target.mark.clone());
+            } else {
+                code.add(Opcode::Tee(var.vscope, var.index), target.mark.clone());
+            }
+        }
+        AssignTargetDesc::List(list) => {
+            if !consume {
+                code.add(Opcode::Dup, target.mark.clone());
+            }
+            code.add(Opcode::Unpack(list.len() as u32), target.mark.clone());
+            for subtarget in list.iter().rev() {
+                translate_assign(code, scope, subtarget, true)?;
+            }
+        }
+    }
+    Ok(())
+}
+
 fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(), BasicError> {
     match &expr.desc {
         ExprDesc::Nil => code.add(Opcode::Nil, expr.mark.clone()),
@@ -308,10 +345,10 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
                 code.add(Opcode::Get(var.vscope, var.index), expr.mark.clone());
             } else {
                 // this is an attribute access
-                return Err(BasicError {
-                    marks: vec![expr.mark.clone()],
-                    message: format!("Attribute access not yet supported"),
-                });
+                return Err(BasicError::new(
+                    vec![expr.mark.clone()],
+                    format!("Attribute access not yet supported"),
+                ));
             }
         }
         ExprDesc::CallFunc(f, args) => {
@@ -366,10 +403,10 @@ impl Scope {
             &mut self.globals
         };
         if let Some(old_item) = map.get(item.name()) {
-            Err(BasicError {
-                marks: vec![old_item.mark().clone(), item.mark().clone()],
-                message: format!("{} is defined more than once", item.name()),
-            })
+            Err(BasicError::new(
+                vec![old_item.mark().clone(), item.mark().clone()],
+                format!("{} is defined more than once", item.name()),
+            ))
         } else {
             map.insert(item.name().clone(), item);
             Ok(())
@@ -377,14 +414,14 @@ impl Scope {
     }
     pub fn getvar_or_error(&self, mark: &Mark, name: &str) -> Result<&Var, BasicError> {
         match self.rget(name) {
-            None => Err(BasicError {
-                marks: vec![mark.clone()],
-                message: format!("Variable {} not found", name),
-            }),
-            Some(Item::Import(..)) => Err(BasicError {
-                marks: vec![mark.clone()],
-                message: format!("{} is an import, not a variable", name),
-            }),
+            None => Err(BasicError::new(
+                vec![mark.clone()],
+                format!("Variable {} not found", name),
+            )),
+            Some(Item::Import(..)) => Err(BasicError::new(
+                vec![mark.clone()],
+                format!("{} is an import, not a variable", name),
+            )),
             Some(Item::Var(var)) => Ok(var),
         }
     }

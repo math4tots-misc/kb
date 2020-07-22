@@ -20,6 +20,8 @@ pub enum Opcode {
 
     // stack manipulation
     Pop,
+    Dup,
+    Unpack(u32),
 
     // variable access
     Get(VarScope, u32),
@@ -111,6 +113,7 @@ fn not_found(mark: Mark, name: &RcStr) -> BasicError {
     BasicError {
         marks: vec![mark],
         message: format!("Label {} not found", name),
+        help: None,
     }
 }
 

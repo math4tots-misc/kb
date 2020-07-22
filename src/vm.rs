@@ -166,6 +166,39 @@ fn step<H: Handler>(
         Opcode::Pop => {
             stack.pop().unwrap();
         }
+        Opcode::Dup => {
+            let x = stack.last().unwrap().clone();
+            stack.push(x);
+        }
+        Opcode::Unpack(n) => {
+            let elements = stack.pop().unwrap();
+            if let Some(list) = elements.list() {
+                if list.borrow().len() != *n as usize {
+                    scope.push_trace(code.marks()[*i - 1].clone());
+                    return Err(Val::String(format!(
+                        "Expected {} values, but got a list with {} values",
+                        n,
+                        list.borrow().len(),
+                    ).into()))
+                }
+                for item in list.borrow().iter() {
+                    stack.push(item.clone());
+                }
+            } else {
+                let genobj = elements.expect_genobj()?;
+                let mut genobj = genobj.0.borrow_mut();
+                let vec = genobj.to_vec(scope, handler)?;
+                if vec.len() != *n as usize {
+                    scope.push_trace(code.marks()[*i - 1].clone());
+                    return Err(Val::String(format!(
+                        "Expected {} values, but got {} values",
+                        n,
+                        vec.len(),
+                    ).into()))
+                }
+                stack.extend(vec);
+            }
+        }
         Opcode::Get(vscope, index) => {
             let val = scope.get(*vscope, *index).clone();
             if let Val::Invalid = val {
@@ -420,6 +453,13 @@ impl GenObj {
         let result = self.loop_(scope, handler);
         scope.pop();
         result
+    }
+    pub fn to_vec<H: Handler>(&mut self, scope: &mut Scope, handler: &mut H) -> Result<Vec<Val>, Val> {
+        let mut ret = Vec::new();
+        while let Some(val) = self.resume(scope, handler, Val::Nil)? {
+            ret.push(val);
+        }
+        Ok(ret)
     }
     fn loop_<H: Handler>(
         &mut self,

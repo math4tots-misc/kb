@@ -49,3 +49,6 @@ PRINT NEXT(g)
 PRINT NEXT(g)
 PRINT NEXT(g)
 PRINT NEXT(g)
+
+[a, b, [c, [d]]] = [1, 2, ['cc', ['ddd']]]
+PRINT ['a', a, 'b', b, 'c=', c, 'd=', d]

@@ -28,6 +28,7 @@ pub use vm::*;
 pub struct BasicError {
     pub marks: Vec<Mark>,
     pub message: String,
+    pub help: Option<String>,
 }
 
 impl From<std::io::Error> for BasicError {
@@ -35,11 +36,19 @@ impl From<std::io::Error> for BasicError {
         Self {
             marks: vec![],
             message: format!("{:?}", e),
+            help: None,
         }
     }
 }
 
 impl BasicError {
+    pub fn new(marks: Vec<Mark>, message: String) -> Self {
+        Self {
+            marks,
+            message,
+            help: None,
+        }
+    }
     pub fn format(&self) -> String {
         use std::fmt::Write;
         let mut ret = String::new();

@@ -68,6 +68,7 @@ impl Loader {
                     return Err(BasicError {
                         marks: vec![],
                         message: format!("Module {} not found", module_name),
+                        help: None,
                     })
                 }
             };
