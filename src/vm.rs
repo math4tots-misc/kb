@@ -158,7 +158,7 @@ fn step<H: Handler>(
         Opcode::MakeList(len) => {
             let start = stack.len() - *len as usize;
             let list: Vec<_> = stack.drain(start..).collect();
-            stack.push(Val::List(Rc::new(RefCell::new(list))));
+            stack.push(list.into());
         }
         Opcode::NewFunc(code) => {
             stack.push(Val::Func(Func(code.clone())));

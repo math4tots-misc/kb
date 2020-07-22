@@ -2,6 +2,8 @@ use super::Code;
 use super::GenObj;
 use super::RcStr;
 use std::cell::RefCell;
+use std::cell::Ref;
+use std::cell::RefMut;
 use std::cmp;
 use std::fmt;
 use std::rc::Rc;
@@ -20,7 +22,7 @@ pub enum Val {
     /// without copying the String all over the place
     String(RcStr),
 
-    List(Rc<RefCell<Vec<Val>>>),
+    List(Rc<List>),
 
     Func(Func),
 
@@ -53,14 +55,14 @@ impl Val {
             Err(Val::String("Expected number".to_owned().into()))
         }
     }
-    pub fn list(&self) -> Option<&Rc<RefCell<Vec<Val>>>> {
+    pub fn list(&self) -> Option<&List> {
         if let Self::List(x) = self {
             Some(x)
         } else {
             None
         }
     }
-    pub fn expect_list(&self) -> Result<&Rc<RefCell<Vec<Val>>>, Val> {
+    pub fn expect_list(&self) -> Result<&List, Val> {
         if let Some(x) = self.list() {
             Ok(x)
         } else {
@@ -150,7 +152,7 @@ impl From<RcStr> for Val {
 
 impl From<Vec<Val>> for Val {
     fn from(vec: Vec<Val>) -> Self {
-        Self::List(RefCell::new(vec).into())
+        Self::List(List { vec: RefCell::new(vec) }.into())
     }
 }
 
@@ -200,6 +202,30 @@ impl fmt::Display for Val {
         }
     }
 }
+
+/// Wrapper around RefCell<Vec<Val>>
+/// Having a wrapper keeps the possibility open for e.g.
+/// caching hash values, or mutability locks
+pub struct List {
+    vec: RefCell<Vec<Val>>,
+}
+
+impl List {
+    pub fn borrow(&self) -> Ref<Vec<Val>> {
+        self.vec.borrow()
+    }
+    pub fn borrow_mut(&self) -> RefMut<Vec<Val>> {
+        self.vec.borrow_mut()
+    }
+}
+
+impl cmp::PartialEq for List {
+    fn eq(&self, other: &Self) -> bool {
+        self.vec.eq(&other.vec)
+    }
+}
+
+impl cmp::Eq for List {}
 
 #[derive(Clone)]
 pub struct Func(pub Rc<Code>);
