@@ -1,7 +1,7 @@
 use super::Binop;
+use super::RcStr;
 use super::Unop;
 use super::VarScope;
-use super::RcStr;
 use std::fmt;
 use std::fmt::Write;
 use std::rc::Rc;

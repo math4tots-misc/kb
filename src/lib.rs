@@ -7,10 +7,10 @@ mod lexer;
 mod loader;
 mod m;
 mod parser;
+mod rcstr;
 mod trans;
 mod val;
 mod vm;
-mod rcstr;
 
 pub use ast::*;
 pub use code::*;
@@ -19,10 +19,10 @@ pub use lexer::*;
 pub use loader::*;
 pub use m::*;
 pub use parser::*;
+pub use rcstr::*;
 pub use trans::*;
 pub use val::*;
 pub use vm::*;
-pub use rcstr::*;
 
 #[derive(Debug)]
 pub struct BasicError {

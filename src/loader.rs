@@ -1,8 +1,8 @@
 use super::parse;
 use super::BasicError;
 use super::File;
-use super::Source;
 use super::RcStr;
+use super::Source;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -29,10 +29,7 @@ impl Loader {
         self.source_roots.push(path.into());
     }
 
-    pub fn find_source(
-        &mut self,
-        module_name: &RcStr,
-    ) -> Result<Option<&Rc<Source>>, BasicError> {
+    pub fn find_source(&mut self, module_name: &RcStr) -> Result<Option<&Rc<Source>>, BasicError> {
         if !self.map.contains_key(module_name) {
             let mut relpath = PathBuf::new();
             let parts: Vec<_> = module_name.split(".").collect();

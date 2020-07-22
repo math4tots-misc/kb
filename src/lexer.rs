@@ -1,8 +1,8 @@
 use super::BasicError;
 use super::Mark;
+use super::RcStr;
 use super::Source;
 use std::rc::Rc;
-use super::RcStr;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token<'a> {

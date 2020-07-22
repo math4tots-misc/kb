@@ -3,10 +3,10 @@ use super::BasicError;
 use super::Binop;
 use super::Code;
 use super::Opcode;
-use super::VarScope;
-use super::INVALID_LABEL_LOC;
 use super::RcStr;
+use super::VarScope;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::rc::Rc;
 
 pub fn translate_files(mut files: Vec<File>) -> Result<Code, BasicError> {
@@ -48,9 +48,7 @@ pub fn translate_files(mut files: Vec<File>) -> Result<Code, BasicError> {
         translate_stmt(&mut code, &mut scope, &file.body)?;
     }
 
-    let label_map = scope.label_map().clone();
-    let label_names = scope.label_names().clone();
-    code.set_label_data(label_map, label_names);
+    code.resolve_labels()?;
 
     Ok(code)
 }
@@ -166,10 +164,8 @@ fn translate_func(scope: &mut Scope, func: &FuncDisplay) -> Result<Code, BasicEr
         scope.decl(Item::Var(var.clone()))?;
     }
     translate_stmt(&mut code, scope, &func.body)?;
-    let label_names = scope.label_names().clone();
-    let label_map = scope.label_map().clone();
-    code.set_label_data(label_map, label_names);
     scope.exit_local();
+    code.resolve_labels()?;
     Ok(code)
 }
 
@@ -198,43 +194,35 @@ fn translate_stmt(code: &mut Code, scope: &mut Scope, stmt: &Stmt) -> Result<(),
             code.add(Opcode::Print, stmt.mark.clone());
         }
         StmtDesc::Label(label) => {
-            let loc = code.len();
-            scope.update_label(label, loc);
-            // let id = scope.get_label_id(label);
-            // code.add(Opcode::Label(id), stmt.mark.clone());
+            code.add(Opcode::Label(label.clone()), stmt.mark.clone());
         }
         StmtDesc::Goto(label) => {
-            let id = scope.get_label_id(label);
-            code.add(Opcode::Goto(id), stmt.mark.clone());
+            code.add(Opcode::UnresolvedGoto(label.clone()), stmt.mark.clone());
         }
         StmtDesc::If(pairs, other) => {
             let end_label = scope.new_label();
-            let end_label_id = scope.get_label_id(&end_label);
             for (cond, body) in pairs {
                 let next_label = scope.new_label();
-                let next_label_id = scope.get_label_id(&next_label);
                 translate_expr(code, scope, cond)?;
-                code.add(Opcode::GotoIfFalse(next_label_id), cond.mark.clone());
+                code.add(Opcode::UnresolvedGotoIfFalse(next_label.clone()), cond.mark.clone());
                 translate_stmt(code, scope, body)?;
-                code.add(Opcode::Goto(end_label_id), body.mark.clone());
-                scope.update_label(&next_label, code.len());
+                code.add(Opcode::UnresolvedGoto(end_label.clone()), body.mark.clone());
+                code.add(Opcode::Label(next_label), cond.mark.clone());
             }
             if let Some(other) = other {
                 translate_stmt(code, scope, other)?;
             }
-            scope.update_label(&end_label, code.len());
+            code.add(Opcode::Label(end_label), stmt.mark.clone());
         }
         StmtDesc::While(cond, body) => {
             let start_label = scope.new_label();
-            let start_label_id = scope.get_label_id(&start_label);
             let end_label = scope.new_label();
-            let end_label_id = scope.get_label_id(&end_label);
-            scope.update_label(&start_label, code.len());
+            code.add(Opcode::Label(start_label.clone()), stmt.mark.clone());
             translate_expr(code, scope, cond)?;
-            code.add(Opcode::GotoIfFalse(end_label_id), cond.mark.clone());
+            code.add(Opcode::UnresolvedGotoIfFalse(end_label.clone()), cond.mark.clone());
             translate_stmt(code, scope, body)?;
-            code.add(Opcode::Goto(start_label_id), stmt.mark.clone());
-            scope.update_label(&end_label, code.len());
+            code.add(Opcode::UnresolvedGoto(start_label), stmt.mark.clone());
+            code.add(Opcode::Label(end_label), stmt.mark.clone());
         }
     }
     Ok(())
@@ -307,7 +295,7 @@ struct Scope {
     file_name: RcStr,
     globals: HashMap<RcStr, Item>,
     locals: Option<HashMap<RcStr, Item>>,
-    labels: Vec<(Vec<RcStr>, HashMap<RcStr, usize>, Vec<usize>)>,
+    labels: Vec<HashSet<RcStr>>,
 }
 
 impl Scope {
@@ -316,7 +304,7 @@ impl Scope {
             file_name: "".to_owned().into(),
             globals: HashMap::new(),
             locals: None,
-            labels: vec![(vec![], HashMap::new(), vec![])],
+            labels: vec![HashSet::new()],
         }
     }
     pub fn decl(&mut self, item: Item) -> Result<(), BasicError> {
@@ -338,7 +326,6 @@ impl Scope {
     pub fn getvar_or_error(&self, mark: &Mark, name: &str) -> Result<&Var, BasicError> {
         match self.rget(name) {
             None => {
-                println!("{:?}", self.globals);
                 Err(BasicError {
                     marks: vec![mark.clone()],
                     message: format!("Variable {} not found", name),
@@ -361,38 +348,18 @@ impl Scope {
             .and_then(|locals| locals.get(qualified_name))
             .or_else(|| self.globals.get(qualified_name))
     }
-    fn new_label_with_name(&mut self, name: RcStr) -> u32 {
-        let (labels, map, ptrs) = self.labels.last_mut().unwrap();
-        assert!(!map.contains_key(&name));
-        let id = labels.len();
-        labels.push(name.clone());
-        map.insert(name, id);
-        ptrs.push(INVALID_LABEL_LOC);
-        id as u32
-    }
     pub fn new_label(&mut self) -> RcStr {
-        let name: RcStr = format!("#{}", self.labels.last().unwrap().0.len()).into();
-        self.new_label_with_name(name.clone());
+        let name: RcStr = format!("#{}", self.labels().len()).into();
+        assert!(!self.labels().contains(&name));
+        self.labels_mut().insert(name.clone());
         name
-    }
-    pub fn get_label_id(&mut self, name: &RcStr) -> u32 {
-        let (_labels, map, _ptrs) = self.labels.last().unwrap();
-        if let Some(id) = map.get(name) {
-            *id as u32
-        } else {
-            self.new_label_with_name(name.clone())
-        }
-    }
-    pub fn update_label(&mut self, name: &RcStr, loc: usize) {
-        let id = self.get_label_id(name) as usize;
-        self.labels.last_mut().unwrap().2[id] = loc;
     }
     pub fn enter_local(&mut self) {
         if self.locals.is_some() {
             panic!("Scope::enter_local: already in local scope");
         }
         self.locals = Some(HashMap::new());
-        self.labels.push((vec![], HashMap::new(), vec![]));
+        self.labels.push(HashSet::new());
     }
     pub fn exit_local(&mut self) {
         if self.locals.is_none() {
@@ -401,11 +368,11 @@ impl Scope {
         self.locals = None;
         self.labels.pop().unwrap();
     }
-    pub fn label_map(&self) -> &Vec<usize> {
-        &self.labels.last().unwrap().2
+    pub fn labels(&self) -> &HashSet<RcStr> {
+        self.labels.last().unwrap()
     }
-    pub fn label_names(&self) -> &Vec<RcStr> {
-        &self.labels.last().unwrap().0
+    pub fn labels_mut(&mut self) -> &mut HashSet<RcStr> {
+        self.labels.last_mut().unwrap()
     }
 }
 

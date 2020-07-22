@@ -3,10 +3,10 @@ use super::Code;
 use super::Func;
 use super::Handler;
 use super::Opcode;
+use super::RcStr;
 use super::Unop;
 use super::Val;
 use super::Var;
-use super::RcStr;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -169,21 +169,26 @@ pub fn step<H: Handler>(
             };
             stack.push(ret);
         }
-        Opcode::Label(_) => {}
-        Opcode::Goto(id) => {
-            *i = code.label_map()[*id as usize];
+        Opcode::Goto(pos) => {
+            *i = *pos as usize;
         }
-        Opcode::GotoIfFalse(id) => {
+        Opcode::GotoIfFalse(pos) => {
             let item = stack.pop().unwrap();
             if !item.truthy() {
-                *i = code.label_map()[*id as usize];
+                *i = *pos as usize;
             }
         }
-        Opcode::GotoIfFalseNoPop(id) => {
+        Opcode::GotoIfFalseNoPop(pos) => {
             let item = stack.last().unwrap();
             if !item.truthy() {
-                *i = code.label_map()[*id as usize];
+                *i = *pos as usize;
             }
+        }
+        Opcode::Label(_)
+        | Opcode::UnresolvedGoto(_)
+        | Opcode::UnresolvedGotoIfFalse(_)
+        | Opcode::UnresolvedGotoIfFalseNoPop(_) => {
+            panic!("Unresolved opcode: {:?}", op);
         }
     }
     Ok(None)

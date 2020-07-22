@@ -1,11 +1,11 @@
+use super::BasicError;
 use super::Mark;
+use super::RcStr;
 use super::Var;
 use super::VarScope;
-use super::RcStr;
 use std::fmt;
 use std::rc::Rc;
-
-pub const INVALID_LABEL_LOC: usize = usize::MAX;
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub enum Opcode {
@@ -26,7 +26,6 @@ pub enum Opcode {
     Tee(VarScope, u32),
 
     // control flow
-    Label(u32),
     Goto(u32),
     GotoIfFalse(u32),
     GotoIfFalseNoPop(u32),
@@ -37,6 +36,12 @@ pub enum Opcode {
     Print,
     Binop(Binop),
     Unop(Unop),
+
+    // (should come last) unresolved control flow ops
+    Label(RcStr),
+    UnresolvedGoto(RcStr),
+    UnresolvedGotoIfFalse(RcStr),
+    UnresolvedGotoIfFalseNoPop(RcStr),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -72,13 +77,19 @@ pub struct Code {
     vars: Vec<Var>,
     ops: Vec<Opcode>,
     marks: Vec<Mark>,
-    label_map: Vec<usize>,
-    label_names: Vec<RcStr>,
+    label_map: HashMap<RcStr, u32>,
 }
 
 impl fmt::Debug for Code {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Code({})", self.name)
+    }
+}
+
+fn not_found(mark: Mark, name: &RcStr) -> BasicError {
+    BasicError {
+        marks: vec![mark],
+        message: format!("Label {} not found", name),
     }
 }
 
@@ -90,24 +101,61 @@ impl Code {
             vars,
             ops: vec![],
             marks: vec![],
-            label_map: vec![],
-            label_names: vec![],
+            label_map: HashMap::new(),
         }
+    }
+    pub fn resolve_labels(&mut self) -> Result<(), BasicError> {
+        let mut labels = HashMap::new();
+        let mut pos = 0;
+        for op in self.ops.iter() {
+            if let Opcode::Label(name) = op {
+                labels.insert(name.clone(), pos as u32);
+            } else {
+                pos += 1;
+            }
+        }
+        let mut new_ops = Vec::new();
+        pos = 0;
+        for (i, mut op) in std::mem::replace(&mut self.ops, vec![]).into_iter().enumerate() {
+            if let Opcode::Label(_) = op {
+                continue;
+            }
+            match &op {
+                Opcode::Label(_) => {}
+                Opcode::UnresolvedGoto(label) => {
+                    if let Some(pos) = labels.get(label).cloned() {
+                        op = Opcode::Goto(pos);
+                    } else {
+                        return Err(not_found(self.marks[i].clone(), label));
+                    }
+                }
+                Opcode::UnresolvedGotoIfFalse(label) => {
+                    if let Some(pos) = labels.get(label).cloned() {
+                        op = Opcode::GotoIfFalse(pos);
+                    } else {
+                        return Err(not_found(self.marks[i].clone(), label));
+                    }
+                }
+                Opcode::UnresolvedGotoIfFalseNoPop(label) => {
+                    if let Some(pos) = labels.get(label).cloned() {
+                        op = Opcode::GotoIfFalseNoPop(pos);
+                    } else {
+                        return Err(not_found(self.marks[i].clone(), &label));
+                    }
+                }
+                _ => {}
+            }
+            new_ops.push(op);
+            pos += 1;
+        }
+        self.label_map = labels;
+        self.ops = new_ops;
+        Ok(())
     }
     pub fn add(&mut self, op: Opcode, mark: Mark) {
         self.ops.push(op);
         self.marks.push(mark);
         assert_eq!(self.ops.len(), self.marks.len());
-    }
-    pub fn set_label_data(&mut self, map: Vec<usize>, names: Vec<RcStr>) {
-        self.label_map = map;
-        self.label_names = names;
-    }
-    pub fn label_map(&self) -> &Vec<usize> {
-        &self.label_map
-    }
-    pub fn label_names(&self) -> &Vec<RcStr> {
-        &self.label_names
     }
     pub fn len(&self) -> usize {
         self.ops.len()
@@ -132,5 +180,30 @@ impl Code {
     }
     pub fn fetch(&self, i: usize) -> &Opcode {
         &self.ops[i]
+    }
+    pub fn format(&self) -> RcStr {
+        use std::fmt::Write;
+        let mut ret = String::new();
+        let out = &mut ret;
+        let mut last_lineno = 0;
+        writeln!(out, "## Code for {} ##", self.name).unwrap();
+        writeln!(out, "#### labels ####").unwrap();
+        let mut labels: Vec<(RcStr, u32)> = self.label_map.clone().into_iter().collect();
+        labels.sort_by_key(|a| a.1);
+        for (label_name, label_index) in labels {
+            writeln!(out, "  {} -> {}", label_name, label_index).unwrap();
+        }
+        writeln!(out, "#### opcodes ####").unwrap();
+        for (i, op) in self.ops.iter().enumerate() {
+            let lineno = self.marks[i].lineno();
+            let ln = if lineno != last_lineno {
+                format!("")
+            } else {
+                format!("{}", lineno)
+            };
+            last_lineno = lineno;
+            writeln!(out, "  {:>4} {:>4}: {:?}", i, ln, op).unwrap();
+        }
+        ret.into()
     }
 }

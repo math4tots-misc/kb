@@ -1,11 +1,11 @@
-use std::cell::RefCell;
-use std::cell::Ref;
-use std::rc::Rc;
-use std::fmt;
-use std::ops;
-use std::cmp;
-use std::hash;
 use std::borrow;
+use std::cell::Ref;
+use std::cell::RefCell;
+use std::cmp;
+use std::fmt;
+use std::hash;
+use std::ops;
+use std::rc::Rc;
 
 /// str smarat pointer that also stashes chars as
 /// needed so that char access can be constant time

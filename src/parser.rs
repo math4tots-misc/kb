@@ -3,8 +3,8 @@ use super::lexer::*;
 use super::BasicError;
 use super::Binop;
 use super::Mark;
-use super::Unop;
 use super::RcStr;
+use super::Unop;
 use std::collections::HashSet;
 use std::rc::Rc;
 
@@ -432,12 +432,10 @@ impl<'a> Parser<'a> {
                     desc: ExprDesc::String(s.into()),
                 })
             }
-            Token::RawString(s) => {
-                Ok(Expr {
-                    mark,
-                    desc: ExprDesc::String((*s).into()),
-                })
-            }
+            Token::RawString(s) => Ok(Expr {
+                mark,
+                desc: ExprDesc::String((*s).into()),
+            }),
             Token::Minus | Token::Plus => {
                 let tok = self.gettok();
                 let op = match tok {

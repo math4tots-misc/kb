@@ -2,8 +2,8 @@ use super::translate_files;
 use super::BasicError;
 use super::DefaultHandler;
 use super::Loader;
-use super::Vm;
 use super::RcStr;
+use super::Vm;
 
 pub fn main() {
     let mut loader = Loader::new();
