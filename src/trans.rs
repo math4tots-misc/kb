@@ -148,7 +148,7 @@ fn prepare_vars_for_stmt(
                 prepare_vars_for_stmt(out, stmt, prefix)?;
             }
         }
-        StmtDesc::DeclVar(name, _) => {
+        StmtDesc::Assign(name, _) => {
             out.add(mkvar(stmt.mark.clone(), name, prefix, out.len()));
         }
         StmtDesc::If(pairs, other) => {
@@ -222,7 +222,7 @@ fn translate_stmt(code: &mut Code, scope: &mut Scope, stmt: &Stmt) -> Result<(),
             }
             code.add(Opcode::Return, stmt.mark.clone());
         }
-        StmtDesc::DeclVar(name, expr) => {
+        StmtDesc::Assign(name, expr) => {
             let var = scope.getvar_or_error(&stmt.mark, name)?;
             let op = Opcode::Set(var.vscope, var.index);
             translate_expr(code, scope, expr)?;

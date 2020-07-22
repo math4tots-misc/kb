@@ -310,7 +310,7 @@ impl<'a> Parser<'a> {
                 let setexpr = self.expr(0)?;
                 Ok(Stmt {
                     mark,
-                    desc: StmtDesc::DeclVar(name, setexpr),
+                    desc: StmtDesc::Assign(name, setexpr),
                 })
             }
             Token::Name("if") => {
@@ -364,7 +364,7 @@ impl<'a> Parser<'a> {
                             let rhs = self.expr(0)?;
                             Ok(Stmt {
                                 mark,
-                                desc: StmtDesc::DeclVar(name.clone(), rhs.into()),
+                                desc: StmtDesc::Assign(name.clone(), rhs.into()),
                             })
                         }
                         _ => Err(BasicError {
