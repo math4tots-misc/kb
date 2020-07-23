@@ -58,7 +58,7 @@ aa = [xx, yy] = [1, 'hi']
 PRINT ['aa=', aa, 'xx=', xx, 'yy=', yy]
 
 FUNCTION F(A, B) = A + B
-fn g(a, b) = a * b
+fn k(a, b) = a * b
 
 PRINT ['F(12, 5)=', F(12, 5)]
-PRINT ['g(12, 5)=', g(12, 5)]
+PRINT ['k(12, 5)=', k(12, 5)]
