@@ -66,9 +66,7 @@ impl BasicError {
         for mark in &self.marks {
             write!(out, "{}", mark.format()).unwrap();
         }
-        writeln!(out, "###############").unwrap();
-        writeln!(out, "## ERROR: {}", self.message).unwrap();
-        writeln!(out, "###############").unwrap();
+        writeln!(out, "ERROR: {}", self.message).unwrap();
         ret
     }
 }
