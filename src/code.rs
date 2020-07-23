@@ -33,10 +33,10 @@ pub enum Opcode {
     Goto(u32),
     GotoIfFalse(u32),
     GotoIfFalseNoPop(u32),
-
-    // operators
     Return,
     Yield,
+
+    // operators
     Next,
     CallFunc(u32),
     Binop(Binop),
@@ -82,6 +82,9 @@ pub enum ArithmeticBinop {
     Divide,
     TruncDivide,
     Remainder,
+
+    // trig
+    ATan2,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -98,6 +101,14 @@ pub enum Unop {
 pub enum ArithmeticUnop {
     Negative,
     Positive,
+
+    // trig
+    Sin,
+    Cos,
+    Tan,
+    ASin,
+    ACos,
+    ATan,
 }
 
 #[derive(Clone)]

@@ -33,6 +33,7 @@ const KEYWORDS: &[&'static str] = &[
     "NEXT",
     // --------------------- special ops all-caps keywords -------------------------
     "APPEND", "NAME", "DISASM", "LEN", "STR", "REPR",
+    "COS", "SIN", "TAN", "ACOS", "ASIN", "ATAN",
 ];
 
 const UNOPS: &[(&'static str, Unop)] = &[
@@ -40,10 +41,17 @@ const UNOPS: &[(&'static str, Unop)] = &[
     ("STR", Unop::Str),
     ("REPR", Unop::Repr),
     ("LEN", Unop::Len),
+    ("SIN", Unop::Arithmetic(ArithmeticUnop::Sin)),
+    ("COS", Unop::Arithmetic(ArithmeticUnop::Cos)),
+    ("TAN", Unop::Arithmetic(ArithmeticUnop::Tan)),
+    ("ASIN", Unop::Arithmetic(ArithmeticUnop::ASin)),
+    ("ACOS", Unop::Arithmetic(ArithmeticUnop::ACos)),
+    ("ATAN", Unop::Arithmetic(ArithmeticUnop::ATan)),
 ];
 
 const BINOPS: &[(&'static str, Binop)] = &[
     ("APPEND", Binop::Append),
+    ("ATAN2", Binop::Arithmetic(ArithmeticBinop::ATan2)),
 ];
 
 pub fn parse(source: &Rc<Source>) -> Result<File, BasicError> {

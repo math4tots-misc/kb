@@ -104,6 +104,21 @@ impl Loader {
             files.push(file);
         }
         files.reverse();
+        // make sure prelude always comes first
+        let prelude_index = {
+            let mut i = 0;
+            let pname = PRELUDE_NAME.into();
+            while i < files.len() {
+                if files[i].name() == &pname {
+                    break;
+                }
+                i += 1;
+            }
+            assert!(i < files.len());
+            i
+        };
+        let prelude_file = files.remove(prelude_index);
+        files.insert(0, prelude_file);
         Ok(files)
     }
 }

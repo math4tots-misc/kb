@@ -338,6 +338,7 @@ fn step<H: Handler>(
                         ArithmeticBinop::Divide => Val::Number(lhs / rhs),
                         ArithmeticBinop::TruncDivide => Val::Number((lhs / rhs).trunc()),
                         ArithmeticBinop::Remainder => Val::Number(lhs % rhs),
+                        ArithmeticBinop::ATan2 => Val::Number(lhs.atan2(rhs)),
                     }
                 }
 
@@ -416,6 +417,12 @@ fn step<H: Handler>(
                     match aop {
                         ArithmeticUnop::Negative => Val::Number(-val),
                         ArithmeticUnop::Positive => Val::Number(val),
+                        ArithmeticUnop::Sin => Val::Number(val.sin()),
+                        ArithmeticUnop::Cos => Val::Number(val.cos()),
+                        ArithmeticUnop::Tan => Val::Number(val.tan()),
+                        ArithmeticUnop::ASin => Val::Number(val.asin()),
+                        ArithmeticUnop::ACos => Val::Number(val.acos()),
+                        ArithmeticUnop::ATan => Val::Number(val.atan()),
                     }
                 }
                 Unop::Len => match val {
