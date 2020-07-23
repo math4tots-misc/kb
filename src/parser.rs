@@ -602,10 +602,11 @@ impl<'a> Parser<'a> {
                     desc: ExprDesc::String(s.into()),
                 })
             }
-            Token::RawString(s) => Ok(Expr {
-                mark,
-                desc: ExprDesc::String((*s).into()),
-            }),
+            Token::RawString(s) => {
+                let desc = ExprDesc::String((*s).into());
+                self.gettok();
+                Ok(Expr { mark, desc })
+            }
             Token::LBracket => {
                 self.gettok();
                 let mut exprs = Vec::new();

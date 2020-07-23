@@ -377,3 +377,33 @@ impl<'a> Chars<'a> {
         self.index -= c.len_utf8();
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use Token::*;
+
+    fn mksrc(data: &str) -> Rc<Source> {
+        Source {
+            name: "[for-test]".into(),
+            data: data.into(),
+        }
+        .into()
+    }
+
+    fn lex(src: &Rc<Source>) -> Vec<Token> {
+        super::lex(src).unwrap().into_iter().map(|p| p.0).collect()
+    }
+
+    #[test]
+    fn raw_string_literals() {
+        let src = mksrc(r####" r"hi" "####);
+        assert_eq!(lex(&src), vec![RawString("hi"), EOF]);
+    }
+
+    #[test]
+    fn misc() {
+        let src = mksrc(r##" x = r"hi" "##);
+        assert_eq!(lex(&src), vec![Name("x"), Eq, RawString("hi"), EOF]);
+    }
+}

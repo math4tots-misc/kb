@@ -20,3 +20,8 @@ fn[test] GotoLineNumber()
 
     assert total == 45
 end
+
+fn[test] StringLiterals()
+    x = r"hi"
+    assert x == 'hi'
+end
