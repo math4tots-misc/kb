@@ -88,7 +88,7 @@ impl Loader {
                 None => {
                     return Err(BasicError {
                         marks: vec![],
-                        message: format!("Module {} not found", name),
+                        message: format!("Module {:?} not found", name),
                         help: None,
                     })
                 }

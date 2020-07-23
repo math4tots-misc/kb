@@ -1,5 +1,2 @@
-PRINT "Inside tests.kb"
-
-
-fn[test] ModuleTest()
+fn[test] ExactModuleNameMatchTest()
 end

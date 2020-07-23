@@ -33,7 +33,10 @@ pub enum Token<'a> {
     Slash2,
     Eq,
     Bar,
+    Excalamation,
 
+    Eq2,
+    Ne,
     LessThan,
     GreaterThan,
     LessThanOrEqual,
@@ -135,6 +138,7 @@ pub fn lex(source: &Rc<Source>) -> Result<Vec<(Token, Mark)>, BasicError> {
                         ),
                         '%' => Some(Token::Percent),
                         '|' => Some(Token::Bar),
+                        '!' => Some(Token::Excalamation),
                         '<' => Some(Token::LessThan),
                         '>' => Some(Token::GreaterThan),
                         '=' => Some({
@@ -147,6 +151,14 @@ pub fn lex(source: &Rc<Source>) -> Result<Vec<(Token, Mark)>, BasicError> {
                                     Some((Token::GreaterThan, _)) => {
                                         ret.pop().unwrap();
                                         Token::GreaterThanOrEqual
+                                    }
+                                    Some((Token::Eq, _)) => {
+                                        ret.pop().unwrap();
+                                        Token::Eq2
+                                    }
+                                    Some((Token::Excalamation, _)) => {
+                                        ret.pop().unwrap();
+                                        Token::Ne
                                     }
                                     _ => Token::Eq,
                                 }

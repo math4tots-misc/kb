@@ -21,10 +21,13 @@ const POSTFIX_PREC: Prec = 1000;
 
 const KEYWORDS: &[&'static str] = &[
     "fn", "import", "var", "if", "elif", "else", "end", "is", "not", "and", "or", "in", "yield",
-    // (mostly) legacy all-caps keywords
+    "assert", "true", "false",
+    // --------------------- (mostly) legacy all-caps keywords -------------------------
     "PRINT", "GOTO", "DIM", "LET", "IF", "ELSEIF", "ELSE", "END", "DO", "WHILE", "LOOP", "FUNCTION",
-    // NEXT has been changed from its original meaning -- it will instead resume a generator object
-    // and return a [next-val-or-nil, has-next] pair
+    // NEXT has been changed from its original meaning
+    //     originally it was for denoting the end of a FOR loop
+    //     now it will instead resume a generator object
+    //       and return a [next-val-or-nil, has-next] pair
     "NEXT",
 ];
 
@@ -381,6 +384,14 @@ impl<'a> Parser<'a> {
                     desc: StmtDesc::While(cond, body.into()),
                 })
             }
+            Token::Name("assert") => {
+                self.gettok();
+                let cond = self.expr(0)?;
+                Ok(Stmt {
+                    mark,
+                    desc: StmtDesc::Assert(cond),
+                })
+            }
             Token::Name(name)
                 if !self.keywords.contains(name) && self.lookahead(1) == Some(&Token::Colon) =>
             {
@@ -475,6 +486,8 @@ impl<'a> Parser<'a> {
             | Token::Slash
             | Token::Slash2
             | Token::Percent
+            | Token::Eq2
+            | Token::Ne
             | Token::LessThan
             | Token::LessThanOrEqual
             | Token::GreaterThan
@@ -486,6 +499,8 @@ impl<'a> Parser<'a> {
                     Token::Slash => Binop::Arithmetic(ArithmeticBinop::Divide),
                     Token::Slash2 => Binop::Arithmetic(ArithmeticBinop::TruncDivide),
                     Token::Percent => Binop::Arithmetic(ArithmeticBinop::Remainder),
+                    Token::Eq2 => Binop::Equal,
+                    Token::Ne => Binop::NotEqual,
                     Token::LessThan => Binop::LessThan,
                     Token::LessThanOrEqual => Binop::LessThanOrEqual,
                     Token::GreaterThan => Binop::GreaterThan,
@@ -567,6 +582,20 @@ impl<'a> Parser<'a> {
                 Ok(Expr {
                     mark,
                     desc: ExprDesc::Nil,
+                })
+            }
+            Token::Name("true") => {
+                self.gettok();
+                Ok(Expr {
+                    mark,
+                    desc: ExprDesc::Bool(true),
+                })
+            }
+            Token::Name("false") => {
+                self.gettok();
+                Ok(Expr {
+                    mark,
+                    desc: ExprDesc::Bool(false),
                 })
             }
             Token::Name("yield") => {
@@ -665,6 +694,8 @@ fn expr_to_assign_target(expr: Expr) -> Result<AssignTarget, BasicError> {
 fn precof<'a>(tok: &Token<'a>) -> Prec {
     match tok {
         Token::Name("is")
+        | Token::Eq2
+        | Token::Ne
         | Token::LessThan
         | Token::LessThanOrEqual
         | Token::GreaterThan

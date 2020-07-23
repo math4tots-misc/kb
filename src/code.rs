@@ -41,7 +41,11 @@ pub enum Opcode {
     Print,
     Binop(Binop),
     Unop(Unop),
+
+    // Testing
     AddToTest,
+    Assert,
+    AssertEq,
 
     // (should come last) unresolved control flow ops
     Label(RcStr),
@@ -55,6 +59,8 @@ pub enum Binop {
     Arithmetic(ArithmeticBinop),
 
     // comparison
+    Equal,
+    NotEqual,
     LessThan,
     LessThanOrEqual,
     GreaterThan,
@@ -121,7 +127,7 @@ impl fmt::Debug for Code {
 fn not_found(mark: Mark, name: &RcStr) -> BasicError {
     BasicError {
         marks: vec![mark],
-        message: format!("Label {} not found", name),
+        message: format!("Label {:?} not found", name),
         help: None,
     }
 }

@@ -335,6 +335,8 @@ fn step<H: Handler>(
                 }
 
                 // comparison operators
+                Binop::Equal => Val::Bool(lhs == rhs),
+                Binop::NotEqual => Val::Bool(lhs != rhs),
                 Binop::LessThan => Val::Bool(lhs.lt(&rhs)?),
                 Binop::LessThanOrEqual => Val::Bool(!rhs.lt(&lhs)?),
                 Binop::GreaterThan => Val::Bool(rhs.lt(&lhs)?),
@@ -381,8 +383,27 @@ fn step<H: Handler>(
             } else {
                 scope.push_trace(code.marks()[*i - 1].clone());
                 return Err(format!(
-                    concat!("Tests need to be functions, but {} is not a function",),
+                    concat!("Tests need to be functions, but {} is not a function"),
                     val,
+                )
+                .into());
+            }
+        }
+        Opcode::Assert => {
+            let val = stack.pop().unwrap();
+            if !val.truthy() {
+                scope.push_trace(code.marks()[*i - 1].clone());
+                return Err(format!(concat!("Assertion failed"),).into());
+            }
+        }
+        Opcode::AssertEq => {
+            let rhs = stack.pop().unwrap();
+            let lhs = stack.pop().unwrap();
+            if lhs != rhs {
+                scope.push_trace(code.marks()[*i - 1].clone());
+                return Err(format!(
+                    concat!("Assertion failed: expected {} to equal {}"),
+                    lhs, rhs,
                 )
                 .into());
             }

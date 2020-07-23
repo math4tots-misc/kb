@@ -113,6 +113,7 @@ pub enum StmtDesc {
     Assign(AssignTarget, Vec<AssignTarget>, Expr),
     Expr(Expr),
     Print(Expr),
+    Assert(Expr),
 
     // Control flow
     Label(RcStr),

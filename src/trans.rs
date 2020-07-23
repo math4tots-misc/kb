@@ -1,6 +1,7 @@
 use super::ast::*;
 use super::ArgSpec;
 use super::BasicError;
+use super::Binop;
 use super::Code;
 use super::Opcode;
 use super::RcStr;
@@ -182,6 +183,7 @@ fn prepare_vars_for_stmt(
             prepare_vars_for_stmt(out, body, prefix)?;
         }
         StmtDesc::Print(_)
+        | StmtDesc::Assert(_)
         | StmtDesc::Expr(_)
         | StmtDesc::Return(_)
         | StmtDesc::Label(_)
@@ -274,6 +276,17 @@ fn translate_stmt(code: &mut Code, scope: &mut Scope, stmt: &Stmt) -> Result<(),
             translate_expr(code, scope, arg)?;
             code.add(Opcode::Print, stmt.mark.clone());
         }
+        StmtDesc::Assert(arg) => match &arg.desc {
+            ExprDesc::Binop(Binop::Equal, lhs, rhs) => {
+                translate_expr(code, scope, lhs)?;
+                translate_expr(code, scope, rhs)?;
+                code.add(Opcode::AssertEq, stmt.mark.clone());
+            }
+            _ => {
+                translate_expr(code, scope, arg)?;
+                code.add(Opcode::Assert, stmt.mark.clone());
+            }
+        },
         StmtDesc::Label(label) => {
             code.add(Opcode::Label(label.clone()), stmt.mark.clone());
         }
@@ -436,7 +449,7 @@ impl Scope {
         if let Some(old_item) = map.get(item.name()) {
             Err(BasicError::new(
                 vec![old_item.mark().clone(), item.mark().clone()],
-                format!("{} is defined more than once", item.name()),
+                format!("{:?} is defined more than once", item.name()),
             ))
         } else {
             map.insert(item.name().clone(), item);
@@ -447,11 +460,11 @@ impl Scope {
         match self.rget(name) {
             None => Err(BasicError::new(
                 vec![mark.clone()],
-                format!("Variable {} not found", name),
+                format!("Variable {:?} not found", name),
             )),
             Some(Item::Import(..)) => Err(BasicError::new(
                 vec![mark.clone()],
-                format!("{} is an import, not a variable", name),
+                format!("{:?} is an import, not a variable", name),
             )),
             Some(Item::Var(var)) => Ok(var),
         }
