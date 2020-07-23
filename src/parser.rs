@@ -22,7 +22,7 @@ const POSTFIX_PREC: Prec = 1000;
 const KEYWORDS: &[&'static str] = &[
     "fn", "import", "var", "if", "elif", "else", "end", "is", "not", "and", "or", "in", "yield",
     // (mostly) legacy all-caps keywords
-    "PRINT", "GOTO", "DIM", "LET", "IF", "ELSEIF", "ELSE", "END", "DO", "WHILE", "LOOP",
+    "PRINT", "GOTO", "DIM", "LET", "IF", "ELSEIF", "ELSE", "END", "DO", "WHILE", "LOOP", "FUNCTION",
     // NEXT has been changed from its original meaning -- it will instead resume a generator object
     // and return a [next-val-or-nil, has-next] pair
     "NEXT",
@@ -129,7 +129,7 @@ impl<'a> Parser<'a> {
         while !self.at(Token::EOF) {
             match self.peek() {
                 Token::Name("import") => imports.push(self.import_()?),
-                Token::Name("fn") => funcs.push(self.func()?),
+                Token::Name("fn") | Token::Name("FUNCTION") => funcs.push(self.func()?),
                 _ => stmts.extend(self.maybe_labeled_stmt()?),
             }
             self.delim()?;
@@ -187,7 +187,9 @@ impl<'a> Parser<'a> {
     }
     fn func(&mut self) -> Result<FuncDisplay, BasicError> {
         let mark = self.mark();
-        self.expect(Token::Name("fn"))?;
+        if !self.consume(Token::Name("FUNCTION")) {
+            self.expect(Token::Name("fn"))?;
+        }
         let generator = self.consume(Token::Star);
         let name = self.expect_name()?;
         let argspec = {
@@ -232,7 +234,14 @@ impl<'a> Parser<'a> {
             }
             ArgSpec { req, def, var }
         };
-        let body = self.block()?;
+        let body = if self.consume(Token::Eq) {
+            Stmt {
+                mark: mark.clone(),
+                desc: StmtDesc::Return(Some(self.expr(0)?)),
+            }
+        } else {
+            self.block()?
+        };
         Ok(FuncDisplay {
             mark,
             generator,

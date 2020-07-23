@@ -251,7 +251,12 @@ fn step<H: Handler>(
             let new_len = old_len - (*argc as usize);
             let args: Vec<Val> = stack.drain(new_len..).collect();
             let func = stack.pop().unwrap();
-            let func = func.expect_func()?;
+            let func = if let Some(func) = func.func() {
+                func
+            } else {
+                scope.push_trace(code.marks()[*i - 1].clone());
+                return Err(format!("{} is not a function", func).into())
+            };
 
             scope.push_trace(code.marks()[*i - 1].clone());
             if func.generator() {
