@@ -22,6 +22,7 @@ pub enum Token<'a> {
     RBrace,
     Dollar,
     Dot,
+    Dot2,
     Colon,
     Comma,
     Semicolon,
@@ -120,7 +121,14 @@ pub fn lex(source: &Rc<Source>) -> Result<Vec<(Token, Mark)>, BasicError> {
                         '{' => Some(Token::LBrace),
                         '}' => Some(Token::RBrace),
                         '$' => Some(Token::Dollar),
-                        '.' => Some(Token::Dot),
+                        '.' => Some(
+                            if ret.last().map(|p| &p.0) == Some(&Token::Dot) && last_ig_ws < i - 1 {
+                                ret.pop().unwrap();
+                                Token::Dot2
+                            } else {
+                                Token::Dot
+                            },
+                        ),
                         ':' => Some(Token::Colon),
                         ',' => Some(Token::Comma),
                         ';' => Some(Token::Semicolon),

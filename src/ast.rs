@@ -120,6 +120,8 @@ pub enum StmtDesc {
     Goto(RcStr),
     If(Vec<(Expr, Stmt)>, Option<Box<Stmt>>),
     While(Expr, Box<Stmt>),
+    ForIn(AssignTarget, Expr, Box<Stmt>),
+    ForClassic(AssignTarget, Expr, Expr, bool, f64, Box<Stmt>),
 }
 
 pub struct AssignTarget {
@@ -156,4 +158,7 @@ pub enum ExprDesc {
 
     Yield(Box<Expr>),
     Next(Box<Expr>), // gets [next-or-nil, has_next] from a generator
+
+    // Gets the disassembly of a function as a string
+    Disasm(Box<Expr>),
 }

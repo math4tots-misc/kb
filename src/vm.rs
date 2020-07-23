@@ -80,13 +80,17 @@ pub fn callfunc<H: Handler>(
 
 fn mkgenobj(func: Rc<Code>, mut args: Vec<Val>) -> Result<Val, Val> {
     prepare_args(func.argspec(), &mut args)?;
-    let locals = new_locals_from_vars(func.vars());
+    let mut locals = new_locals_from_vars(func.vars());
+    for (i, arg) in args.into_iter().enumerate() {
+        locals.set_by_index(i as u32, arg);
+    }
     let genobj = GenObj {
         code: func,
         locals,
         i: 0,
         stack: vec![],
     };
+
     Ok(Val::GenObj(GenObjPtr(Rc::new(RefCell::new(genobj)))))
 }
 
@@ -190,6 +194,13 @@ fn step<H: Handler>(
             let x = stack.last().unwrap().clone();
             stack.push(x);
         }
+        Opcode::Dup2 => {
+            let len = stack.len();
+            let a = stack[len - 2].clone();
+            let b = stack[len - 1].clone();
+            stack.push(a);
+            stack.push(b);
+        }
         Opcode::Unpack(n) => {
             let elements = stack.pop().unwrap();
             if let Some(list) = elements.list() {
@@ -250,7 +261,7 @@ fn step<H: Handler>(
             return Ok(StepVal::Yield(val));
         }
         Opcode::Next => {
-            let genobj = stack.pop().unwrap();
+            let genobj = stack.last().unwrap().clone();
             let genobj = genobj.expect_genobj()?;
             let mut genobj = genobj.0.borrow_mut();
             match genobj.resume(scope, handler, Val::Nil)? {
@@ -287,10 +298,6 @@ fn step<H: Handler>(
                 stack.push(ret);
             }
             scope.pop_trace();
-        }
-        Opcode::Print => {
-            let x = stack.pop().unwrap();
-            handler.print(scope, x)?;
         }
         Opcode::Binop(op) => {
             let rhs = stack.pop().unwrap();
@@ -375,6 +382,21 @@ fn step<H: Handler>(
                 }
             };
             stack.push(ret);
+        }
+        Opcode::Print => {
+            let x = stack.pop().unwrap();
+            handler.print(scope, x)?;
+        }
+        Opcode::Disasm => {
+            let f = stack.pop().unwrap();
+            if let Val::Func(func) = &f {
+                stack.push(func.0.format().into());
+            } else {
+                scope.push_trace(code.marks()[*i - 1].clone());
+                return Err(
+                    format!(concat!("DISASM requires a function argument but got {}"), f,).into(),
+                );
+            }
         }
         Opcode::AddToTest => {
             let val = stack.last().unwrap().clone();
@@ -479,8 +501,8 @@ impl Scope {
     pub fn push_existing_locals(&mut self, map: IndexedMap) {
         self.locals.push(map);
     }
-    pub fn pop(&mut self) {
-        self.locals.pop().unwrap();
+    pub fn pop(&mut self) -> IndexedMap {
+        self.locals.pop().unwrap()
     }
     pub fn push_trace(&mut self, mark: Mark) {
         self.trace.push(mark);
@@ -516,6 +538,9 @@ impl IndexedMap {
         self.values.push(val);
         self.map.insert(key, i);
         i
+    }
+    pub fn set_by_index(&mut self, i: u32, val: Val) {
+        self.values[i as usize] = val;
     }
     pub fn get_by_key(&self, key: &RcStr) -> Option<&Val> {
         self.map.get(key).map(|i| &self.values[*i as usize])
@@ -558,7 +583,7 @@ impl GenObj {
         scope.push_existing_locals(std::mem::replace(&mut self.locals, IndexedMap::new()));
         self.stack.push(val);
         let result = self.loop_(scope, handler);
-        scope.pop();
+        self.locals = scope.pop();
         result
     }
     pub fn to_vec<H: Handler>(

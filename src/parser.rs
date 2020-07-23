@@ -21,14 +21,17 @@ const POSTFIX_PREC: Prec = 1000;
 
 const KEYWORDS: &[&'static str] = &[
     "fn", "import", "var", "if", "elif", "else", "end", "is", "not", "and", "or", "in", "yield",
-    "assert", "true", "false",
+    "assert", "true", "false", "to",
     // --------------------- (mostly) legacy all-caps keywords -------------------------
     "PRINT", "GOTO", "DIM", "LET", "IF", "ELSEIF", "ELSE", "END", "DO", "WHILE", "LOOP", "FUNCTION",
+    "TO", "DISASM",
     // NEXT has been changed from its original meaning
     //     originally it was for denoting the end of a FOR loop
     //     now it will instead resume a generator object
     //       and return a [next-val-or-nil, has-next] pair
     "NEXT",
+    // --------------------- special ops all-caps keywords -------------------------
+    "APPEND",
 ];
 
 pub fn parse(source: &Rc<Source>) -> Result<File, BasicError> {
@@ -384,6 +387,49 @@ impl<'a> Parser<'a> {
                     desc: StmtDesc::While(cond, body.into()),
                 })
             }
+            Token::Name("for") => {
+                self.gettok();
+                let target = expr_to_assign_target(self.expr(0)?)?;
+                if self.consume(Token::Name("in")) {
+                    let container = self.expr(0)?;
+                    self.delim()?;
+                    let body = self.block()?;
+                    Ok(Stmt {
+                        mark,
+                        desc: StmtDesc::ForIn(target, container, body.into()),
+                    })
+                } else {
+                    self.expect(Token::Eq)?;
+                    let start = self.expr(0)?;
+                    let inclusive =
+                        if self.consume(Token::Name("TO")) || self.consume(Token::Name("to")) {
+                            true
+                        } else {
+                            self.expect(Token::Dot2)?;
+                            false
+                        };
+                    let end = self.expr(0)?;
+                    let step =
+                        if self.consume(Token::Name("STEP")) || self.consume(Token::Name("step")) {
+                            self.constexpr_number()?
+                        } else {
+                            1.0
+                        };
+                    self.delim()?;
+                    let body = self.block()?;
+                    Ok(Stmt {
+                        mark,
+                        desc: StmtDesc::ForClassic(
+                            target,
+                            start,
+                            end,
+                            inclusive,
+                            step,
+                            body.into(),
+                        ),
+                    })
+                }
+            }
             Token::Name("assert") => {
                 self.gettok();
                 let cond = self.expr(0)?;
@@ -444,6 +490,17 @@ impl<'a> Parser<'a> {
             _ => Err(BasicError {
                 marks: vec![mark],
                 message: format!("Expected a constant expression here"),
+                help: None,
+            }),
+        }
+    }
+    fn constexpr_number(&mut self) -> Result<f64, BasicError> {
+        let mark = self.mark();
+        match self.constexpr()? {
+            Val::Number(x) => Ok(x),
+            _ => Err(BasicError {
+                marks: vec![mark],
+                message: format!("Expected a constant number here"),
                 help: None,
             }),
         }
@@ -615,6 +672,30 @@ impl<'a> Parser<'a> {
                 Ok(Expr {
                     mark,
                     desc: ExprDesc::Next(genexpr.into()),
+                })
+            }
+            Token::Name("DISASM") => {
+                self.gettok();
+                self.expect(Token::LParen)?;
+                let fexpr = self.expr(0)?;
+                self.consume(Token::Comma);
+                self.expect(Token::RParen)?;
+                Ok(Expr {
+                    mark,
+                    desc: ExprDesc::Disasm(fexpr.into()),
+                })
+            }
+            Token::Name("APPEND") => {
+                self.gettok();
+                self.expect(Token::LParen)?;
+                let listexpr = self.expr(0)?;
+                self.expect(Token::Comma)?;
+                let itemexpr = self.expr(0)?;
+                self.consume(Token::Comma);
+                self.expect(Token::RParen)?;
+                Ok(Expr {
+                    mark,
+                    desc: ExprDesc::Binop(Binop::Append, listexpr.into(), itemexpr.into()),
                 })
             }
             Token::Name(name) if !self.keywords.contains(name) => {

@@ -21,6 +21,7 @@ pub enum Opcode {
     // stack manipulation
     Pop,
     Dup,
+    Dup2,
     Unpack(u32),
 
     // variable access
@@ -38,9 +39,10 @@ pub enum Opcode {
     Yield,
     Next,
     CallFunc(u32),
-    Print,
     Binop(Binop),
     Unop(Unop),
+    Print,
+    Disasm,
 
     // Testing
     AddToTest,
@@ -244,7 +246,7 @@ impl Code {
         writeln!(out, "#### opcodes ####").unwrap();
         for (i, op) in self.ops.iter().enumerate() {
             let lineno = self.marks[i].lineno();
-            let ln = if lineno != last_lineno {
+            let ln = if lineno == last_lineno {
                 format!("")
             } else {
                 format!("{}", lineno)

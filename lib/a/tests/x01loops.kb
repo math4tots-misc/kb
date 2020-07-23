@@ -1,0 +1,37 @@
+
+
+fn* Range(a, b)
+    while a < b
+        yield a
+        a = a + 1
+    end
+end
+
+fn[test] A0()
+    "PRINT DISASM(ForInLoop)"
+end
+
+fn[test] ForInLoop()
+    list = []
+    for i in Range(5, 10)
+        APPEND(list, i)
+    end
+
+    assert list == [5, 6, 7, 8, 9]
+end
+
+fn[test] ForClassicLoop()
+    "End inclusive loop"
+    list = []
+    for i = 5 to 10
+        APPEND(list, i)
+    end
+    assert list == [5, 6, 7, 8, 9, 10]
+
+    "End exclusive loop"
+    list = []
+    for i = 5 .. 10
+        APPEND(list, i)
+    end
+    assert list == [5, 6, 7, 8, 9]
+end

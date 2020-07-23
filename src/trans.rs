@@ -1,5 +1,6 @@
 use super::ast::*;
 use super::ArgSpec;
+use super::ArithmeticBinop;
 use super::BasicError;
 use super::Binop;
 use super::Code;
@@ -182,6 +183,14 @@ fn prepare_vars_for_stmt(
         StmtDesc::While(_cond, body) => {
             prepare_vars_for_stmt(out, body, prefix)?;
         }
+        StmtDesc::ForIn(target, _container, body) => {
+            prepare_vars_for_target(out, target, prefix)?;
+            prepare_vars_for_stmt(out, body, prefix)?;
+        }
+        StmtDesc::ForClassic(target, _start, _end, _inclusive, _step, body) => {
+            prepare_vars_for_target(out, target, prefix)?;
+            prepare_vars_for_stmt(out, body, prefix)?;
+        }
         StmtDesc::Print(_)
         | StmtDesc::Assert(_)
         | StmtDesc::Expr(_)
@@ -324,6 +333,81 @@ fn translate_stmt(code: &mut Code, scope: &mut Scope, stmt: &Stmt) -> Result<(),
             code.add(Opcode::UnresolvedGoto(start_label), stmt.mark.clone());
             code.add(Opcode::Label(end_label), stmt.mark.clone());
         }
+        StmtDesc::ForIn(target, container, body) => {
+            let start_label = scope.new_label();
+            let end_label = scope.new_label();
+
+            translate_expr(code, scope, container)?;
+
+            code.add(Opcode::Label(start_label.clone()), stmt.mark.clone());
+            code.add(Opcode::Next, stmt.mark.clone());
+            code.add(
+                Opcode::UnresolvedGotoIfFalse(end_label.clone()),
+                stmt.mark.clone(),
+            );
+
+            translate_assign(code, scope, target, true)?;
+            translate_stmt(code, scope, body)?;
+            code.add(Opcode::UnresolvedGoto(start_label), stmt.mark.clone());
+
+            code.add(Opcode::Label(end_label), stmt.mark.clone());
+            code.add(Opcode::Pop, stmt.mark.clone()); // pop nil
+            code.add(Opcode::Pop, stmt.mark.clone()); // pop genobj
+        }
+        StmtDesc::ForClassic(target, start, end, inclusive, step, body) => {
+            let start_label = scope.new_label();
+            let end_label = scope.new_label();
+
+            translate_expr(code, scope, end)?;
+            translate_expr(code, scope, start)?;
+
+            code.add(Opcode::Label(start_label.clone()), stmt.mark.clone());
+
+            // Test that start <-> end
+            // NOTE: start is at TOS, so operators need to be 'flipped'
+            code.add(Opcode::Dup2, stmt.mark.clone());
+            code.add(
+                Opcode::Binop(if *step < 0.0 {
+                    if *inclusive {
+                        Binop::LessThanOrEqual
+                    } else {
+                        Binop::LessThan
+                    }
+                } else if *step > 0.0 {
+                    if *inclusive {
+                        Binop::GreaterThanOrEqual
+                    } else {
+                        Binop::GreaterThan
+                    }
+                } else {
+                    return Err(BasicError::new(
+                        vec![stmt.mark.clone()],
+                        format!("The STEP of a FOR loop cannot be zero"),
+                    ));
+                }),
+                stmt.mark.clone(),
+            );
+            code.add(
+                Opcode::UnresolvedGotoIfFalse(end_label.clone()),
+                stmt.mark.clone(),
+            );
+
+            // assign 'start' to 'target'
+            translate_assign(code, scope, target, false)?;
+
+            translate_stmt(code, scope, body)?;
+
+            code.add(Opcode::Number(*step), stmt.mark.clone());
+            code.add(
+                Opcode::Binop(Binop::Arithmetic(ArithmeticBinop::Add)),
+                stmt.mark.clone(),
+            );
+            code.add(Opcode::UnresolvedGoto(start_label), stmt.mark.clone());
+
+            code.add(Opcode::Label(end_label), stmt.mark.clone());
+            code.add(Opcode::Pop, stmt.mark.clone()); // pop start
+            code.add(Opcode::Pop, stmt.mark.clone()); // pop end
+        }
     }
     Ok(())
 }
@@ -419,6 +503,10 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
             translate_expr(code, scope, genexpr)?;
             code.add(Opcode::Next, expr.mark.clone());
             code.add(Opcode::MakeList(2), expr.mark.clone());
+        }
+        ExprDesc::Disasm(fexpr) => {
+            translate_expr(code, scope, fexpr)?;
+            code.add(Opcode::Disasm, expr.mark.clone());
         }
     }
     Ok(())
