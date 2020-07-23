@@ -109,7 +109,7 @@ pub struct Stmt {
 pub enum StmtDesc {
     Block(Vec<Stmt>),
     Return(Option<Expr>),
-    Assign(AssignTarget, Expr),
+    Assign(AssignTarget, Vec<AssignTarget>, Expr),
     Expr(Expr),
     Print(Expr),
 

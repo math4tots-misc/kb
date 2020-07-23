@@ -52,3 +52,7 @@ PRINT NEXT(g)
 
 [a, b, [c, [d]]] = [1, 2, ['cc', ['ddd']]]
 PRINT ['a', a, 'b', b, 'c=', c, 'd=', d]
+
+aa = [xx, yy] = [1, 'hi']
+
+PRINT ['aa=', aa, 'xx=', xx, 'yy=', yy]

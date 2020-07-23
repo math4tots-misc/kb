@@ -148,8 +148,11 @@ fn prepare_vars_for_stmt(
                 prepare_vars_for_stmt(out, stmt, prefix)?;
             }
         }
-        StmtDesc::Assign(target, _) => {
+        StmtDesc::Assign(target, other_targets, _) => {
             prepare_vars_for_target(out, target, prefix)?;
+            for target in other_targets {
+                prepare_vars_for_target(out, target, prefix)?;
+            }
         }
         StmtDesc::If(pairs, other) => {
             for (_cond, body) in pairs {
@@ -240,8 +243,11 @@ fn translate_stmt(code: &mut Code, scope: &mut Scope, stmt: &Stmt) -> Result<(),
             }
             code.add(Opcode::Return, stmt.mark.clone());
         }
-        StmtDesc::Assign(target, expr) => {
+        StmtDesc::Assign(target, other_targets, expr) => {
             translate_expr(code, scope, expr)?;
+            for target in other_targets.iter().rev() {
+                translate_assign(code, scope, target, false)?;
+            }
             translate_assign(code, scope, target, true)?;
         }
         StmtDesc::Expr(expr) => {

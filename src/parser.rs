@@ -310,13 +310,8 @@ impl<'a> Parser<'a> {
             Token::Name("var") | Token::Name("DIM") | Token::Name("LET") => {
                 self.gettok();
                 let lhs = self.expr(0)?;
-                let target = expr_to_assign_target(lhs)?;
                 self.expect(Token::Eq)?;
-                let setexpr = self.expr(0)?;
-                Ok(Stmt {
-                    mark,
-                    desc: StmtDesc::Assign(target, setexpr),
-                })
+                self.rhs_assignment(mark, lhs)
             }
             Token::Name("if") => {
                 self.gettok();
@@ -364,12 +359,7 @@ impl<'a> Parser<'a> {
             _ => {
                 let expr = self.expr(0)?;
                 if self.consume(Token::Eq) {
-                    let target = expr_to_assign_target(expr)?;
-                    let rhs = self.expr(0)?;
-                    Ok(Stmt {
-                        mark,
-                        desc: StmtDesc::Assign(target, rhs.into()),
-                    })
+                    self.rhs_assignment(mark, expr)
                 } else {
                     Ok(Stmt {
                         mark,
@@ -378,6 +368,24 @@ impl<'a> Parser<'a> {
                 }
             }
         }
+    }
+    fn rhs_assignment(&mut self, mark: Mark, lhs: Expr) -> Result<Stmt, BasicError> {
+        let mut exprs = vec![lhs, self.expr(0)?];
+        while self.consume(Token::Eq) {
+            exprs.push(self.expr(0)?);
+        }
+
+        let target = expr_to_assign_target(exprs.remove(0))?;
+        let rhs = exprs.pop().unwrap();
+        let mut other_targets = Vec::new();
+        for expr in exprs {
+            other_targets.push(expr_to_assign_target(expr)?);
+        }
+
+        Ok(Stmt {
+            mark,
+            desc: StmtDesc::Assign(target, other_targets, rhs.into()),
+        })
     }
     fn constexpr(&mut self) -> Result<Val, BasicError> {
         let expr = self.expr(0)?;
