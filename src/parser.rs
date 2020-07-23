@@ -22,7 +22,7 @@ const POSTFIX_PREC: Prec = 1000;
 const KEYWORDS: &[&'static str] = &[
     "fn", "import", "var", "if", "elif", "else", "end", "is", "not", "and", "or", "in", "yield",
     // (mostly) legacy all-caps keywords
-    "PRINT", "GOTO", "DIM", "LET",
+    "PRINT", "GOTO", "DIM", "LET", "IF", "ELSEIF", "ELSE", "END", "DO", "WHILE", "LOOP",
     // NEXT has been changed from its original meaning -- it will instead resume a generator object
     // and return a [next-val-or-nil, has-next] pair
     "NEXT",
@@ -164,6 +164,27 @@ impl<'a> Parser<'a> {
             unique_name: "".to_owned().into(),
         })
     }
+    fn at_end(&mut self) -> bool {
+        self.at(Token::Name("end")) || self.at(Token::Name("END"))
+    }
+    fn at_elif(&mut self) -> bool {
+        self.at(Token::Name("elif")) || self.at(Token::Name("ELSEIF"))
+    }
+    fn at_else(&mut self) -> bool {
+        self.at(Token::Name("else")) || self.at(Token::Name("ELSE"))
+    }
+    fn expect_end(&mut self) -> Result<(), BasicError> {
+        if !self.consume(Token::Name("END")) {
+            self.expect(Token::Name("end"))?;
+        }
+        Ok(())
+    }
+    fn consume_elif(&mut self) -> bool {
+        self.consume(Token::Name("elif")) || self.consume(Token::Name("ELSEIF"))
+    }
+    fn consume_else(&mut self) -> bool {
+        self.consume(Token::Name("else")) || self.consume(Token::Name("ELSE"))
+    }
     fn func(&mut self) -> Result<FuncDisplay, BasicError> {
         let mark = self.mark();
         self.expect(Token::Name("fn"))?;
@@ -224,17 +245,14 @@ impl<'a> Parser<'a> {
     }
     fn block(&mut self) -> Result<Stmt, BasicError> {
         let block = self.block_body()?;
-        self.expect(Token::Name("end"))?;
+        self.expect_end()?;
         Ok(block)
     }
     fn block_body(&mut self) -> Result<Stmt, BasicError> {
         let mark = self.mark();
         let mut stmts = Vec::new();
         self.consume_delim();
-        while !self.at(Token::Name("end"))
-            && !self.at(Token::Name("elif"))
-            && !self.at(Token::Name("else"))
-        {
+        while !self.at_end() && !self.at_elif() && !self.at_else() {
             let new_stmts = self.maybe_labeled_stmt()?;
             self.delim()?;
             stmts.extend(new_stmts);
@@ -313,7 +331,7 @@ impl<'a> Parser<'a> {
                 self.expect(Token::Eq)?;
                 self.rhs_assignment(mark, lhs)
             }
-            Token::Name("if") => {
+            Token::Name("if") | Token::Name("IF") => {
                 self.gettok();
                 let mut pairs = Vec::new();
                 let mut other = None;
@@ -322,12 +340,12 @@ impl<'a> Parser<'a> {
                     self.delim()?;
                     let body = self.block_body()?;
                     pairs.push((cond, body));
-                    if !self.consume(Token::Name("elif")) {
-                        if self.consume(Token::Name("else")) {
+                    if !self.consume_elif() {
+                        if self.consume_else() {
                             self.delim()?;
                             other = Some(self.block_body()?.into());
                         }
-                        self.expect(Token::Name("end"))?;
+                        self.expect_end()?;
                         break;
                     }
                 }
