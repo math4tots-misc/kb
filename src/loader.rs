@@ -3,6 +3,7 @@ use super::BasicError;
 use super::File;
 use super::RcStr;
 use super::Source;
+use super::PRELUDE_NAME;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::Path;
@@ -80,7 +81,7 @@ impl Loader {
 
     pub fn load(&mut self, module_name: &RcStr) -> Result<Vec<File>, BasicError> {
         let mut files = Vec::new();
-        let mut stack = vec![module_name.clone()];
+        let mut stack = vec![module_name.clone(), PRELUDE_NAME.into()];
         let mut seen: HashSet<RcStr> = stack.clone().into_iter().collect();
         while let Some(name) = stack.pop() {
             let source = match self.find_source(&name)? {

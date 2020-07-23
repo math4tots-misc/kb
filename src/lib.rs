@@ -24,6 +24,8 @@ pub use trans::*;
 pub use val::*;
 pub use vm::*;
 
+pub const PRELUDE_NAME: &'static str = "__prelude";
+
 #[derive(Debug)]
 pub struct BasicError {
     pub marks: Vec<Mark>,

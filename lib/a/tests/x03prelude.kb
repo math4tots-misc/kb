@@ -1,0 +1,9 @@
+
+
+fn[test] PreludeFunction()
+    list = []
+    for i in range(5)
+        APPEND(list, i)
+    end
+    assert list == [0, 1, 2, 3, 4]
+end

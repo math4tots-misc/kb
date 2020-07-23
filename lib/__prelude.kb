@@ -2,3 +2,15 @@
 fn print(x)
     PRINT x
 end
+
+fn* range(a, b=nil, step=1)
+    if b == nil
+        b = a
+        a = 0
+    end
+
+    while a < b
+        yield a
+        a = a + step
+    end
+end

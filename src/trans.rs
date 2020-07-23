@@ -7,6 +7,7 @@ use super::Code;
 use super::Opcode;
 use super::RcStr;
 use super::VarScope;
+use super::PRELUDE_NAME;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::rc::Rc;
@@ -560,6 +561,7 @@ impl Scope {
     pub fn rget(&self, name: &str) -> Option<&Item> {
         self.qget(name)
             .or_else(|| self.qget(&format!("{}#{}", self.file_name, name)))
+            .or_else(|| self.qget(&format!("{}#{}", PRELUDE_NAME, name)))
     }
     pub fn qget(&self, qualified_name: &str) -> Option<&Item> {
         self.locals
