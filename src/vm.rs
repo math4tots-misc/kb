@@ -392,6 +392,17 @@ fn step<H: Handler>(
                         .into());
                     }
                 },
+                Unop::Name => match val {
+                    Val::Func(func) => func.0.name().into(),
+                    _ => {
+                        scope.push_trace(code.marks()[*i - 1].clone());
+                        return Err(format!(
+                            concat!("NAME requires a function argument but got {}"),
+                            val,
+                        )
+                        .into());
+                    }
+                }
             };
             stack.push(ret);
         }

@@ -9,3 +9,7 @@ fn[test] PreludeFunction
     end
     assert list == [0, 1, 2, 3, 4]
 end
+
+fn[test] FuncName
+    assert NAME(range) == '__prelude#range'
+end

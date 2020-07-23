@@ -24,14 +24,14 @@ const KEYWORDS: &[&'static str] = &[
     "assert", "true", "false", "to",
     // --------------------- (mostly) legacy all-caps keywords -------------------------
     "PRINT", "GOTO", "DIM", "LET", "IF", "ELSEIF", "ELSE", "END", "DO", "WHILE", "LOOP", "FUNCTION",
-    "TO", "DISASM", "LEN",
+    "TO",
     // NEXT has been changed from its original meaning
     //     originally it was for denoting the end of a FOR loop
     //     now it will instead resume a generator object
     //       and return a [next-val-or-nil, has-next] pair
     "NEXT",
     // --------------------- special ops all-caps keywords -------------------------
-    "APPEND",
+    "APPEND", "NAME", "DISASM", "LEN",
 ];
 
 pub fn parse(source: &Rc<Source>) -> Result<File, BasicError> {
@@ -711,6 +711,17 @@ impl<'a> Parser<'a> {
                 Ok(Expr {
                     mark,
                     desc: ExprDesc::Unop(Unop::Len, expr.into()),
+                })
+            }
+            Token::Name("NAME") => {
+                self.gettok();
+                self.expect(Token::LParen)?;
+                let expr = self.expr(0)?;
+                self.consume(Token::Comma);
+                self.expect(Token::RParen)?;
+                Ok(Expr {
+                    mark,
+                    desc: ExprDesc::Unop(Unop::Name, expr.into()),
                 })
             }
             Token::Name(name) if !self.keywords.contains(name) => {

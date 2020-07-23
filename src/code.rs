@@ -87,6 +87,7 @@ pub enum Unop {
     Arithmetic(ArithmeticUnop),
 
     Len,
+    Name,
 }
 
 #[derive(Debug, Clone, Copy)]
