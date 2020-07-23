@@ -179,7 +179,8 @@ pub fn lex(source: &Rc<Source>) -> Result<Vec<(Token, Mark)>, BasicError> {
                     if let Some(tok) = tok {
                         match tok {
                             Token::LParen | Token::LBracket => pstack.push(true),
-                            Token::LBrace => pstack.push(false),
+                            // for KB at least, curly braces will also consume newlines
+                            Token::LBrace => pstack.push(true),
                             Token::RParen | Token::RBracket | Token::RBrace => match pstack.pop() {
                                 Ok(()) => {}
                                 Err(message) => {
