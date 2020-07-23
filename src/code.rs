@@ -248,3 +248,15 @@ impl Code {
         ret.into()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::mem::size_of;
+
+    #[test]
+    fn enum_sizes() {
+        // checking that rust will properly fold nested enums
+        assert_eq!(size_of::<Binop>(), size_of::<ArithmeticBinop>());
+    }
+}
