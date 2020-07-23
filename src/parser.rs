@@ -135,7 +135,9 @@ impl<'a> Parser<'a> {
         while !self.at(Token::EOF) {
             match self.peek() {
                 Token::Name("import") => imports.push(self.import_()?),
-                Token::Name("fn") | Token::Name("FUNCTION") => funcs.push(self.func()?),
+                Token::Name("fn") | Token::Name("FUNCTION") | Token::Name("SUB") => {
+                    funcs.push(self.func()?)
+                }
                 _ => stmts.extend(self.maybe_labeled_stmt()?),
             }
             self.delim()?;
@@ -193,7 +195,7 @@ impl<'a> Parser<'a> {
     }
     fn func(&mut self) -> Result<FuncDisplay, BasicError> {
         let mark = self.mark();
-        if !self.consume(Token::Name("FUNCTION")) {
+        if !self.consume(Token::Name("FUNCTION")) && !self.consume(Token::Name("SUB")) {
             self.expect(Token::Name("fn"))?;
         }
         let generator = self.consume(Token::Star);
