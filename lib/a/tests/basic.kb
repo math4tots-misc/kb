@@ -6,3 +6,17 @@ fn[test] Sanity()
     assert 1 == 1
     assert 'abc' == 'abc'
 end
+
+fn[test] GotoLineNumber()
+
+    i = 0
+    total = 0
+
+    10 total = total + i
+    20 i = i + 1
+    if i < 10
+        GOTO 10
+    end
+
+    assert total == 45
+end
