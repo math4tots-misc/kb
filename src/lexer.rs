@@ -110,6 +110,13 @@ pub fn lex(source: &Rc<Source>) -> Result<Vec<(Token, Mark)>, BasicError> {
                     } else {
                         state = State::String(c, String::new());
                     }
+                } else if c == '#' {
+                    if let Some((Token::Name("r"), _)) = ret.last() {
+                        ret.pop().unwrap();
+                        state = State::DeepRawStringStart(i, 1);
+                    } else {
+                        state = State::LineComment;
+                    }
                 } else {
                     let tok = match c {
                         '\0' => Some(Token::EOF),
@@ -245,6 +252,43 @@ pub fn lex(source: &Rc<Source>) -> Result<Vec<(Token, Mark)>, BasicError> {
                     state = State::Neutral;
                 }
             }
+            State::DeepRawStringStart(start, hlen) => match c {
+                '#' => state = State::DeepRawStringStart(start, hlen + 1),
+                '"' | '\'' => state = State::DeepRawStringBody(i + 1, c, hlen),
+                _ => {
+                    return Err(BasicError::new(
+                        vec![Mark {
+                            source: source.clone(),
+                            pos: i,
+                        }],
+                        "Expected quote for raw string".into(),
+                    ))
+                }
+            },
+            State::DeepRawStringBody(start, quote, hlen) => {
+                if c == quote {
+                    state = State::DeepRawStringEnd(start, i, quote, hlen, hlen);
+                }
+            }
+            State::DeepRawStringEnd(start, end, quote, shlen, hlen) => {
+                assert!(hlen > 0);
+                if c == '#' {
+                    if hlen == 1 {
+                        ret.push((
+                            Token::RawString(&s[start..end]),
+                            Mark {
+                                source: source.clone(),
+                                pos: start,
+                            },
+                        ));
+                        state = State::Neutral;
+                    } else {
+                        state = State::DeepRawStringEnd(start, end, quote, shlen, hlen - 1);
+                    }
+                } else {
+                    state = State::DeepRawStringBody(start, quote, shlen)
+                }
+            }
             State::RawString(q, start) => {
                 if c == q {
                     ret.push((
@@ -298,6 +342,11 @@ pub fn lex(source: &Rc<Source>) -> Result<Vec<(Token, Mark)>, BasicError> {
                 string.push_str(s);
                 state = State::String(q, string);
             }
+            State::LineComment => {
+                if c == '\n' {
+                    state = State::Neutral;
+                }
+            }
         }
     }
     if let State::Neutral = &state {
@@ -320,9 +369,13 @@ enum State {
     Digits(usize),
     Number(usize),
     Name(usize),
+    DeepRawStringStart(usize, usize),
+    DeepRawStringBody(usize, char, usize),
+    DeepRawStringEnd(usize, usize, char, usize, usize),
     RawString(char, usize),
     String(char, String),
     StringEscaped(char, String),
+    LineComment,
 }
 
 struct ParenStack {
@@ -400,6 +453,15 @@ mod tests {
     fn raw_string_literals() {
         let src = mksrc(r####" r"hi" "####);
         assert_eq!(lex(&src), vec![RawString("hi"), EOF]);
+
+        let src = mksrc(r####" r#"hello " "# "####);
+        assert_eq!(lex(&src), vec![RawString("hello \" "), EOF]);
+
+        let src = mksrc(r####" r##"world"## "####);
+        assert_eq!(lex(&src), vec![RawString("world"), EOF]);
+
+        let src = mksrc(r####" r##"hello "# "## "####);
+        assert_eq!(lex(&src), vec![RawString("hello \"# "), EOF]);
     }
 
     #[test]
