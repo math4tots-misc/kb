@@ -1,5 +1,5 @@
 
-fn[test] StringLen()
+fn[test] StringLen
     "ASCII strlen"
     x = "foobar"
     assert LEN(x) == 6
@@ -9,7 +9,7 @@ fn[test] StringLen()
     assert LEN(x) == 2
 end
 
-fn[test] ListLen()
+fn[test] ListLen
     assert LEN([]) == 0
 
     x = [1, 2, 3]

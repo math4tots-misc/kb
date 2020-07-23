@@ -1,6 +1,6 @@
 
 
-fn[test] PreludeFunction()
+fn[test] PreludeFunction
     list = []
     for i in range(5)
         APPEND(list, i)

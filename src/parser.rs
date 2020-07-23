@@ -205,11 +205,10 @@ impl<'a> Parser<'a> {
             false
         };
         let name = self.expect_name()?;
-        let argspec = {
+        let argspec = if self.consume(Token::LParen) {
             let mut req = Vec::new();
             let mut def = Vec::new();
             let mut var = None;
-            self.expect(Token::LParen)?;
             'fin: loop {
                 // required parameters
                 while self.at(Pat::Name) && self.lookahead(1) != Some(&Token::Eq) {
@@ -246,6 +245,8 @@ impl<'a> Parser<'a> {
                 break;
             }
             ArgSpec { req, def, var }
+        } else {
+            ArgSpec::empty()
         };
         let body = if self.consume(Token::Eq) {
             Stmt {

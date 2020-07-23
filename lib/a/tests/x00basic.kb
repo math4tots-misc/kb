@@ -1,14 +1,13 @@
 
 
-fn[test] Sanity()
+fn[test] Sanity
     assert true
     assert 1 != 2
     assert 1 == 1
     assert 'abc' == 'abc'
 end
 
-fn[test] GotoLineNumber()
-
+fn[test] GotoLineNumber
     i = 0
     total = 0
 
@@ -21,7 +20,7 @@ fn[test] GotoLineNumber()
     assert total == 45
 end
 
-fn[test] StringLiterals()
+fn[test] StringLiterals
     x = r"hi"
     assert x == 'hi'
 end
