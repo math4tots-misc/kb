@@ -78,9 +78,14 @@ impl Vars {
     fn force_add(&mut self, var: Var) -> Result<(), BasicError> {
         assert_eq!(self.list.len(), self.map.len());
         if let Some(oldvar) = self.map.get(&var.name) {
-            Err(BasicError::new(
+            Err(BasicError::new_with_help(
                 vec![var.mark.clone(), oldvar.mark.clone()],
-                format!("Conflicting definition of {}", var.name),
+                format!("Conflicting definitions of {}", var.name),
+                format!(concat!(
+                    "To reduce the chance of confusion, it is considered an ",
+                    "error for a function to share a name with a normal variable ",
+                    "or even another function.",
+                )),
             ))
         } else {
             self.map.insert(var.name.clone(), var.clone());
@@ -101,6 +106,15 @@ fn prepare_vars_for_file(out: &mut Vars, file: &mut File) -> Result<(), BasicErr
         imp.unique_name = format!("{}#{}", file_name, imp.alias).into();
     }
 
+    prepare_vars_for_stmt(out, &mut file.body, Some(&file_name))?;
+
+    // while we allow variables to be assigned to multiple times,
+    // we disallow functions to share names with normal variables
+    // or even other functions.
+    //
+    // To enforce this, we add the function variables last, and
+    // raise an error if we encounter any conflicts
+
     for func in &mut file.funcs {
         prepare_vars_for_func(func)?;
         let var = mkvar(
@@ -110,10 +124,9 @@ fn prepare_vars_for_file(out: &mut Vars, file: &mut File) -> Result<(), BasicErr
             out.len(),
         );
         func.as_var = Some(var.clone());
-        out.add(var);
+        out.force_add(var)?;
     }
 
-    prepare_vars_for_stmt(out, &mut file.body, Some(&file_name))?;
     Ok(())
 }
 
