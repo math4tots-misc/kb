@@ -42,16 +42,22 @@ const UNOPS: &[(&'static str, Unop)] = &[
     ("LEN", Unop::Len),
 ];
 
+const BINOPS: &[(&'static str, Binop)] = &[
+    ("APPEND", Binop::Append),
+];
+
 pub fn parse(source: &Rc<Source>) -> Result<File, BasicError> {
     let toks = lex(source)?;
     let keywords: HashSet<&'static str> = KEYWORDS.iter().map(|s| *s).collect();
     let unop_map: HashMap<&'static str, Unop> = UNOPS.to_vec().into_iter().collect();
+    let binop_map: HashMap<&'static str, Binop> = BINOPS.to_vec().into_iter().collect();
     let mut parser = Parser {
         source: source.clone(),
         toks,
         i: 0,
         keywords,
         unop_map,
+        binop_map,
     };
     let file = parser.file()?;
     Ok(file)
@@ -63,6 +69,7 @@ struct Parser<'a> {
     i: usize,
     keywords: HashSet<&'static str>,
     unop_map: HashMap<&'static str, Unop>,
+    binop_map: HashMap<&'static str, Binop>,
 }
 
 impl<'a> Parser<'a> {
@@ -700,17 +707,18 @@ impl<'a> Parser<'a> {
                     desc: ExprDesc::Disasm(fexpr.into()),
                 })
             }
-            Token::Name("APPEND") => {
+            Token::Name(name) if self.binop_map.contains_key(name) => {
+                let op = *self.binop_map.get(name).unwrap();
                 self.gettok();
                 self.expect(Token::LParen)?;
-                let listexpr = self.expr(0)?;
+                let expr1 = self.expr(0)?;
                 self.expect(Token::Comma)?;
-                let itemexpr = self.expr(0)?;
+                let expr2 = self.expr(0)?;
                 self.consume(Token::Comma);
                 self.expect(Token::RParen)?;
                 Ok(Expr {
                     mark,
-                    desc: ExprDesc::Binop(Binop::Append, listexpr.into(), itemexpr.into()),
+                    desc: ExprDesc::Binop(op, expr1.into(), expr2.into()),
                 })
             }
             Token::Name(name) if self.unop_map.contains_key(name) => {
