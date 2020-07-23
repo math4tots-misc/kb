@@ -380,6 +380,21 @@ fn step<H: Handler>(
                         ArithmeticUnop::Positive => Val::Number(val),
                     }
                 }
+                Unop::Len => match val {
+                    Val::String(s) => {
+                        Val::Number(s.charlen() as f64)
+                    }
+                    Val::List(list) => {
+                        Val::Number(list.borrow().len() as f64)
+                    }
+                    _ => {
+                        scope.push_trace(code.marks()[*i - 1].clone());
+                        return Err(format!(
+                            concat!("LEN requires a string or list argument but got {}"),
+                            val,
+                        ).into())
+                    }
+                },
             };
             stack.push(ret);
         }

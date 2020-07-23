@@ -85,6 +85,8 @@ pub enum ArithmeticBinop {
 #[derive(Debug, Clone, Copy)]
 pub enum Unop {
     Arithmetic(ArithmeticUnop),
+
+    Len,
 }
 
 #[derive(Debug, Clone, Copy)]

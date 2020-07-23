@@ -1,0 +1,17 @@
+
+fn[test] StringLen()
+    "ASCII strlen"
+    x = "foobar"
+    assert LEN(x) == 6
+
+    "Unicode strlen"
+    x = "한글"
+    assert LEN(x) == 2
+end
+
+fn[test] ListLen()
+    assert LEN([]) == 0
+
+    x = [1, 2, 3]
+    assert LEN(x) == 3
+end

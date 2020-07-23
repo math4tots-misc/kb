@@ -24,7 +24,7 @@ const KEYWORDS: &[&'static str] = &[
     "assert", "true", "false", "to",
     // --------------------- (mostly) legacy all-caps keywords -------------------------
     "PRINT", "GOTO", "DIM", "LET", "IF", "ELSEIF", "ELSE", "END", "DO", "WHILE", "LOOP", "FUNCTION",
-    "TO", "DISASM",
+    "TO", "DISASM", "LEN",
     // NEXT has been changed from its original meaning
     //     originally it was for denoting the end of a FOR loop
     //     now it will instead resume a generator object
@@ -697,6 +697,17 @@ impl<'a> Parser<'a> {
                 Ok(Expr {
                     mark,
                     desc: ExprDesc::Binop(Binop::Append, listexpr.into(), itemexpr.into()),
+                })
+            }
+            Token::Name("LEN") => {
+                self.gettok();
+                self.expect(Token::LParen)?;
+                let expr = self.expr(0)?;
+                self.consume(Token::Comma);
+                self.expect(Token::RParen)?;
+                Ok(Expr {
+                    mark,
+                    desc: ExprDesc::Unop(Unop::Len, expr.into()),
                 })
             }
             Token::Name(name) if !self.keywords.contains(name) => {
