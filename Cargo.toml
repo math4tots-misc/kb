@@ -3,6 +3,9 @@ name = "kb"
 version = "0.0.1"
 authors = ["Kyumin Kim <math4tots@users.noreply.github.com>"]
 edition = "2018"
+license = "Apache-2.0"
+repository = "https://github.com/math4tots/kb"
+description = "K's BASIC"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
