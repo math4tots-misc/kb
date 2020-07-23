@@ -446,6 +446,31 @@ fn step<H: Handler>(
             };
             stack.push(ret);
         }
+        Opcode::SetItem => {
+            let j = stack.pop().unwrap();
+            let owner = stack.pop().unwrap();
+            let val = stack.pop().unwrap();
+            match owner {
+                Val::List(list) => {
+                    let len = list.borrow().len();
+                    if let Some(j) = index(&j, len) {
+                        list.borrow_mut()[j] = val;
+                    } else {
+                        scope.push_trace(code.marks()[*i - 1].clone());
+                        return Err(format!(
+                            "Invalid list index {:?} (len = {})", j, len,
+                        ).into())
+                    }
+                }
+                lhs => {
+                    scope.push_trace(code.marks()[*i - 1].clone());
+                    return Err(format!(concat!(
+                        "SETITEM requries its first element to be a list ",
+                        "or map but got {:?}",
+                    ), lhs).into())
+                }
+            }
+        }
         Opcode::Print => {
             let x = stack.pop().unwrap();
             handler.print(scope, x)?;

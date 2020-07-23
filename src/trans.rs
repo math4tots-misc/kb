@@ -216,6 +216,7 @@ fn prepare_vars_for_target(
                 prepare_vars_for_target(out, subtarget, prefix)?;
             }
         }
+        AssignTargetDesc::Subscript(..) => {}
     }
     Ok(())
 }
@@ -438,6 +439,14 @@ fn translate_assign(
             for subtarget in list.iter().rev() {
                 translate_assign(code, scope, subtarget, true)?;
             }
+        }
+        AssignTargetDesc::Subscript(owner, index) => {
+            if !consume {
+                code.add(Opcode::Dup, target.mark.clone());
+            }
+            translate_expr(code, scope, owner)?;
+            translate_expr(code, scope, index)?;
+            code.add(Opcode::SetItem, target.mark.clone());
         }
     }
     Ok(())

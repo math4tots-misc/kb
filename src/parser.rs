@@ -801,6 +801,12 @@ fn expr_to_assign_target(expr: Expr) -> Result<AssignTarget, BasicError> {
                 desc: AssignTargetDesc::List(targets),
             })
         }
+        ExprDesc::Binop(Binop::GetItem, owner, index) => {
+            Ok(AssignTarget {
+                mark: expr.mark,
+                desc: AssignTargetDesc::Subscript(*owner, *index),
+            })
+        }
         _ => Err(BasicError {
             marks: vec![expr.mark],
             message: format!("The left hand side is not assignable"),

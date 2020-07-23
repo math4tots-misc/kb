@@ -132,6 +132,7 @@ pub struct AssignTarget {
 pub enum AssignTargetDesc {
     Name(RcStr),
     List(Vec<AssignTarget>),
+    Subscript(Expr, Expr),
 }
 
 #[derive(Debug)]

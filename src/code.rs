@@ -41,6 +41,7 @@ pub enum Opcode {
     CallFunc(u32),
     Binop(Binop),
     Unop(Unop),
+    SetItem,
     Print,
     Disasm,
 
