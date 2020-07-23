@@ -42,6 +42,9 @@ pub fn translate_files(mut files: Vec<File>) -> Result<Code, BasicError> {
         for func in &file.funcs {
             let func_code = translate_func(&mut scope, func)?;
             code.add(Opcode::NewFunc(Rc::new(func_code)), func.mark.clone());
+            if func.test {
+                code.add(Opcode::AddToTest, func.mark.clone());
+            }
             let var = func.as_var.as_ref().unwrap();
             code.add(Opcode::Set(var.vscope, var.index), func.mark.clone());
         }

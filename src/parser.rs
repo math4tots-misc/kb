@@ -191,6 +191,13 @@ impl<'a> Parser<'a> {
             self.expect(Token::Name("fn"))?;
         }
         let generator = self.consume(Token::Star);
+        let test = if self.consume(Token::LBracket) {
+            let test = self.consume(Token::Name("test"));
+            self.expect(Token::RBracket)?;
+            test
+        } else {
+            false
+        };
         let name = self.expect_name()?;
         let argspec = {
             let mut req = Vec::new();
@@ -245,6 +252,7 @@ impl<'a> Parser<'a> {
         Ok(FuncDisplay {
             mark,
             generator,
+            test,
             short_name: name,
             argspec,
             body,

@@ -41,6 +41,7 @@ pub enum Opcode {
     Print,
     Binop(Binop),
     Unop(Unop),
+    AddToTest,
 
     // (should come last) unresolved control flow ops
     Label(RcStr),

@@ -1,0 +1,66 @@
+import a.other
+
+fn foo(a, x=22, *rest)
+    PRINT ["foo", x, rest]
+end
+
+fn* gen()
+    yield 1
+    yield 2 + 3
+    yield 'hi'
+end
+
+FUNCTION F(A, B) = A + B
+fn k(a, b) = a * b
+
+fn[test] sanity()
+    PRINT "Hello world!"
+
+    other.foo()
+
+    foo(2, 32, 1, 2, 3)
+    foo(4)
+    foo(4, 'hi')
+
+
+    DIM i = 0
+    DIM total = 0
+
+    10 if i < 100
+        i = i + 1
+        total = total + i
+        GOTO 10
+    else
+        PRINT '** Finishing loop **'
+    end
+
+    PRINT total
+    PRINT -25 % 19
+    PRINT -25 * 19
+    PRINT -25 - 19
+
+    i = 0
+    total = 0
+    while i < 1000
+        i = i + 1
+        total = total + i
+    end
+    PRINT total
+
+    DIM g = gen()
+    PRINT g
+    PRINT NEXT(g)
+    PRINT NEXT(g)
+    PRINT NEXT(g)
+    PRINT NEXT(g)
+
+    [a, b, [c, [d]]] = [1, 2, ['cc', ['ddd']]]
+    PRINT ['a', a, 'b', b, 'c=', c, 'd=', d]
+
+    aa = [xx, yy] = [1, 'hi']
+
+    PRINT ['aa=', aa, 'xx=', xx, 'yy=', yy]
+
+    PRINT ['F(12, 5)=', F(12, 5)]
+    PRINT ['k(12, 5)=', k(12, 5)]
+end

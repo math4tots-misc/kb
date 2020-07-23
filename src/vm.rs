@@ -35,6 +35,24 @@ impl<H: Handler> Vm<H> {
         exec(&mut self.scope, &mut self.handler, code)?;
         Ok(())
     }
+    pub fn run_tests(&mut self, prefixes: &Vec<RcStr>) -> Result<(), Val> {
+        let tests = std::mem::replace(&mut self.scope.tests, vec![]);
+        for test in tests {
+            if prefixes
+                .iter()
+                .any(|prefix| test.name().starts_with(prefix.as_ref()))
+            {
+                print!("  test {}... ", test.name());
+                callfunc(&mut self.scope, &mut self.handler, &test, vec![])?;
+                println!("ok");
+            }
+        }
+        Ok(())
+    }
+    pub fn exec_and_run_tests(&mut self, code: &Code, prefixes: &Vec<RcStr>) -> Result<(), Val> {
+        self.exec(code)?;
+        self.run_tests(prefixes)
+    }
     pub fn trace(&self) -> &Vec<Mark> {
         &self.scope.trace
     }
@@ -255,7 +273,7 @@ fn step<H: Handler>(
                 func
             } else {
                 scope.push_trace(code.marks()[*i - 1].clone());
-                return Err(format!("{} is not a function", func).into())
+                return Err(format!("{} is not a function", func).into());
             };
 
             scope.push_trace(code.marks()[*i - 1].clone());
@@ -356,6 +374,19 @@ fn step<H: Handler>(
             };
             stack.push(ret);
         }
+        Opcode::AddToTest => {
+            let val = stack.last().unwrap().clone();
+            if let Val::Func(code) = &val {
+                scope.tests.push(code.0.clone());
+            } else {
+                scope.push_trace(code.marks()[*i - 1].clone());
+                return Err(format!(
+                    concat!("Tests need to be functions, but {} is not a function",),
+                    val,
+                )
+                .into());
+            }
+        }
         Opcode::Goto(pos) => {
             *i = *pos as usize;
         }
@@ -391,6 +422,7 @@ pub struct Scope {
     globals: IndexedMap,
     locals: Vec<IndexedMap>,
     trace: Vec<Mark>,
+    tests: Vec<Rc<Code>>,
 }
 
 impl Scope {
@@ -399,6 +431,7 @@ impl Scope {
             globals: IndexedMap::new(),
             locals: vec![],
             trace: vec![],
+            tests: vec![],
         }
     }
     pub fn get_name(&self, vscope: VarScope, index: u32) -> &RcStr {

@@ -86,6 +86,7 @@ pub struct Import {
 pub struct FuncDisplay {
     pub mark: Mark,
     pub generator: bool,
+    pub test: bool,
     pub short_name: RcStr,
     pub argspec: ArgSpec,
     pub body: Stmt,
