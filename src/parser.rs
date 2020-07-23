@@ -558,6 +558,14 @@ impl<'a> Parser<'a> {
                     desc: ExprDesc::CallFunc(e.into(), args),
                 })
             }
+            Token::LBracket => {
+                let index = self.expr(0)?;
+                self.expect(Token::RBracket)?;
+                Ok(Expr {
+                    mark,
+                    desc: ExprDesc::Binop(Binop::GetItem, e.into(), index.into()),
+                })
+            }
             Token::Plus
             | Token::Minus
             | Token::Star
@@ -818,7 +826,7 @@ fn precof<'a>(tok: &Token<'a>) -> Prec {
         | Token::GreaterThanOrEqual => CMP_PREC,
         Token::Minus | Token::Plus => ADD_PREC,
         Token::Star | Token::Slash | Token::Slash2 | Token::Percent => MUL_PREC,
-        Token::LParen | Token::Dot => POSTFIX_PREC,
+        Token::LParen | Token::LBracket | Token::Dot => POSTFIX_PREC,
         _ => -1,
     }
 }

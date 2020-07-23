@@ -351,9 +351,47 @@ fn step<H: Handler>(
 
                 // list
                 Binop::Append => {
-                    let list = lhs.expect_list()?;
+                    let list = if let Some(list) = lhs.list() {
+                        list
+                    } else {
+                        scope.push_trace(code.marks()[*i - 1].clone());
+                        return Err("APPEND requries its first element to be a list".into())
+                    };
                     list.borrow_mut().push(rhs);
                     lhs
+                }
+                Binop::GetItem => {
+                    match lhs {
+                        Val::List(list) => {
+                            let len = list.borrow().len();
+                            if let Some(index) = index(&rhs, len) {
+                                list.borrow()[index].clone()
+                            } else {
+                                scope.push_trace(code.marks()[*i - 1].clone());
+                                return Err(format!(
+                                    "Invalid list index {:?} (len = {})", rhs, len,
+                                ).into())
+                            }
+                        }
+                        Val::String(string) => {
+                            let len = string.len();
+                            if let Some(index) = index(&rhs, len) {
+                                format!("{}", string.getchar(index).unwrap()).into()
+                            } else {
+                                scope.push_trace(code.marks()[*i - 1].clone());
+                                return Err(format!(
+                                    "Invalid string index {:?} (len = {})", rhs, len,
+                                ).into())
+                            }
+                        }
+                        lhs => {
+                            scope.push_trace(code.marks()[*i - 1].clone());
+                            return Err(format!(concat!(
+                                "GETITEM requries its first element to be a list, ",
+                                "string, or map but got {:?}",
+                            ), lhs).into())
+                        }
+                    }
                 }
             };
             stack.push(ret);
@@ -644,5 +682,22 @@ impl GenObj {
     fn clear(&mut self) {
         self.stack = vec![];
         self.locals = IndexedMap::new();
+    }
+}
+
+fn index(i: &Val, len: usize) -> Option<usize> {
+    match i {
+        Val::Number(i) => {
+            let mut i = *i;
+            if i < 0.0 {
+                i += len as f64;
+            }
+            if i < 0.0 || i >= len as f64 {
+                None
+            } else {
+                Some(i as usize)
+            }
+        }
+        _ => None,
     }
 }

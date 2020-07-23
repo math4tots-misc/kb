@@ -1,0 +1,16 @@
+
+
+fn[test] String
+    s = 'abc'
+    assert s[0] == 'a'
+    assert s[1] == 'b'
+    assert s[2] == 'c'
+end
+
+
+fn[test] List
+    list = ['aaa', 22, 55]
+    assert list[0] == 'aaa'
+    assert list[1] == 22
+    assert list[2] == 55
+end

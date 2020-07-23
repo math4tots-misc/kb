@@ -68,8 +68,9 @@ pub enum Binop {
     GreaterThan,
     GreaterThanOrEqual,
 
-    // list
+    // list, str
     Append,
+    GetItem,
 }
 
 #[derive(Debug, Clone, Copy)]
