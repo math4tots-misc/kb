@@ -88,6 +88,8 @@ pub enum Unop {
 
     Len,
     Name,
+    Str,
+    Repr,
 }
 
 #[derive(Debug, Clone, Copy)]

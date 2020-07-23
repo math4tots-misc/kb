@@ -10,6 +10,7 @@ use super::RcStr;
 use super::Unop;
 use super::Val;
 use std::collections::HashSet;
+use std::collections::HashMap;
 use std::rc::Rc;
 
 type Prec = i64;
@@ -31,17 +32,26 @@ const KEYWORDS: &[&'static str] = &[
     //       and return a [next-val-or-nil, has-next] pair
     "NEXT",
     // --------------------- special ops all-caps keywords -------------------------
-    "APPEND", "NAME", "DISASM", "LEN",
+    "APPEND", "NAME", "DISASM", "LEN", "STR", "REPR",
+];
+
+const UNOPS: &[(&'static str, Unop)] = &[
+    ("NAME", Unop::Name),
+    ("STR", Unop::Str),
+    ("REPR", Unop::Repr),
+    ("LEN", Unop::Len),
 ];
 
 pub fn parse(source: &Rc<Source>) -> Result<File, BasicError> {
     let toks = lex(source)?;
     let keywords: HashSet<&'static str> = KEYWORDS.iter().map(|s| *s).collect();
+    let unop_map: HashMap<&'static str, Unop> = UNOPS.to_vec().into_iter().collect();
     let mut parser = Parser {
         source: source.clone(),
         toks,
         i: 0,
         keywords,
+        unop_map,
     };
     let file = parser.file()?;
     Ok(file)
@@ -52,6 +62,7 @@ struct Parser<'a> {
     toks: Vec<(Token<'a>, Mark)>,
     i: usize,
     keywords: HashSet<&'static str>,
+    unop_map: HashMap<&'static str, Unop>,
 }
 
 impl<'a> Parser<'a> {
@@ -702,7 +713,8 @@ impl<'a> Parser<'a> {
                     desc: ExprDesc::Binop(Binop::Append, listexpr.into(), itemexpr.into()),
                 })
             }
-            Token::Name("LEN") => {
+            Token::Name(name) if self.unop_map.contains_key(name) => {
+                let op = *self.unop_map.get(name).unwrap();
                 self.gettok();
                 self.expect(Token::LParen)?;
                 let expr = self.expr(0)?;
@@ -710,18 +722,7 @@ impl<'a> Parser<'a> {
                 self.expect(Token::RParen)?;
                 Ok(Expr {
                     mark,
-                    desc: ExprDesc::Unop(Unop::Len, expr.into()),
-                })
-            }
-            Token::Name("NAME") => {
-                self.gettok();
-                self.expect(Token::LParen)?;
-                let expr = self.expr(0)?;
-                self.consume(Token::Comma);
-                self.expect(Token::RParen)?;
-                Ok(Expr {
-                    mark,
-                    desc: ExprDesc::Unop(Unop::Name, expr.into()),
+                    desc: ExprDesc::Unop(op, expr.into()),
                 })
             }
             Token::Name(name) if !self.keywords.contains(name) => {

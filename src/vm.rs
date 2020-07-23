@@ -403,6 +403,8 @@ fn step<H: Handler>(
                         .into());
                     }
                 }
+                Unop::Str => format!("{}", val).into(),
+                Unop::Repr => format!("{:?}", val).into(),
             };
             stack.push(ret);
         }
