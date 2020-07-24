@@ -33,7 +33,8 @@ pub enum Opcode {
     // control flow
     Goto(u32),
     GotoIfFalse(u32),
-    GotoIfFalseNoPop(u32),
+    GotoIfTrueElsePop(u32),
+    GotoIfFalseElsePop(u32),
     Return,
     Yield,
 
@@ -55,7 +56,8 @@ pub enum Opcode {
     Label(RcStr),
     UnresolvedGoto(RcStr),
     UnresolvedGotoIfFalse(RcStr),
-    UnresolvedGotoIfFalseNoPop(RcStr),
+    UnresolvedGotoIfTrueElsePop(RcStr),
+    UnresolvedGotoIfFalseElsePop(RcStr),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -97,6 +99,7 @@ pub enum Unop {
     Name,
     Str,
     Repr,
+    Not, // logical not
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -204,9 +207,16 @@ impl Code {
                         return Err(not_found(self.marks[i].clone(), label));
                     }
                 }
-                Opcode::UnresolvedGotoIfFalseNoPop(label) => {
+                Opcode::UnresolvedGotoIfFalseElsePop(label) => {
                     if let Some(pos) = labels.get(label).cloned() {
-                        op = Opcode::GotoIfFalseNoPop(pos);
+                        op = Opcode::GotoIfFalseElsePop(pos);
+                    } else {
+                        return Err(not_found(self.marks[i].clone(), &label));
+                    }
+                }
+                Opcode::UnresolvedGotoIfTrueElsePop(label) => {
+                    if let Some(pos) = labels.get(label).cloned() {
+                        op = Opcode::GotoIfTrueElsePop(pos);
                     } else {
                         return Err(not_found(self.marks[i].clone(), &label));
                     }

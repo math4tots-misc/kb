@@ -30,3 +30,19 @@ fn[test] ConditionalExpression
     )
     assert x == 'y gt 10'
 end
+
+fn[test] AndOr
+    assert (0 and 1) == 0
+    assert (2 and 5) == 5
+    assert (1 and 0) == 0
+
+    assert (0 or 1) == 1
+    assert (2 or 5) == 2
+    assert (1 or 0) == 1
+end
+
+fn[test] Not
+    assert (not true) == false
+    assert (not 0) == true
+    assert (not 1) == false
+end

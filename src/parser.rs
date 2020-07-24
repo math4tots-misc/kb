@@ -14,6 +14,9 @@ use std::collections::HashSet;
 use std::rc::Rc;
 
 type Prec = i64;
+const OR_PREC: Prec = 70;
+const AND_PREC: Prec = 80;
+const NOT_PREC: Prec = 90;
 const CMP_PREC: Prec = 100;
 const ADD_PREC: Prec = 120;
 const MUL_PREC: Prec = 160;
@@ -26,7 +29,7 @@ const KEYWORDS: &[&'static str] = &[
     "assert", "true", "false", "to", "then",
     // --------------------- (mostly) legacy all-caps keywords -------------------------
     "PRINT", "GOTO", "DIM", "LET", "IF", "ELSEIF", "ELSE", "END", "DO", "WHILE", "LOOP", "FUNCTION",
-    "TO", "THEN",
+    "TO", "THEN", "AND", "OR",
     // NEXT has been changed from its original meaning
     //     originally it was for denoting the end of a FOR loop
     //     now it will instead resume a generator object
@@ -617,6 +620,20 @@ impl<'a> Parser<'a> {
                     desc: ExprDesc::Binop(op, e.into(), rhs.into()),
                 })
             }
+            Token::Name("AND") | Token::Name("and") => {
+                let rhs = self.expr(AND_PREC + 1)?;
+                Ok(Expr {
+                    mark,
+                    desc: ExprDesc::And(e.into(), rhs.into()),
+                })
+            }
+            Token::Name("OR") | Token::Name("or") => {
+                let rhs = self.expr(OR_PREC + 1)?;
+                Ok(Expr {
+                    mark,
+                    desc: ExprDesc::Or(e.into(), rhs.into()),
+                })
+            }
             _ => Err(BasicError {
                 marks: vec![mark],
                 message: format!("Expected infix operator"),
@@ -694,6 +711,14 @@ impl<'a> Parser<'a> {
                 Ok(Expr {
                     mark,
                     desc: ExprDesc::Unop(op, expr.into()),
+                })
+            }
+            Token::Name("NOT") | Token::Name("not") => {
+                self.gettok();
+                let expr = self.expr(NOT_PREC)?;
+                Ok(Expr {
+                    mark,
+                    desc: ExprDesc::Unop(Unop::Not, expr.into()),
                 })
             }
             Token::Name("nil") => {
@@ -880,6 +905,8 @@ fn precof<'a>(tok: &Token<'a>) -> Prec {
         Token::Star | Token::Slash | Token::Slash2 | Token::Percent => MUL_PREC,
         Token::Caret => POW_PREC,
         Token::LParen | Token::LBracket | Token::Dot => POSTFIX_PREC,
+        Token::Name("AND") | Token::Name("and") => AND_PREC,
+        Token::Name("OR") | Token::Name("or") => OR_PREC,
         _ => -1,
     }
 }

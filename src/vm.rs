@@ -478,6 +478,7 @@ fn step<H: Handler>(
                 },
                 Unop::Str => format!("{}", val).into(),
                 Unop::Repr => format!("{:?}", val).into(),
+                Unop::Not => Val::Bool(!val.truthy()),
             };
             stack.push(ret);
         }
@@ -564,16 +565,27 @@ fn step<H: Handler>(
                 *i = *pos as usize;
             }
         }
-        Opcode::GotoIfFalseNoPop(pos) => {
+        Opcode::GotoIfFalseElsePop(pos) => {
             let item = stack.last().unwrap();
             if !item.truthy() {
                 *i = *pos as usize;
+            } else {
+                stack.pop().unwrap();
+            }
+        }
+        Opcode::GotoIfTrueElsePop(pos) => {
+            let item = stack.last().unwrap();
+            if item.truthy() {
+                *i = *pos as usize;
+            } else {
+                stack.pop().unwrap();
             }
         }
         Opcode::Label(_)
         | Opcode::UnresolvedGoto(_)
         | Opcode::UnresolvedGotoIfFalse(_)
-        | Opcode::UnresolvedGotoIfFalseNoPop(_) => {
+        | Opcode::UnresolvedGotoIfFalseElsePop(_)
+        | Opcode::UnresolvedGotoIfTrueElsePop(_) => {
             panic!("Unresolved opcode: {:?}", op);
         }
     }
