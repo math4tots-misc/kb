@@ -29,7 +29,7 @@ const KEYWORDS: &[&'static str] = &[
     "assert", "true", "false", "to", "then", "try", "catch", "throw",
     // --------------------- (mostly) legacy all-caps keywords -------------------------
     "PRINT", "GOTO", "DIM", "LET", "IF", "ELSEIF", "ELSE", "END", "DO", "WHILE", "LOOP", "FUNCTION",
-    "TO", "THEN", "AND", "OR",
+    "TO", "THEN", "AND", "OR", "SUB",
     // NEXT has been changed from its original meaning
     //     originally it was for denoting the end of a FOR loop
     //     now it will instead resume a generator object
