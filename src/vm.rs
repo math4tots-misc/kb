@@ -700,7 +700,7 @@ impl Scope {
 fn new_locals_from_vars(vars: &Vec<Var>) -> IndexedMap {
     let mut map = IndexedMap::new();
     for var in vars {
-        let index = map.insert(var.name.clone(), Val::Nil);
+        let index = map.insert(var.name.clone(), Val::Invalid);
         assert_eq!(index, var.index);
     }
     map
