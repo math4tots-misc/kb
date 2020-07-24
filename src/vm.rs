@@ -168,7 +168,7 @@ fn step<H: Handler>(
     code: &Code,
     i: &mut usize,
     stack: &mut Vec<Val>,
-    trystack: &mut Vec<u32>,
+    trystack: &mut Vec<(u32, u32)>,
 ) -> Result<StepVal, Val> {
     let op = code.fetch(*i);
     *i += 1;
@@ -180,9 +180,10 @@ fn step<H: Handler>(
     }
 
     macro_rules! handle_error {
-        ($err:expr) => {{
+        ($err:expr $(,)?) => {{
             let err: Val = $err;
-            if let Some(pos) = trystack.pop() {
+            if let Some((tracelen, pos)) = trystack.pop() {
+                scope.trunc_tracelen(tracelen as usize);
                 *i = pos as usize;
                 stack.clear();
                 stack.push(err);
@@ -251,7 +252,7 @@ fn step<H: Handler>(
                 }
                 Err(val) => {
                     addtrace!();
-                    return Err(Val::String(
+                    handle_error!(Val::String(
                         format!(
                             concat!(
                                 "Encountered an unhashable value ({:?}) while ",
@@ -286,7 +287,7 @@ fn step<H: Handler>(
             if let Some(list) = elements.list() {
                 if list.borrow().len() != *n as usize {
                     addtrace!();
-                    return Err(Val::String(
+                    handle_error!(Val::String(
                         format!(
                             "Expected {} values, but got a list with {} values",
                             n,
@@ -304,7 +305,7 @@ fn step<H: Handler>(
                 let vec = get0!(genobj.to_vec(scope, handler));
                 if vec.len() != *n as usize {
                     addtrace!();
-                    return Err(Val::String(
+                    handle_error!(Val::String(
                         format!("Expected {} values, but got {} values", n, vec.len(),).into(),
                     ));
                 }
@@ -314,7 +315,8 @@ fn step<H: Handler>(
         Opcode::Get(vscope, index) => {
             let val = scope.get(*vscope, *index).clone();
             if let Val::Invalid = val {
-                return Err(Val::String(
+                addtrace!();
+                handle_error!(Val::String(
                     format!(
                         "Variable {} used before being set",
                         scope.get_name(*vscope, *index)
@@ -333,7 +335,7 @@ fn step<H: Handler>(
             scope.set(*vscope, *index, val);
         }
         Opcode::AddTry(pos) => {
-            trystack.push(*pos);
+            trystack.push((scope.tracelen() as u32, *pos));
         }
         Opcode::PopTry => {
             trystack.pop();
@@ -374,7 +376,7 @@ fn step<H: Handler>(
                 func
             } else {
                 addtrace!();
-                return Err(format!("{} is not a function", func).into());
+                handle_error!(format!("{} is not a function", func).into());
             };
 
             if func.generator() {
@@ -566,7 +568,7 @@ fn step<H: Handler>(
                 stack.push(func.0.format().into());
             } else {
                 addtrace!();
-                return Err(
+                handle_error!(
                     format!(concat!("DISASM requires a function argument but got {}"), f,).into(),
                 );
             }
@@ -689,6 +691,13 @@ impl Scope {
     pub fn pop(&mut self) -> IndexedMap {
         self.locals.pop().unwrap()
     }
+    pub fn tracelen(&self) -> usize {
+        self.trace.len()
+    }
+    pub fn trunc_tracelen(&mut self, new_len: usize) {
+        self.trace.truncate(new_len);
+        assert_eq!(self.trace.len(), new_len);
+    }
     pub fn push_trace(&mut self, mark: Mark) {
         self.trace.push(mark);
     }
@@ -753,7 +762,7 @@ pub struct GenObj {
     locals: IndexedMap,
     i: usize,
     stack: Vec<Val>,
-    trystack: Vec<u32>,
+    trystack: Vec<(u32, u32)>,
 }
 
 impl GenObj {

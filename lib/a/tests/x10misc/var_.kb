@@ -1,0 +1,6 @@
+
+
+TEST GetBeforeSet
+    assert x
+    x = 10
+end
