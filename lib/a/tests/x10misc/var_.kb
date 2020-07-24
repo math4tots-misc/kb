@@ -1,6 +1,18 @@
 
 
 TEST GetBeforeSet
-    assert x
+
+    thrown = false
+
+    try
+        x
+    catch e
+        thrown = true
+    end
+
+    assert thrown
+
+    # We set x here so that we don't get a
+    # parse/compile time error
     x = 10
 end
