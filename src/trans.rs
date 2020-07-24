@@ -199,6 +199,7 @@ fn prepare_vars_for_stmt(
         }
         StmtDesc::Print(_)
         | StmtDesc::Assert(_)
+        | StmtDesc::Throw(_)
         | StmtDesc::Expr(_)
         | StmtDesc::Return(_)
         | StmtDesc::Label(_)
@@ -436,6 +437,10 @@ fn translate_stmt(code: &mut Code, scope: &mut Scope, stmt: &Stmt) -> Result<(),
 
             // Jump location after main body finishes
             code.add(Opcode::Label(end_label), stmt.mark.clone());
+        }
+        StmtDesc::Throw(expr) => {
+            translate_expr(code, scope, expr)?;
+            code.add(Opcode::Throw, stmt.mark.clone());
         }
     }
     Ok(())

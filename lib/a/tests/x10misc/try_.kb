@@ -1,4 +1,4 @@
-TEST try_
+TEST Try
     # catch case
     passed_catch = false
     try
@@ -15,4 +15,12 @@ TEST try_
         passed_catch = true
     end
     assert not passed_catch
+end
+
+TEST ThrowDirect
+    try
+        throw 10
+    catch e
+    end
+    assert e == 10
 end

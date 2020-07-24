@@ -26,7 +26,7 @@ const POSTFIX_PREC: Prec = 1000;
 
 const KEYWORDS: &[&'static str] = &[
     "fn", "import", "var", "if", "elif", "else", "end", "is", "not", "and", "or", "in", "yield",
-    "assert", "true", "false", "to", "then", "try", "catch",
+    "assert", "true", "false", "to", "then", "try", "catch", "throw",
     // --------------------- (mostly) legacy all-caps keywords -------------------------
     "PRINT", "GOTO", "DIM", "LET", "IF", "ELSEIF", "ELSE", "END", "DO", "WHILE", "LOOP", "FUNCTION",
     "TO", "THEN", "AND", "OR",
@@ -496,6 +496,14 @@ impl<'a> Parser<'a> {
                 Ok(Stmt {
                     mark,
                     desc: StmtDesc::Try(body, target, onerr),
+                })
+            }
+            Token::Name("throw") => {
+                self.gettok();
+                let expr = self.expr(0)?;
+                Ok(Stmt {
+                    mark,
+                    desc: StmtDesc::Throw(expr),
                 })
             }
             Token::Name(name)

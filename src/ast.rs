@@ -123,6 +123,7 @@ pub enum StmtDesc {
     ForIn(AssignTarget, Expr, Box<Stmt>),
     ForClassic(AssignTarget, Expr, Expr, bool, f64, Box<Stmt>),
     Try(Box<Stmt>, AssignTarget, Box<Stmt>),
+    Throw(Expr),
 }
 
 pub struct AssignTarget {

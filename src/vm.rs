@@ -180,16 +180,17 @@ fn step<H: Handler>(
     }
 
     macro_rules! handle_error {
-        ($err:expr) => {
+        ($err:expr) => {{
+            let err: Val = $err;
             if let Some(pos) = trystack.pop() {
                 *i = pos as usize;
                 stack.clear();
-                stack.push($err);
+                stack.push(err);
                 return Ok(StepVal::None);
             } else {
-                return Err($err);
+                return Err(err);
             }
-        };
+        }};
     }
 
     // for better error handling by including the stack
@@ -336,6 +337,10 @@ fn step<H: Handler>(
         }
         Opcode::PopTry => {
             trystack.pop();
+        }
+        Opcode::Throw => {
+            let exc = stack.pop().unwrap();
+            handle_error!(exc);
         }
         Opcode::Return => {
             let val = stack.pop().unwrap();

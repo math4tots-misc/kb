@@ -33,6 +33,7 @@ pub enum Opcode {
     // error handling
     AddTry(u32),
     PopTry,
+    Throw,
 
     // control flow
     Goto(u32),
