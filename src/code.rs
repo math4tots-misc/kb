@@ -16,6 +16,7 @@ pub enum Opcode {
     Number(f64),
     String(RcStr),
     MakeList(u32),
+    MakeSet(u32),
     NewFunc(Rc<Code>),
 
     // stack manipulation

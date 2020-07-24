@@ -1,0 +1,20 @@
+fn[test] Str
+    # When getting the elements as a list,
+    # the set will always sort the input so that the
+    # values are deterministic
+    #
+    # If different types are mixed in, values will
+    # be sorted first by type, then all elements of
+    # the same type will be sorted together
+    #
+
+    set = {3, 2, 1}
+
+    assert set == {1, 2, 3}
+    assert STR(set) == "{1, 2, 3}"
+
+
+    set = {'a', 3, 2, 1, "b", "ab"}
+    assert set == {1, 2, 3, "a", "ab", "b"}
+    assert STR(set) == '{1, 2, 3, "a", "ab", "b"}'
+end

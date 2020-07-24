@@ -464,6 +464,12 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
             }
             code.add(Opcode::MakeList(items.len() as u32), expr.mark.clone());
         }
+        ExprDesc::Set(items) => {
+            for item in items {
+                translate_expr(code, scope, item)?;
+            }
+            code.add(Opcode::MakeSet(items.len() as u32), expr.mark.clone());
+        }
         ExprDesc::GetVar(name) => {
             let var = scope.getvar_or_error(&expr.mark, name)?;
             code.add(Opcode::Get(var.vscope, var.index), expr.mark.clone());

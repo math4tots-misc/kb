@@ -659,6 +659,21 @@ impl<'a> Parser<'a> {
                     desc: ExprDesc::List(exprs),
                 })
             }
+            Token::LBrace => {
+                self.gettok();
+                let mut exprs = Vec::new();
+                while !self.consume(Token::RBrace) {
+                    exprs.push(self.expr(0)?);
+                    if !self.consume(Token::Comma) {
+                        self.expect(Token::RBrace)?;
+                        break;
+                    }
+                }
+                Ok(Expr {
+                    mark,
+                    desc: ExprDesc::Set(exprs),
+                })
+            }
             Token::Minus | Token::Plus => {
                 let tok = self.gettok();
                 let op = match tok {

@@ -12,8 +12,10 @@ use super::RcStr;
 use super::Unop;
 use super::Val;
 use super::Var;
+use super::Key;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::rc::Rc;
 
 pub struct Vm<H: Handler> {
@@ -183,6 +185,28 @@ fn step<H: Handler>(
             let start = stack.len() - *len as usize;
             let list: Vec<_> = stack.drain(start..).collect();
             stack.push(list.into());
+        }
+        Opcode::MakeSet(len) => {
+            let start = stack.len() - *len as usize;
+            let set: Result<HashSet<_>, Val> = stack.drain(start..).map(Key::from_val).collect();
+            match set {
+                Ok(set) => {
+                    stack.push(set.into());
+                }
+                Err(val) => {
+                    scope.push_trace(code.marks()[*i - 1].clone());
+                    return Err(Val::String(
+                        format!(
+                            concat!(
+                                "Encountered an unhashable value ({:?}) while ",
+                                "trying to create a set",
+                            ),
+                            val,
+                        )
+                        .into(),
+                    ));
+                }
+            }
         }
         Opcode::NewFunc(code) => {
             stack.push(Val::Func(Func(code.clone())));
@@ -428,10 +452,11 @@ fn step<H: Handler>(
                 Unop::Len => match val {
                     Val::String(s) => Val::Number(s.charlen() as f64),
                     Val::List(list) => Val::Number(list.borrow().len() as f64),
+                    Val::Set(set) => Val::Number(set.borrow().len() as f64),
                     _ => {
                         scope.push_trace(code.marks()[*i - 1].clone());
                         return Err(format!(
-                            concat!("LEN requires a string or list argument but got {}"),
+                            concat!("LEN requires a string, list, set or map argument but got {}"),
                             val,
                         )
                         .into());

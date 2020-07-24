@@ -148,6 +148,7 @@ pub enum ExprDesc {
     Number(f64),
     String(RcStr),
     List(Vec<Expr>),
+    Set(Vec<Expr>),
 
     GetVar(RcStr),
     GetAttr(Box<Expr>, RcStr),

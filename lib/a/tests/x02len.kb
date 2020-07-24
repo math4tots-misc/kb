@@ -15,3 +15,8 @@ SUB[test] ListLen
     x = [1, 2, 3]
     assert LEN(x) == 3
 end
+
+fn[test] SetLen
+    set = {1, 2, 3}
+    assert LEN(set) == 3
+end

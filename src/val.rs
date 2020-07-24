@@ -1,3 +1,4 @@
+use super::Key;
 use super::Code;
 use super::GenObj;
 use super::RcStr;
@@ -7,6 +8,7 @@ use std::cell::RefMut;
 use std::cmp;
 use std::fmt;
 use std::rc::Rc;
+use std::collections::HashSet;
 
 #[derive(Clone, PartialEq)]
 pub enum Val {
@@ -23,6 +25,7 @@ pub enum Val {
     String(RcStr),
 
     List(Rc<List>),
+    Set(Rc<Set>),
 
     Func(Func),
 
@@ -38,6 +41,7 @@ impl Val {
             Self::Number(x) => *x != 0.0,
             Self::String(x) => x.len() > 0,
             Self::List(x) => x.borrow().len() > 0,
+            Self::Set(x) => x.borrow().len() > 0,
             Self::Func(_) | Self::GenObj(_) => true,
         }
     }
@@ -161,6 +165,17 @@ impl From<Vec<Val>> for Val {
     }
 }
 
+impl From<HashSet<Key>> for Val {
+    fn from(set: HashSet<Key>) -> Self {
+        Self::Set(
+            Set {
+                set: RefCell::new(set),
+            }
+            .into(),
+        )
+    }
+}
+
 impl fmt::Debug for Val {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -193,6 +208,16 @@ impl fmt::Debug for Val {
                 }
                 write!(f, "]")
             }
+            Val::Set(xs) => {
+                write!(f, "{{")?;
+                for (i, x) in xs.sorted_keys().into_iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{:?}", x.clone().to_val())?;
+                }
+                write!(f, "}}")
+            }
             Val::Func(func) => write!(f, "<func {}>", func.0.name()),
             Val::GenObj(_) => write!(f, "<genobj>"),
         }
@@ -222,6 +247,9 @@ impl List {
     pub fn borrow_mut(&self) -> RefMut<Vec<Val>> {
         self.vec.borrow_mut()
     }
+    pub fn into_inner(self) -> Vec<Val> {
+        self.vec.into_inner()
+    }
 }
 
 impl cmp::PartialEq for List {
@@ -231,6 +259,28 @@ impl cmp::PartialEq for List {
 }
 
 impl cmp::Eq for List {}
+
+#[derive(PartialEq, Eq)]
+pub struct Set {
+    set: RefCell<HashSet<Key>>,
+}
+
+impl Set {
+    pub fn borrow(&self) -> Ref<HashSet<Key>> {
+        self.set.borrow()
+    }
+    pub fn borrow_mut(&self) -> RefMut<HashSet<Key>> {
+        self.set.borrow_mut()
+    }
+    pub fn into_inner(self) -> HashSet<Key> {
+        self.set.into_inner()
+    }
+    pub fn sorted_keys(&self) -> Vec<Key> {
+        let mut vec: Vec<_> = self.borrow().clone().into_iter().collect();
+        vec.sort();
+        vec
+    }
+}
 
 #[derive(Clone)]
 pub struct Func(pub Rc<Code>);
