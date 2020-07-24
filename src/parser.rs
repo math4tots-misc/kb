@@ -18,6 +18,7 @@ const CMP_PREC: Prec = 100;
 const ADD_PREC: Prec = 120;
 const MUL_PREC: Prec = 160;
 const UNARY_PREC: Prec = 200;
+const POW_PREC: Prec = 300;
 const POSTFIX_PREC: Prec = 1000;
 
 const KEYWORDS: &[&'static str] = &[
@@ -579,6 +580,7 @@ impl<'a> Parser<'a> {
             | Token::Slash
             | Token::Slash2
             | Token::Percent
+            | Token::Caret
             | Token::Eq2
             | Token::Ne
             | Token::LessThan
@@ -592,6 +594,7 @@ impl<'a> Parser<'a> {
                     Token::Slash => Binop::Arithmetic(ArithmeticBinop::Divide),
                     Token::Slash2 => Binop::Arithmetic(ArithmeticBinop::TruncDivide),
                     Token::Percent => Binop::Arithmetic(ArithmeticBinop::Remainder),
+                    Token::Caret => Binop::Arithmetic(ArithmeticBinop::Exponentiate),
                     Token::Eq2 => Binop::Equal,
                     Token::Ne => Binop::NotEqual,
                     Token::LessThan => Binop::LessThan,
@@ -601,7 +604,14 @@ impl<'a> Parser<'a> {
                     _ => panic!("binop {:?}", token),
                 };
                 let prec = precof(&token);
-                let rhs = self.expr(prec + 1)?;
+                let rhs = self.expr(
+                    match token {
+                        // right associative
+                        Token::Caret => prec,
+                        // left associative (most things besides '^')
+                        _ => prec + 1,
+                    }
+                )?;
                 Ok(Expr {
                     mark,
                     desc: ExprDesc::Binop(op, e.into(), rhs.into()),
@@ -852,6 +862,7 @@ fn precof<'a>(tok: &Token<'a>) -> Prec {
         | Token::GreaterThanOrEqual => CMP_PREC,
         Token::Minus | Token::Plus => ADD_PREC,
         Token::Star | Token::Slash | Token::Slash2 | Token::Percent => MUL_PREC,
+        Token::Caret => POW_PREC,
         Token::LParen | Token::LBracket | Token::Dot => POSTFIX_PREC,
         _ => -1,
     }

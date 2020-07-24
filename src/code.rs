@@ -83,6 +83,7 @@ pub enum ArithmeticBinop {
     Divide,
     TruncDivide,
     Remainder,
+    Exponentiate,
 
     // trig
     ATan2,

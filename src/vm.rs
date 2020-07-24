@@ -362,6 +362,7 @@ fn step<H: Handler>(
                         ArithmeticBinop::Divide => Val::Number(lhs / rhs),
                         ArithmeticBinop::TruncDivide => Val::Number((lhs / rhs).trunc()),
                         ArithmeticBinop::Remainder => Val::Number(lhs % rhs),
+                        ArithmeticBinop::Exponentiate => Val::Number(lhs.powf(rhs)),
                         ArithmeticBinop::ATan2 => Val::Number(lhs.atan2(rhs)),
                     }
                 }

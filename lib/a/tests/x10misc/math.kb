@@ -1,0 +1,28 @@
+
+fn[test] Trig
+    assert ACOS(COS(PI / 2)) == PI / 2
+    assert COS(PI) == -1
+    assert COS(0) == 1
+    assert COS(PI / 2) < 0.00000001
+
+    assert ASIN(SIN(PI / 2)) == PI / 2
+    assert SIN(PI) < 0.00000001
+    assert SIN(PI / 2) == 1
+
+    assert ATAN2(1, 1) == PI / 4
+end
+
+fn[test] SubtractionAssociativity
+    assert 2 - 3 - 4 == -5
+    assert (2 - 3) - 4 == -5
+    assert 2 - (3 - 4) == 3
+end
+
+fn[test] Exponentiate
+    assert 2^5 == 32
+
+    # Test for associativity
+    assert 2^2^3 == 256
+    assert 2^(2^3) == 256
+    assert (2^2)^3 == 64
+end
