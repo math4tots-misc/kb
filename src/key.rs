@@ -36,6 +36,13 @@ impl Key {
                     Err(val) => Err(val),
                 }
             }
+            Val::Set(set) => {
+                let set = match Rc::try_unwrap(set) {
+                    Ok(set) => set.into_inner(),
+                    Err(set) => set.borrow().clone(),
+                };
+                Ok(Key::Set(HSet(set)))
+            }
             _ => Err(val),
         }
     }
