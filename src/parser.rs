@@ -37,6 +37,7 @@ const KEYWORDS: &[&'static str] = &[
     "NEXT",
     // --------------------- special ops all-caps keywords -------------------------
     "APPEND", "NAME", "DISASM", "LEN", "STR", "REPR", "COS", "SIN", "TAN", "ACOS", "ASIN", "ATAN",
+    "TEST",
 ];
 
 const UNOPS: &[(&'static str, Unop)] = &[
@@ -164,7 +165,7 @@ impl<'a> Parser<'a> {
         while !self.at(Token::EOF) {
             match self.peek() {
                 Token::Name("import") => imports.push(self.import_()?),
-                Token::Name("fn") | Token::Name("FUNCTION") | Token::Name("SUB") => {
+                Token::Name("fn") | Token::Name("FUNCTION") | Token::Name("SUB") | Token::Name("TEST") => {
                     funcs.push(self.func()?)
                 }
                 _ => stmts.extend(self.maybe_labeled_stmt()?),
@@ -224,17 +225,27 @@ impl<'a> Parser<'a> {
     }
     fn func(&mut self) -> Result<FuncDisplay, BasicError> {
         let mark = self.mark();
-        if !self.consume(Token::Name("FUNCTION")) && !self.consume(Token::Name("SUB")) {
+        let mut test = false;
+
+        // the leading keyword
+        //   * FUNCTION/SUB/fn are all equivalent
+        //   * TEST is almost equivalent, except that it implies [test]
+        if self.consume(Token::Name("TEST")) {
+            test = true;
+        } else if !self.consume(Token::Name("FUNCTION")) && !self.consume(Token::Name("SUB")) {
             self.expect(Token::Name("fn"))?;
         }
+
+        // A '*' after the leading function keyword implies this a generator function
         let generator = self.consume(Token::Star);
-        let test = if self.consume(Token::LBracket) {
-            let test = self.consume(Token::Name("test"));
+
+        // optional '[test]' attribute. Implied if the TEST keyword was used
+        if self.consume(Token::LBracket) {
+            if self.consume(Token::Name("test")) {
+                test = true;
+            }
             self.expect(Token::RBracket)?;
-            test
-        } else {
-            false
-        };
+        }
         let name = self.expect_name()?;
         let argspec = if self.consume(Token::LParen) {
             let mut req = Vec::new();
