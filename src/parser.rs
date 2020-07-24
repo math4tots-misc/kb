@@ -32,6 +32,7 @@ const CONTROL_KEYWORDS: &[&str] = &[
     // ============================= statement level =============================
     "var", "if", "elif", "else", "IF", "ELSEIF", "ELSE", "THEN", "then", "DO", "while", "WHILE", "for", "FOR",
     "LOOP", "TO", "to", "try", "catch", "throw", "PRINT", "GOTO", "DIM", "LET", "assert",
+    "return", "RETURN",
 ];
 
 const EXPR_KEYWORDS: &[&str] = &["and", "or", "AND", "OR", "in", "IN", "is", "not", "yield"];
@@ -401,6 +402,18 @@ impl<'a> Parser<'a> {
                 Ok(Stmt {
                     mark,
                     desc: StmtDesc::Goto(label),
+                })
+            }
+            Token::Name("RETURN") | Token::Name("return") => {
+                self.gettok();
+                let expr = if self.at_delim() {
+                    None
+                } else {
+                    Some(self.expr(0)?)
+                };
+                Ok(Stmt {
+                    mark,
+                    desc: StmtDesc::Return(expr),
                 })
             }
             Token::Name("var") | Token::Name("DIM") | Token::Name("LET") => {
