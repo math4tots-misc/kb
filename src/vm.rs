@@ -168,6 +168,27 @@ fn step<H: Handler>(
 ) -> Result<StepVal, Val> {
     let op = code.fetch(*i);
     *i += 1;
+
+    macro_rules! addtrace {
+        () => {
+            scope.push_trace(code.marks()[*i - 1].clone());
+        };
+    }
+
+    // for better error handling by including the stack
+    // trace whenever we need to throw
+    macro_rules! get {
+        ($r:expr) => {
+            match $r {
+                Ok(t) => t,
+                Err(err) => {
+                    addtrace!();
+                    return Err(err);
+                }
+            }
+        };
+    }
+
     match op {
         Opcode::Nil => {
             stack.push(Val::Nil);
@@ -194,7 +215,7 @@ fn step<H: Handler>(
                     stack.push(set.into());
                 }
                 Err(val) => {
-                    scope.push_trace(code.marks()[*i - 1].clone());
+                    addtrace!();
                     return Err(Val::String(
                         format!(
                             concat!(
@@ -229,7 +250,7 @@ fn step<H: Handler>(
             let elements = stack.pop().unwrap();
             if let Some(list) = elements.list() {
                 if list.borrow().len() != *n as usize {
-                    scope.push_trace(code.marks()[*i - 1].clone());
+                    addtrace!();
                     return Err(Val::String(
                         format!(
                             "Expected {} values, but got a list with {} values",
@@ -247,7 +268,7 @@ fn step<H: Handler>(
                 let mut genobj = genobj.0.borrow_mut();
                 let vec = genobj.to_vec(scope, handler)?;
                 if vec.len() != *n as usize {
-                    scope.push_trace(code.marks()[*i - 1].clone());
+                    addtrace!();
                     return Err(Val::String(
                         format!("Expected {} values, but got {} values", n, vec.len(),).into(),
                     ));
@@ -307,11 +328,11 @@ fn step<H: Handler>(
             let func = if let Some(func) = func.func() {
                 func
             } else {
-                scope.push_trace(code.marks()[*i - 1].clone());
+                addtrace!();
                 return Err(format!("{} is not a function", func).into());
             };
 
-            scope.push_trace(code.marks()[*i - 1].clone());
+            addtrace!();
             if func.generator() {
                 // generator; create a generator object
                 let genobj = mkgenobj(func.clone(), args)?;
@@ -332,7 +353,7 @@ fn step<H: Handler>(
                     let lhs = if let Some(lhs) = lhs.number() {
                         lhs
                     } else {
-                        scope.push_trace(code.marks()[*i - 1].clone());
+                        addtrace!();
                         return Err(format!(
                             concat!(
                                 "The left hand side of this arithmetic operation ",
@@ -345,7 +366,7 @@ fn step<H: Handler>(
                     let rhs = if let Some(rhs) = rhs.number() {
                         rhs
                     } else {
-                        scope.push_trace(code.marks()[*i - 1].clone());
+                        addtrace!();
                         return Err(format!(
                             concat!(
                                 "The right hand side of this arithmetic operation ",
@@ -372,49 +393,32 @@ fn step<H: Handler>(
                 Binop::IsNot => Val::Bool(!lhs.is(&rhs)),
                 Binop::Equal => Val::Bool(lhs == rhs),
                 Binop::NotEqual => Val::Bool(lhs != rhs),
-                Binop::LessThan => Val::Bool(lhs.lt(&rhs)?),
-                Binop::LessThanOrEqual => Val::Bool(!rhs.lt(&lhs)?),
-                Binop::GreaterThan => Val::Bool(rhs.lt(&lhs)?),
-                Binop::GreaterThanOrEqual => Val::Bool(!lhs.lt(&rhs)?),
-                Binop::In => Val::Bool(lhs.in_(&rhs)?),
-                Binop::NotIn => Val::Bool(!lhs.in_(&rhs)?),
+                Binop::LessThan => Val::Bool(get!(lhs.lt(&rhs))),
+                Binop::LessThanOrEqual => Val::Bool(!get!(rhs.lt(&lhs))),
+                Binop::GreaterThan => Val::Bool(get!(rhs.lt(&lhs))),
+                Binop::GreaterThanOrEqual => Val::Bool(!get!(lhs.lt(&rhs))),
+                Binop::In => Val::Bool(get!(lhs.in_(&rhs))),
+                Binop::NotIn => Val::Bool(!get!(lhs.in_(&rhs))),
 
                 // list
                 Binop::Append => {
-                    let list = if let Some(list) = lhs.list() {
-                        list
-                    } else {
-                        scope.push_trace(code.marks()[*i - 1].clone());
-                        return Err("APPEND requries its first element to be a list".into());
-                    };
+                    let list = get!(lhs.expect_list());
                     list.borrow_mut().push(rhs);
                     lhs
                 }
                 Binop::GetItem => match lhs {
                     Val::List(list) => {
                         let len = list.borrow().len();
-                        if let Some(index) = index(&rhs, len) {
-                            list.borrow()[index].clone()
-                        } else {
-                            scope.push_trace(code.marks()[*i - 1].clone());
-                            return Err(
-                                format!("Invalid list index {:?} (len = {})", rhs, len,).into()
-                            );
-                        }
+                        let index = get!(index(&rhs, len));
+                        list.borrow()[index].clone()
                     }
                     Val::String(string) => {
                         let len = string.len();
-                        if let Some(index) = index(&rhs, len) {
-                            format!("{}", string.getchar(index).unwrap()).into()
-                        } else {
-                            scope.push_trace(code.marks()[*i - 1].clone());
-                            return Err(
-                                format!("Invalid string index {:?} (len = {})", rhs, len,).into()
-                            );
-                        }
+                        let index = get!(index(&rhs, len));
+                        format!("{}", string.getchar(index).unwrap()).into()
                     }
                     lhs => {
-                        scope.push_trace(code.marks()[*i - 1].clone());
+                        addtrace!();
                         return Err(format!(
                             concat!(
                                 "GETITEM requries its first element to be a list, ",
@@ -435,7 +439,7 @@ fn step<H: Handler>(
                     let val = if let Some(val) = val.number() {
                         val
                     } else {
-                        scope.push_trace(code.marks()[*i - 1].clone());
+                        addtrace!();
                         return Err(format!(
                             concat!(
                                 "The argument to this unary arithmetic operator ",
@@ -461,7 +465,7 @@ fn step<H: Handler>(
                     Val::List(list) => Val::Number(list.borrow().len() as f64),
                     Val::Set(set) => Val::Number(set.borrow().len() as f64),
                     _ => {
-                        scope.push_trace(code.marks()[*i - 1].clone());
+                        addtrace!();
                         return Err(format!(
                             concat!("LEN requires a string, list, set or map argument but got {}"),
                             val,
@@ -472,7 +476,7 @@ fn step<H: Handler>(
                 Unop::Name => match val {
                     Val::Func(func) => func.0.name().into(),
                     _ => {
-                        scope.push_trace(code.marks()[*i - 1].clone());
+                        addtrace!();
                         return Err(format!(
                             concat!("NAME requires a function argument but got {}"),
                             val,
@@ -493,15 +497,11 @@ fn step<H: Handler>(
             match owner {
                 Val::List(list) => {
                     let len = list.borrow().len();
-                    if let Some(j) = index(&j, len) {
-                        list.borrow_mut()[j] = val;
-                    } else {
-                        scope.push_trace(code.marks()[*i - 1].clone());
-                        return Err(format!("Invalid list index {:?} (len = {})", j, len,).into());
-                    }
+                    let j = get!(index(&j, len));
+                    list.borrow_mut()[j] = val;
                 }
                 lhs => {
-                    scope.push_trace(code.marks()[*i - 1].clone());
+                    addtrace!();
                     return Err(format!(
                         concat!(
                             "SETITEM requries its first element to be a list ",
@@ -522,7 +522,7 @@ fn step<H: Handler>(
             if let Val::Func(func) = &f {
                 stack.push(func.0.format().into());
             } else {
-                scope.push_trace(code.marks()[*i - 1].clone());
+                addtrace!();
                 return Err(
                     format!(concat!("DISASM requires a function argument but got {}"), f,).into(),
                 );
@@ -533,7 +533,7 @@ fn step<H: Handler>(
             if let Val::Func(code) = &val {
                 scope.tests.push(code.0.clone());
             } else {
-                scope.push_trace(code.marks()[*i - 1].clone());
+                addtrace!();
                 return Err(format!(
                     concat!("Tests need to be functions, but {} is not a function"),
                     val,
@@ -544,7 +544,7 @@ fn step<H: Handler>(
         Opcode::Assert => {
             let val = stack.pop().unwrap();
             if !val.truthy() {
-                scope.push_trace(code.marks()[*i - 1].clone());
+                addtrace!();
                 return Err(format!(concat!("Assertion failed"),).into());
             }
         }
@@ -552,7 +552,7 @@ fn step<H: Handler>(
             let rhs = stack.pop().unwrap();
             let lhs = stack.pop().unwrap();
             if lhs != rhs {
-                scope.push_trace(code.marks()[*i - 1].clone());
+                addtrace!();
                 return Err(format!(
                     concat!("Assertion failed: expected {} to equal {}"),
                     lhs, rhs,
@@ -763,7 +763,7 @@ impl GenObj {
     }
 }
 
-fn index(i: &Val, len: usize) -> Option<usize> {
+fn index(i: &Val, len: usize) -> Result<usize, Val> {
     match i {
         Val::Number(i) => {
             let mut i = *i;
@@ -771,11 +771,13 @@ fn index(i: &Val, len: usize) -> Option<usize> {
                 i += len as f64;
             }
             if i < 0.0 || i >= len as f64 {
-                None
+                Err(format!("Index out of bounds (i = {}, len = {})", i, len).into())
             } else {
-                Some(i as usize)
+                Ok(i as usize)
             }
         }
-        _ => None,
+        _ => Err(
+            format!("Expected index, but got {:?}", i).into()
+        ),
     }
 }
