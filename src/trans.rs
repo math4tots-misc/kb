@@ -511,6 +511,23 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
             translate_expr(code, scope, subexpr)?;
             code.add(Opcode::Unop(*unop), expr.mark.clone());
         }
+        ExprDesc::Or(_a, _b) => {
+            panic!("TODO: Or")
+        }
+        ExprDesc::And(_a, _b) => {
+            panic!("TODO: And")
+        }
+        ExprDesc::If(cond, body, other) => {
+            let end_label = scope.new_label();
+            let other_label = scope.new_label();
+            translate_expr(code, scope, cond)?;
+            code.add(Opcode::UnresolvedGotoIfFalse(other_label.clone()), expr.mark.clone());
+            translate_expr(code, scope, body)?;
+            code.add(Opcode::UnresolvedGoto(end_label.clone()), expr.mark.clone());
+            code.add(Opcode::Label(other_label), expr.mark.clone());
+            translate_expr(code, scope, other)?;
+            code.add(Opcode::Label(end_label), expr.mark.clone());
+        }
         ExprDesc::Yield(yieldexpr) => {
             translate_expr(code, scope, yieldexpr)?;
             code.add(Opcode::Yield, expr.mark.clone());

@@ -23,10 +23,10 @@ const POSTFIX_PREC: Prec = 1000;
 
 const KEYWORDS: &[&'static str] = &[
     "fn", "import", "var", "if", "elif", "else", "end", "is", "not", "and", "or", "in", "yield",
-    "assert", "true", "false", "to",
+    "assert", "true", "false", "to", "then",
     // --------------------- (mostly) legacy all-caps keywords -------------------------
     "PRINT", "GOTO", "DIM", "LET", "IF", "ELSEIF", "ELSE", "END", "DO", "WHILE", "LOOP", "FUNCTION",
-    "TO",
+    "TO", "THEN",
     // NEXT has been changed from its original meaning
     //     originally it was for denoting the end of a FOR loop
     //     now it will instead resume a generator object
@@ -723,6 +723,22 @@ impl<'a> Parser<'a> {
                 Ok(Expr {
                     mark,
                     desc: ExprDesc::Yield(yieldexpr.into()),
+                })
+            }
+            Token::Name("if") | Token::Name("IF") => {
+                self.gettok();
+                let cond = self.expr(0)?;
+                if !self.consume(Token::Name("THEN")) {
+                    self.expect(Token::Name("then"))?;
+                }
+                let body = self.expr(0)?;
+                if !self.consume(Token::Name("ELSE")) {
+                    self.expect(Token::Name("else"))?;
+                }
+                let other = self.expr(0)?;
+                Ok(Expr {
+                    mark,
+                    desc: ExprDesc::If(cond.into(), body.into(), other.into()),
                 })
             }
             Token::Name("NEXT") => {

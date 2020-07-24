@@ -36,6 +36,7 @@ pub enum Token<'a> {
     Eq,
     Bar,
     Excalamation,
+    QMark,
 
     Eq2,
     Ne,
@@ -129,6 +130,7 @@ pub fn lex(source: &Rc<Source>) -> Result<Vec<(Token, Mark)>, BasicError> {
                         '{' => Some(Token::LBrace),
                         '}' => Some(Token::RBrace),
                         '$' => Some(Token::Dollar),
+                        '?' => Some(Token::QMark),
                         '.' => Some(
                             if ret.last().map(|p| &p.0) == Some(&Token::Dot) && last_ig_ws < i - 1 {
                                 ret.pop().unwrap();

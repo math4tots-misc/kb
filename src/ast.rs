@@ -158,6 +158,11 @@ pub enum ExprDesc {
     Binop(Binop, Box<Expr>, Box<Expr>),
     Unop(Unop, Box<Expr>),
 
+    // Logical operators
+    And(Box<Expr>, Box<Expr>),
+    Or(Box<Expr>, Box<Expr>),
+    If(Box<Expr>, Box<Expr>, Box<Expr>),
+
     Yield(Box<Expr>),
     Next(Box<Expr>), // gets [next-or-nil, has_next] from a generator
 

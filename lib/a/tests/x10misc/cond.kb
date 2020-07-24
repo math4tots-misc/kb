@@ -1,0 +1,32 @@
+
+fn[test] ConditionalExpression
+    x = if 1 then 'a' else 'b'
+    assert x == 'a'
+    x = if 0 then 'a' else 'b'
+    assert x == 'b'
+
+    # Chained
+    y = 10
+    x = (
+        if y < 10 then 'y lt 10' else
+        if y > 10 then 'y gt 10' else
+        'y eq 10'
+    )
+    assert x == 'y eq 10'
+
+    y = 5
+    x = (
+        if y < 10 then 'y lt 10' else
+        if y > 10 then 'y gt 10' else
+        'y eq 10'
+    )
+    assert x == 'y lt 10'
+
+    y = 15
+    x = (
+        if y < 10 then 'y lt 10' else
+        if y > 10 then 'y gt 10' else
+        'y eq 10'
+    )
+    assert x == 'y gt 10'
+end
