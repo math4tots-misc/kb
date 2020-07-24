@@ -1,10 +1,10 @@
 use super::RcStr;
 use super::Val;
-use std::rc::Rc;
+use std::cmp;
 use std::collections::HashSet;
 use std::hash::Hash;
 use std::hash::Hasher;
-use std::cmp;
+use std::rc::Rc;
 
 /// Hashable values
 #[derive(Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]

@@ -1,14 +1,14 @@
-use super::Key;
 use super::Code;
 use super::GenObj;
+use super::Key;
 use super::RcStr;
 use std::cell::Ref;
 use std::cell::RefCell;
 use std::cell::RefMut;
 use std::cmp;
+use std::collections::HashSet;
 use std::fmt;
 use std::rc::Rc;
-use std::collections::HashSet;
 
 #[derive(Clone, PartialEq)]
 pub enum Val {

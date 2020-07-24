@@ -6,13 +6,13 @@ use super::Code;
 use super::Func;
 use super::GenObjPtr;
 use super::Handler;
+use super::Key;
 use super::Mark;
 use super::Opcode;
 use super::RcStr;
 use super::Unop;
 use super::Val;
 use super::Var;
-use super::Key;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -380,44 +380,46 @@ fn step<H: Handler>(
                         list
                     } else {
                         scope.push_trace(code.marks()[*i - 1].clone());
-                        return Err("APPEND requries its first element to be a list".into())
+                        return Err("APPEND requries its first element to be a list".into());
                     };
                     list.borrow_mut().push(rhs);
                     lhs
                 }
-                Binop::GetItem => {
-                    match lhs {
-                        Val::List(list) => {
-                            let len = list.borrow().len();
-                            if let Some(index) = index(&rhs, len) {
-                                list.borrow()[index].clone()
-                            } else {
-                                scope.push_trace(code.marks()[*i - 1].clone());
-                                return Err(format!(
-                                    "Invalid list index {:?} (len = {})", rhs, len,
-                                ).into())
-                            }
-                        }
-                        Val::String(string) => {
-                            let len = string.len();
-                            if let Some(index) = index(&rhs, len) {
-                                format!("{}", string.getchar(index).unwrap()).into()
-                            } else {
-                                scope.push_trace(code.marks()[*i - 1].clone());
-                                return Err(format!(
-                                    "Invalid string index {:?} (len = {})", rhs, len,
-                                ).into())
-                            }
-                        }
-                        lhs => {
+                Binop::GetItem => match lhs {
+                    Val::List(list) => {
+                        let len = list.borrow().len();
+                        if let Some(index) = index(&rhs, len) {
+                            list.borrow()[index].clone()
+                        } else {
                             scope.push_trace(code.marks()[*i - 1].clone());
-                            return Err(format!(concat!(
-                                "GETITEM requries its first element to be a list, ",
-                                "string, or map but got {:?}",
-                            ), lhs).into())
+                            return Err(
+                                format!("Invalid list index {:?} (len = {})", rhs, len,).into()
+                            );
                         }
                     }
-                }
+                    Val::String(string) => {
+                        let len = string.len();
+                        if let Some(index) = index(&rhs, len) {
+                            format!("{}", string.getchar(index).unwrap()).into()
+                        } else {
+                            scope.push_trace(code.marks()[*i - 1].clone());
+                            return Err(
+                                format!("Invalid string index {:?} (len = {})", rhs, len,).into()
+                            );
+                        }
+                    }
+                    lhs => {
+                        scope.push_trace(code.marks()[*i - 1].clone());
+                        return Err(format!(
+                            concat!(
+                                "GETITEM requries its first element to be a list, ",
+                                "string, or map but got {:?}",
+                            ),
+                            lhs
+                        )
+                        .into());
+                    }
+                },
             };
             stack.push(ret);
         }
@@ -472,7 +474,7 @@ fn step<H: Handler>(
                         )
                         .into());
                     }
-                }
+                },
                 Unop::Str => format!("{}", val).into(),
                 Unop::Repr => format!("{:?}", val).into(),
             };
@@ -489,17 +491,19 @@ fn step<H: Handler>(
                         list.borrow_mut()[j] = val;
                     } else {
                         scope.push_trace(code.marks()[*i - 1].clone());
-                        return Err(format!(
-                            "Invalid list index {:?} (len = {})", j, len,
-                        ).into())
+                        return Err(format!("Invalid list index {:?} (len = {})", j, len,).into());
                     }
                 }
                 lhs => {
                     scope.push_trace(code.marks()[*i - 1].clone());
-                    return Err(format!(concat!(
-                        "SETITEM requries its first element to be a list ",
-                        "or map but got {:?}",
-                    ), lhs).into())
+                    return Err(format!(
+                        concat!(
+                            "SETITEM requries its first element to be a list ",
+                            "or map but got {:?}",
+                        ),
+                        lhs
+                    )
+                    .into());
                 }
             }
         }

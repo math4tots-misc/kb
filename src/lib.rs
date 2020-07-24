@@ -3,6 +3,7 @@
 mod ast;
 mod code;
 mod handler;
+mod key;
 mod lexer;
 mod loader;
 mod m;
@@ -11,11 +12,11 @@ mod rcstr;
 mod trans;
 mod val;
 mod vm;
-mod key;
 
 pub use ast::*;
 pub use code::*;
 pub use handler::*;
+pub use key::*;
 pub use lexer::*;
 pub use loader::*;
 pub use m::*;
@@ -24,7 +25,6 @@ pub use rcstr::*;
 pub use trans::*;
 pub use val::*;
 pub use vm::*;
-pub use key::*;
 
 pub const PRELUDE_NAME: &'static str = "__prelude";
 

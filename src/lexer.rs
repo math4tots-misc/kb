@@ -156,7 +156,8 @@ pub fn lex(source: &Rc<Source>) -> Result<Vec<(Token, Mark)>, BasicError> {
                         '!' => Some(Token::Excalamation),
                         '<' => Some(Token::LessThan),
                         '>' => Some(
-                            if ret.last().map(|p| &p.0) == Some(&Token::LessThan) && last_ig_ws < i - 1
+                            if ret.last().map(|p| &p.0) == Some(&Token::LessThan)
+                                && last_ig_ws < i - 1
                             {
                                 // old school BASIC way of spelling of '!='
                                 ret.pop().unwrap();

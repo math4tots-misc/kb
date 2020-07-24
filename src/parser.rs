@@ -9,8 +9,8 @@ use super::Mark;
 use super::RcStr;
 use super::Unop;
 use super::Val;
-use std::collections::HashSet;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::rc::Rc;
 
 type Prec = i64;
@@ -32,8 +32,7 @@ const KEYWORDS: &[&'static str] = &[
     //       and return a [next-val-or-nil, has-next] pair
     "NEXT",
     // --------------------- special ops all-caps keywords -------------------------
-    "APPEND", "NAME", "DISASM", "LEN", "STR", "REPR",
-    "COS", "SIN", "TAN", "ACOS", "ASIN", "ATAN",
+    "APPEND", "NAME", "DISASM", "LEN", "STR", "REPR", "COS", "SIN", "TAN", "ACOS", "ASIN", "ATAN",
 ];
 
 const UNOPS: &[(&'static str, Unop)] = &[
@@ -824,12 +823,10 @@ fn expr_to_assign_target(expr: Expr) -> Result<AssignTarget, BasicError> {
                 desc: AssignTargetDesc::List(targets),
             })
         }
-        ExprDesc::Binop(Binop::GetItem, owner, index) => {
-            Ok(AssignTarget {
-                mark: expr.mark,
-                desc: AssignTargetDesc::Subscript(*owner, *index),
-            })
-        }
+        ExprDesc::Binop(Binop::GetItem, owner, index) => Ok(AssignTarget {
+            mark: expr.mark,
+            desc: AssignTargetDesc::Subscript(*owner, *index),
+        }),
         _ => Err(BasicError {
             marks: vec![expr.mark],
             message: format!("The left hand side is not assignable"),
