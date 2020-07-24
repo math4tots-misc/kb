@@ -70,7 +70,7 @@ impl BasicError {
         for mark in &self.marks {
             write!(out, "{}", mark.format()).unwrap();
         }
-        writeln!(out, "ERROR: {}", self.message).unwrap();
+        writeln!(out, "{}", self.message).unwrap();
         ret
     }
 }

@@ -649,7 +649,7 @@ fn step<H: Handler>(
             if lhs != rhs {
                 addtrace!();
                 return Err(rterr!(
-                    "Assertion failed: expected {} to equal {}",
+                    "Assertion failed: expected {:?} to equal {:?}",
                     lhs,
                     rhs,
                 ));

@@ -190,6 +190,9 @@ impl Val {
             )),
         }
     }
+    pub fn as_err(&self) -> ErrVal {
+        ErrVal(self)
+    }
 }
 
 impl From<bool> for Val {
@@ -318,6 +321,19 @@ impl fmt::Display for Val {
         match self {
             Val::String(x) => write!(f, "{}", x),
             _ => write!(f, "{:?}", self),
+        }
+    }
+}
+
+pub struct ErrVal<'a>(&'a Val);
+
+impl<'a> fmt::Display for ErrVal<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.0 {
+            Val::List(list) if list.borrow().len() == 2 => {
+                write!(f, "{}: {}", list.borrow()[0], list.borrow()[1])
+            }
+            _ => write!(f, "ERROR: {}", self),
         }
     }
 }

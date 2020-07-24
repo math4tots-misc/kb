@@ -13,3 +13,29 @@ TEST Get
     assert 'a' in map
     assert 'b' not in map
 end
+
+TEST SetKeys
+    d = {
+        {1, 2}: 'A',
+        {2, 3}: 'B',
+    }
+
+    assert d == {{3, 2}: 'B', {2, 1}: 'A'}
+    assert d[{1, 2}] == 'A'
+    assert d[{2, 1}] == 'A'
+    assert LEN(d) is 2
+
+    d[{2, 1}] = 'C'
+    assert d == {{2, 3}: 'B', {1, 2}: 'C'}
+end
+
+TEST ListKeys
+    d = {
+        [1, 2]: 'LIST1',
+        [2, 1]: 'LIST2',
+        {1, 2}: 'SET',
+    }
+
+    assert LEN(d) == 3
+    assert STR(d) == '{[1, 2]: "LIST1", [2, 1]: "LIST2", {1, 2}: "SET"}'
+end

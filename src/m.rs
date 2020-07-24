@@ -60,7 +60,7 @@ fn run(loader: &mut Loader, module_name: &RcStr) -> Result<(), BasicError> {
         Ok(_) => Ok(()),
         Err(error) => Err(BasicError {
             marks: vm.trace().clone(),
-            message: format!("{}", error),
+            message: format!("{}", error.as_err()),
             help: None,
         }),
     }
@@ -100,7 +100,7 @@ fn err_trace<H: Handler, T>(vm: &mut Vm<H>, r: Result<T, Val>) -> Result<T, Basi
         Ok(t) => Ok(t),
         Err(error) => Err(BasicError {
             marks: vm.trace().clone(),
-            message: format!("{}", error),
+            message: format!("{}", error.as_err()),
             help: None,
         }),
     }
