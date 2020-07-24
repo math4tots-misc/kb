@@ -18,6 +18,12 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::rc::Rc;
 
+macro_rules! rterr {
+    ( $($args:expr),+ $(,)?) => {
+        rterr(format!( $($args),+ ))
+    };
+}
+
 pub struct Vm<H: Handler> {
     scope: Scope,
     handler: H,
@@ -105,15 +111,11 @@ fn prepare_args(spec: &ArgSpec, args: &mut Vec<Val>) -> Result<(), Val> {
         let argmax = argmin + spec.def.len();
         if spec.var.is_some() {
             if argc < argmin {
-                return Err(Val::String(
-                    format!("Expected at least {} args but got {}", argmin, argc).into(),
-                ));
+                return Err(rterr!("Expected at least {} args but got {}", argmin, argc));
             }
         } else {
             if argc < argmin || argc > argmax {
-                return Err(Val::String(
-                    format!("Expected {} to {} args but got {}", argmin, argmax, argc).into(),
-                ));
+                return Err(rterr!("Expected {} to {} args but got {}", argmin, argmax, argc));
             }
         }
         let def = &spec.def;
@@ -132,9 +134,7 @@ fn prepare_args(spec: &ArgSpec, args: &mut Vec<Val>) -> Result<(), Val> {
     } else {
         // no variadic parameter and no default parameters
         if args.len() != spec.req.len() {
-            return Err(Val::String(
-                format!("Expected {} args but got {}", spec.req.len(), args.len()).into(),
-            ));
+            return Err(rterr!("Expected {} args but got {}", spec.req.len(), args.len()));
         }
     }
     Ok(())
@@ -252,15 +252,12 @@ fn step<H: Handler>(
                 }
                 Err(val) => {
                     addtrace!();
-                    handle_error!(Val::String(
-                        format!(
-                            concat!(
-                                "Encountered an unhashable value ({:?}) while ",
-                                "trying to create a set",
-                            ),
-                            val,
-                        )
-                        .into(),
+                    handle_error!(rterr!(
+                        concat!(
+                            "Encountered an unhashable value ({:?}) while ",
+                            "trying to create a set",
+                        ),
+                        val,
                     ));
                 }
             }
@@ -275,15 +272,12 @@ fn step<H: Handler>(
                     Ok(key) => key,
                     Err(key) => {
                         addtrace!();
-                        handle_error!(Val::String(
-                            format!(
-                                concat!(
-                                    "Encountered an unhashable key ({:?}) while ",
-                                    "trying to create a map",
-                                ),
-                                key,
-                            )
-                            .into(),
+                        handle_error!(rterr!(
+                            concat!(
+                                "Encountered an unhashable key ({:?}) while ",
+                                "trying to create a map",
+                            ),
+                            key,
                         ));
                     }
                 };
@@ -314,13 +308,10 @@ fn step<H: Handler>(
             if let Some(list) = elements.list() {
                 if list.borrow().len() != *n as usize {
                     addtrace!();
-                    handle_error!(Val::String(
-                        format!(
-                            "Expected {} values, but got a list with {} values",
-                            n,
-                            list.borrow().len(),
-                        )
-                        .into(),
+                    handle_error!(rterr!(
+                        "Expected {} values, but got a list with {} values",
+                        n,
+                        list.borrow().len(),
                     ));
                 }
                 for item in list.borrow().iter() {
@@ -332,9 +323,7 @@ fn step<H: Handler>(
                 let vec = get0!(genobj.to_vec(scope, handler));
                 if vec.len() != *n as usize {
                     addtrace!();
-                    handle_error!(Val::String(
-                        format!("Expected {} values, but got {} values", n, vec.len(),).into(),
-                    ));
+                    handle_error!(rterr!("Expected {} values, but got {} values", n, vec.len()));
                 }
                 stack.extend(vec);
             }
@@ -343,12 +332,9 @@ fn step<H: Handler>(
             let val = scope.get(*vscope, *index).clone();
             if let Val::Invalid = val {
                 addtrace!();
-                handle_error!(Val::String(
-                    format!(
-                        "Variable {} used before being set",
-                        scope.get_name(*vscope, *index)
-                    )
-                    .into(),
+                handle_error!(rterr!(
+                    "Variable {} used before being set",
+                    scope.get_name(*vscope, *index)
                 ));
             }
             stack.push(val);
@@ -403,7 +389,7 @@ fn step<H: Handler>(
                 func
             } else {
                 addtrace!();
-                handle_error!(format!("{} is not a function", func).into());
+                handle_error!(rterr!("{} is not a function", func));
             };
 
             if func.generator() {
@@ -426,27 +412,25 @@ fn step<H: Handler>(
                         lhs
                     } else {
                         addtrace!();
-                        handle_error!(format!(
+                        handle_error!(rterr!(
                             concat!(
                                 "The left hand side of this arithmetic operation ",
                                 "should be a number but got {:?}"
                             ),
                             lhs
-                        )
-                        .into());
+                        ));
                     };
                     let rhs = if let Some(rhs) = rhs.number() {
                         rhs
                     } else {
                         addtrace!();
-                        handle_error!(format!(
+                        handle_error!(rterr!(
                             concat!(
                                 "The right hand side of this arithmetic operation ",
                                 "should be a number but got {:?}"
                             ),
                             rhs
-                        )
-                        .into());
+                        ));
                     };
                     match aop {
                         ArithmeticBinop::Add => Val::Number(lhs + rhs),
@@ -494,30 +478,26 @@ fn step<H: Handler>(
                             Ok(key) => key,
                             Err(rhs) => {
                                 addtrace!();
-                                handle_error!(format!(concat!("{:?} is not hashable"), rhs,).into());
+                                handle_error!(rterr!("{:?} is not hashable", rhs));
                             }
                         };
                         match map.borrow().get(&key).cloned() {
                             Some(val) => val,
                             None => {
                                 addtrace!();
-                                handle_error!(format!(
-                                    concat!("Key not present in the given map",),
-                                )
-                                .into());
+                                handle_error!(rterr!("Key not present in the given map"));
                             }
                         }
                     }
                     lhs => {
                         addtrace!();
-                        handle_error!(format!(
+                        handle_error!(rterr!(
                             concat!(
                                 "GETITEM requries its first element to be a list, ",
                                 "string, or map but got {:?}",
                             ),
                             lhs
-                        )
-                        .into());
+                        ));
                     }
                 },
             };
@@ -531,14 +511,13 @@ fn step<H: Handler>(
                         val
                     } else {
                         addtrace!();
-                        handle_error!(format!(
+                        handle_error!(rterr!(
                             concat!(
                                 "The argument to this unary arithmetic operator ",
                                 "should be a number but got {:?}"
                             ),
                             val
-                        )
-                        .into());
+                        ));
                     };
                     match aop {
                         ArithmeticUnop::Negative => Val::Number(-val),
@@ -558,22 +537,20 @@ fn step<H: Handler>(
                     Val::Map(map) => Val::Number(map.borrow().len() as f64),
                     _ => {
                         addtrace!();
-                        handle_error!(format!(
+                        handle_error!(rterr!(
                             concat!("LEN requires a string, list, set or map argument but got {}"),
                             val,
-                        )
-                        .into());
+                        ));
                     }
                 },
                 Unop::Name => match val {
                     Val::Func(func) => func.0.name().into(),
                     _ => {
                         addtrace!();
-                        handle_error!(format!(
+                        handle_error!(rterr!(
                             concat!("NAME requires a function argument but got {}"),
                             val,
-                        )
-                        .into());
+                        ));
                     }
                 },
                 Unop::Str => format!("{}", val).into(),
@@ -597,21 +574,20 @@ fn step<H: Handler>(
                         Ok(key) => key,
                         Err(j) => {
                             addtrace!();
-                            handle_error!(format!(concat!("{:?} is not hashable"), j,).into());
+                            handle_error!(rterr!("{:?} is not hashable", j));
                         }
                     };
                     map.borrow_mut().insert(key, val);
                 }
                 lhs => {
                     addtrace!();
-                    handle_error!(format!(
+                    handle_error!(rterr!(
                         concat!(
                             "SETITEM requries its first element to be a list ",
                             "or map but got {:?}",
                         ),
                         lhs
-                    )
-                    .into());
+                    ));
                 }
             }
         }
@@ -625,7 +601,7 @@ fn step<H: Handler>(
                 stack.push(func.0.format().into());
             } else {
                 addtrace!();
-                handle_error!(format!(
+                handle_error!(rterr!(
                     concat!("DISASM requires a function argument but got {}"),
                     f,
                 )
@@ -638,18 +614,17 @@ fn step<H: Handler>(
                 scope.tests.push(code.0.clone());
             } else {
                 addtrace!();
-                handle_error!(format!(
+                handle_error!(rterr!(
                     concat!("Tests need to be functions, but {} is not a function"),
                     val,
-                )
-                .into());
+                ));
             }
         }
         Opcode::Assert => {
             let val = stack.pop().unwrap();
             if !val.truthy() {
                 addtrace!();
-                handle_error!(format!(concat!("Assertion failed"),).into());
+                handle_error!(rterr!(concat!("Assertion failed")));
             }
         }
         Opcode::AssertEq => {
@@ -657,11 +632,10 @@ fn step<H: Handler>(
             let lhs = stack.pop().unwrap();
             if lhs != rhs {
                 addtrace!();
-                return Err(format!(
-                    concat!("Assertion failed: expected {} to equal {}"),
+                return Err(rterr!(
+                    "Assertion failed: expected {} to equal {}",
                     lhs, rhs,
-                )
-                .into());
+                ));
             }
         }
         Opcode::Goto(pos) => {
@@ -891,11 +865,19 @@ fn index(i: &Val, len: usize) -> Result<usize, Val> {
                 i += len as f64;
             }
             if i < 0.0 || i >= len as f64 {
-                Err(format!("Index out of bounds (i = {}, len = {})", i, len).into())
+                Err(rterr!("Index out of bounds (i = {}, len = {})", i, len))
             } else {
                 Ok(i as usize)
             }
         }
-        _ => Err(format!("Expected index, but got {:?}", i).into()),
+        _ => Err(rterr!("Expected index, but got {:?}", i)),
     }
+}
+
+pub fn rterr<S: Into<RcStr>>(message: S) -> Val {
+    let vec: Vec<Val> = vec![
+        "RuntimeError".into(),
+        message.into().into(),
+    ];
+    vec.into()
 }
