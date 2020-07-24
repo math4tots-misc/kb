@@ -494,12 +494,7 @@ fn step<H: Handler>(
                             Ok(key) => key,
                             Err(rhs) => {
                                 addtrace!();
-                                handle_error!(format!(
-                                    concat!(
-                                        "{:?} is not hashable"
-                                    ),
-                                    rhs,
-                                ).into());
+                                handle_error!(format!(concat!("{:?} is not hashable"), rhs,).into());
                             }
                         };
                         match map.borrow().get(&key).cloned() {
@@ -507,9 +502,7 @@ fn step<H: Handler>(
                             None => {
                                 addtrace!();
                                 handle_error!(format!(
-                                    concat!(
-                                        "Key not present in the given map",
-                                    ),
+                                    concat!("Key not present in the given map",),
                                 )
                                 .into());
                             }
@@ -604,12 +597,7 @@ fn step<H: Handler>(
                         Ok(key) => key,
                         Err(j) => {
                             addtrace!();
-                            handle_error!(format!(
-                                concat!(
-                                    "{:?} is not hashable"
-                                ),
-                                j,
-                            ).into());
+                            handle_error!(format!(concat!("{:?} is not hashable"), j,).into());
                         }
                     };
                     map.borrow_mut().insert(key, val);
@@ -637,9 +625,11 @@ fn step<H: Handler>(
                 stack.push(func.0.format().into());
             } else {
                 addtrace!();
-                handle_error!(
-                    format!(concat!("DISASM requires a function argument but got {}"), f,).into(),
-                );
+                handle_error!(format!(
+                    concat!("DISASM requires a function argument but got {}"),
+                    f,
+                )
+                .into(),);
             }
         }
         Opcode::AddToTest => {

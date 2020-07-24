@@ -6,8 +6,8 @@ use std::cell::Ref;
 use std::cell::RefCell;
 use std::cell::RefMut;
 use std::cmp;
-use std::collections::HashSet;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fmt;
 use std::rc::Rc;
 
@@ -140,18 +140,14 @@ impl Val {
             Self::Set(set) => {
                 let key = match Key::from_val(self.clone()) {
                     Ok(key) => key,
-                    Err(val) => {
-                        return Err(format!("{:?} is not hashable", val).into())
-                    }
+                    Err(val) => return Err(format!("{:?} is not hashable", val).into()),
                 };
                 Ok(set.borrow().contains(&key))
             }
             Self::Map(map) => {
                 let key = match Key::from_val(self.clone()) {
                     Ok(key) => key,
-                    Err(val) => {
-                        return Err(format!("{:?} is not hashable", val).into())
-                    }
+                    Err(val) => return Err(format!("{:?} is not hashable", val).into()),
                 };
                 Ok(map.borrow().contains_key(&key))
             }

@@ -24,21 +24,25 @@ const UNARY_PREC: Prec = 200;
 const POW_PREC: Prec = 300;
 const POSTFIX_PREC: Prec = 1000;
 
-const KEYWORDS: &[&'static str] = &[
-    "fn", "import", "var", "if", "elif", "else", "end", "is", "not", "and", "or", "in", "yield",
-    "assert", "true", "false", "to", "then", "try", "catch", "throw",
-    // --------------------- (mostly) legacy all-caps keywords -------------------------
-    "PRINT", "GOTO", "DIM", "LET", "IF", "ELSEIF", "ELSE", "END", "DO", "WHILE", "LOOP", "FUNCTION",
-    "TO", "THEN", "AND", "OR", "SUB",
-    // NEXT has been changed from its original meaning
-    //     originally it was for denoting the end of a FOR loop
-    //     now it will instead resume a generator object
-    //       and return a [next-val-or-nil, has-next] pair
-    "NEXT",
-    // --------------------- special ops all-caps keywords -------------------------
-    "APPEND", "NAME", "DISASM", "LEN", "STR", "REPR", "COS", "SIN", "TAN", "ACOS", "ASIN", "ATAN",
-    "TEST",
+const CONTROL_KEYWORDS: &[&str] = &[
+    // mixed (used in both global and statement level)
+    "end", "END",
+    // ============================= for global items =============================
+    "TEST", "SUB", "FUNCTION", "fn", "import",
+    // ============================= statement level =============================
+    "var", "if", "elif", "else", "IF", "ELSEIF", "ELSE", "THEN", "then", "DO", "while", "WHILE", "for", "FOR",
+    "LOOP", "TO", "to", "try", "catch", "throw", "PRINT", "GOTO", "DIM", "LET", "assert",
 ];
+
+const EXPR_KEYWORDS: &[&str] = &["and", "or", "AND", "OR", "in", "IN", "is", "not", "yield"];
+
+/// keywords for function-like builtin operators
+const OP_KEYWORDS: &[&str] = &[
+    "NEXT", "APPEND", "NAME", "DISASM", "LEN", "STR", "REPR", "COS", "SIN", "TAN", "ACOS", "ASIN",
+    "ATAN", "ATAN2",
+];
+
+const LITERAL_KEYWORDS: &[&str] = &["true", "false", "nil"];
 
 const UNOPS: &[(&'static str, Unop)] = &[
     ("NAME", Unop::Name),
@@ -60,7 +64,13 @@ const BINOPS: &[(&'static str, Binop)] = &[
 
 pub fn parse(source: &Rc<Source>) -> Result<File, BasicError> {
     let toks = lex(source)?;
-    let keywords: HashSet<&'static str> = KEYWORDS.iter().map(|s| *s).collect();
+    let keywords: HashSet<&'static str> = CONTROL_KEYWORDS
+        .iter()
+        .chain(EXPR_KEYWORDS)
+        .chain(OP_KEYWORDS)
+        .chain(LITERAL_KEYWORDS)
+        .map(|s| *s)
+        .collect();
     let unop_map: HashMap<&'static str, Unop> = UNOPS.to_vec().into_iter().collect();
     let binop_map: HashMap<&'static str, Binop> = BINOPS.to_vec().into_iter().collect();
     let mut parser = Parser {
@@ -319,10 +329,7 @@ impl<'a> Parser<'a> {
         let mark = self.mark();
         let mut stmts = Vec::new();
         self.consume_delim();
-        while !self.at_end()
-            && !self.at_elif()
-            && !self.at_else()
-            && !self.at(Token::Name("catch"))
+        while !self.at_end() && !self.at_elif() && !self.at_else() && !self.at(Token::Name("catch"))
         {
             let new_stmts = self.maybe_labeled_stmt()?;
             self.delim()?;
