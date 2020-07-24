@@ -1,0 +1,10 @@
+
+
+TEST In
+    assert 5 not in [1, 2, 3]
+    assert 2 in [1, 2, 3]
+
+    assert "hello" in "hello world"
+    assert "world" in "hello world"
+    assert "bob" not in "hello world"
+end

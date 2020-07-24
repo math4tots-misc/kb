@@ -368,12 +368,16 @@ fn step<H: Handler>(
                 }
 
                 // comparison operators
+                Binop::Is => Val::Bool(lhs.is(&rhs)),
+                Binop::IsNot => Val::Bool(!lhs.is(&rhs)),
                 Binop::Equal => Val::Bool(lhs == rhs),
                 Binop::NotEqual => Val::Bool(lhs != rhs),
                 Binop::LessThan => Val::Bool(lhs.lt(&rhs)?),
                 Binop::LessThanOrEqual => Val::Bool(!rhs.lt(&lhs)?),
                 Binop::GreaterThan => Val::Bool(rhs.lt(&lhs)?),
                 Binop::GreaterThanOrEqual => Val::Bool(!lhs.lt(&rhs)?),
+                Binop::In => Val::Bool(lhs.in_(&rhs)?),
+                Binop::NotIn => Val::Bool(!lhs.in_(&rhs)?),
 
                 // list
                 Binop::Append => {

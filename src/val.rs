@@ -101,6 +101,43 @@ impl Val {
             Err(Val::String("Expected generator object".to_owned().into()))
         }
     }
+    pub fn in_(&self, other: &Self) -> Result<bool, Val> {
+        match other {
+            Self::String(string) => {
+                if let Val::String(query) = self {
+                    Ok(string.contains(query.as_ref()))
+                } else {
+                    Err(Val::String(
+                        format!(
+                            concat!(
+                                "'in' requires both members to be a string ",
+                                "if the second argument is a string, but got {:?}",
+                            ),
+                            other
+                        )
+                        .into(),
+                    ))
+                }
+            }
+            Self::List(vec) => Ok(vec.borrow().contains(self)),
+            _ => Err(Val::String(
+                format!("{:?} does not support the 'in' operator", other).into(),
+            )),
+        }
+    }
+    pub fn is(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Nil, Self::Nil) => true,
+            (Self::Bool(a), Self::Bool(b)) => a == b,
+            (Self::Number(a), Self::Number(b)) => a == b,
+            (Self::String(a), Self::String(b)) => a.as_ptr() == b.as_ptr(),
+            (Self::List(a), Self::List(b)) => Rc::as_ptr(a) == Rc::as_ptr(b),
+            (Self::Set(a), Self::Set(b)) => Rc::as_ptr(a) == Rc::as_ptr(b),
+            (Self::Func(a), Self::Func(b)) => a == b,
+            (Self::GenObj(a), Self::GenObj(b)) => a == b,
+            _ => false,
+        }
+    }
     pub fn lt(&self, other: &Self) -> Result<bool, Val> {
         match (self, other) {
             (Self::Number(a), Self::Number(b)) => Ok(a < b),

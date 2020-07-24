@@ -165,9 +165,10 @@ impl<'a> Parser<'a> {
         while !self.at(Token::EOF) {
             match self.peek() {
                 Token::Name("import") => imports.push(self.import_()?),
-                Token::Name("fn") | Token::Name("FUNCTION") | Token::Name("SUB") | Token::Name("TEST") => {
-                    funcs.push(self.func()?)
-                }
+                Token::Name("fn")
+                | Token::Name("FUNCTION")
+                | Token::Name("SUB")
+                | Token::Name("TEST") => funcs.push(self.func()?),
                 _ => stmts.extend(self.maybe_labeled_stmt()?),
             }
             self.delim()?;
@@ -432,7 +433,7 @@ impl<'a> Parser<'a> {
             }
             Token::Name("for") => {
                 self.gettok();
-                let target = expr_to_assign_target(self.expr(0)?)?;
+                let target = expr_to_assign_target(self.expr(UNARY_PREC)?)?;
                 if self.consume(Token::Name("in")) {
                     let container = self.expr(0)?;
                     self.delim()?;
@@ -600,7 +601,10 @@ impl<'a> Parser<'a> {
             | Token::LessThan
             | Token::LessThanOrEqual
             | Token::GreaterThan
-            | Token::GreaterThanOrEqual => {
+            | Token::GreaterThanOrEqual
+            | Token::Name("in")
+            | Token::Name("is")
+            | Token::Name("not") => {
                 let op = match token {
                     Token::Plus => Binop::Arithmetic(ArithmeticBinop::Add),
                     Token::Minus => Binop::Arithmetic(ArithmeticBinop::Subtract),
@@ -615,17 +619,27 @@ impl<'a> Parser<'a> {
                     Token::LessThanOrEqual => Binop::LessThanOrEqual,
                     Token::GreaterThan => Binop::GreaterThan,
                     Token::GreaterThanOrEqual => Binop::GreaterThanOrEqual,
+                    Token::Name("in") => Binop::In,
+                    Token::Name("is") => {
+                        if self.consume(Token::Name("not")) {
+                            Binop::IsNot
+                        } else {
+                            Binop::Is
+                        }
+                    }
+                    Token::Name("not") => {
+                        self.expect(Token::Name("in"))?;
+                        Binop::NotIn
+                    }
                     _ => panic!("binop {:?}", token),
                 };
                 let prec = precof(&token);
-                let rhs = self.expr(
-                    match token {
-                        // right associative
-                        Token::Caret => prec,
-                        // left associative (most things besides '^')
-                        _ => prec + 1,
-                    }
-                )?;
+                let rhs = self.expr(match token {
+                    // right associative
+                    Token::Caret => prec,
+                    // left associative (most things besides '^')
+                    _ => prec + 1,
+                })?;
                 Ok(Expr {
                     mark,
                     desc: ExprDesc::Binop(op, e.into(), rhs.into()),
@@ -906,6 +920,8 @@ fn expr_to_assign_target(expr: Expr) -> Result<AssignTarget, BasicError> {
 fn precof<'a>(tok: &Token<'a>) -> Prec {
     match tok {
         Token::Name("is")
+        | Token::Name("not")
+        | Token::Name("in")
         | Token::Eq2
         | Token::Ne
         | Token::LessThan

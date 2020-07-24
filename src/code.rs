@@ -65,12 +65,16 @@ pub enum Binop {
     Arithmetic(ArithmeticBinop),
 
     // comparison
+    Is,
+    IsNot,
     Equal,
     NotEqual,
     LessThan,
     LessThanOrEqual,
     GreaterThan,
     GreaterThanOrEqual,
+    In,
+    NotIn,
 
     // list, str
     Append,

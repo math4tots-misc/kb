@@ -514,14 +514,20 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
         ExprDesc::Or(a, b) => {
             let end_label = scope.new_label();
             translate_expr(code, scope, a)?;
-            code.add(Opcode::UnresolvedGotoIfTrueElsePop(end_label.clone()), expr.mark.clone());
+            code.add(
+                Opcode::UnresolvedGotoIfTrueElsePop(end_label.clone()),
+                expr.mark.clone(),
+            );
             translate_expr(code, scope, b)?;
             code.add(Opcode::Label(end_label), expr.mark.clone());
         }
         ExprDesc::And(a, b) => {
             let end_label = scope.new_label();
             translate_expr(code, scope, a)?;
-            code.add(Opcode::UnresolvedGotoIfFalseElsePop(end_label.clone()), expr.mark.clone());
+            code.add(
+                Opcode::UnresolvedGotoIfFalseElsePop(end_label.clone()),
+                expr.mark.clone(),
+            );
             translate_expr(code, scope, b)?;
             code.add(Opcode::Label(end_label), expr.mark.clone());
         }
@@ -529,7 +535,10 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
             let end_label = scope.new_label();
             let other_label = scope.new_label();
             translate_expr(code, scope, cond)?;
-            code.add(Opcode::UnresolvedGotoIfFalse(other_label.clone()), expr.mark.clone());
+            code.add(
+                Opcode::UnresolvedGotoIfFalse(other_label.clone()),
+                expr.mark.clone(),
+            );
             translate_expr(code, scope, body)?;
             code.add(Opcode::UnresolvedGoto(end_label.clone()), expr.mark.clone());
             code.add(Opcode::Label(other_label), expr.mark.clone());
