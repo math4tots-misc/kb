@@ -736,18 +736,60 @@ impl<'a> Parser<'a> {
             }
             Token::LBrace => {
                 self.gettok();
-                let mut exprs = Vec::new();
-                while !self.consume(Token::RBrace) {
-                    exprs.push(self.expr(0)?);
-                    if !self.consume(Token::Comma) {
-                        self.expect(Token::RBrace)?;
-                        break;
+                if self.consume(Token::Colon) {
+                    self.expect(Token::RBrace)?;
+                    Ok(Expr {
+                        mark,
+                        desc: ExprDesc::Map(vec![]),
+                    })
+                } else if self.consume(Token::RBrace) {
+                    Ok(Expr {
+                        mark,
+                        desc: ExprDesc::Set(vec![]),
+                    })
+                } else {
+                    let first = self.expr(0)?;
+                    if self.consume(Token::Colon) {
+                        let mut pairs = Vec::new();
+                        let val = self.expr(0)?;
+                        pairs.push((first, val));
+                        if self.consume(Token::Comma) {
+                            while !self.consume(Token::RBrace) {
+                                let key = self.expr(0)?;
+                                self.expect(Token::Colon)?;
+                                let val = self.expr(0)?;
+                                pairs.push((key, val));
+                                if !self.consume(Token::Comma) {
+                                    self.expect(Token::RBrace)?;
+                                    break;
+                                }
+                            }
+                        } else {
+                            self.expect(Token::RBrace)?;
+                        }
+                        Ok(Expr {
+                            mark,
+                            desc: ExprDesc::Map(pairs),
+                        })
+                    } else {
+                        let mut exprs = vec![first];
+                        if self.consume(Token::Comma) {
+                            while !self.consume(Token::RBrace) {
+                                exprs.push(self.expr(0)?);
+                                if !self.consume(Token::Comma) {
+                                    self.expect(Token::RBrace)?;
+                                    break;
+                                }
+                            }
+                        } else {
+                            self.expect(Token::RBrace)?;
+                        }
+                        Ok(Expr {
+                            mark,
+                            desc: ExprDesc::Set(exprs),
+                        })
                     }
                 }
-                Ok(Expr {
-                    mark,
-                    desc: ExprDesc::Set(exprs),
-                })
             }
             Token::Minus | Token::Plus => {
                 let tok = self.gettok();

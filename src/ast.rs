@@ -151,6 +151,7 @@ pub enum ExprDesc {
     String(RcStr),
     List(Vec<Expr>),
     Set(Vec<Expr>),
+    Map(Vec<(Expr, Expr)>),
 
     GetVar(RcStr),
     GetAttr(Box<Expr>, RcStr),

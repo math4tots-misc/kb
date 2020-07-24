@@ -265,6 +265,33 @@ fn step<H: Handler>(
                 }
             }
         }
+        Opcode::MakeMap(len) => {
+            let start = stack.len() - 2 * *len as usize;
+            let mut map = HashMap::new();
+            let vals: Vec<_> = stack.drain(start..).collect();
+            let mut vals = vals.into_iter();
+            while let Some(key) = vals.next() {
+                let key = match Key::from_val(key) {
+                    Ok(key) => key,
+                    Err(key) => {
+                        addtrace!();
+                        handle_error!(Val::String(
+                            format!(
+                                concat!(
+                                    "Encountered an unhashable key ({:?}) while ",
+                                    "trying to create a map",
+                                ),
+                                key,
+                            )
+                            .into(),
+                        ));
+                    }
+                };
+                let val = vals.next().unwrap();
+                map.insert(key, val);
+            }
+            stack.push(map.into());
+        }
         Opcode::NewFunc(code) => {
             stack.push(Val::Func(Func(code.clone())));
         }
@@ -452,15 +479,41 @@ fn step<H: Handler>(
                     lhs
                 }
                 Binop::GetItem => match lhs {
+                    Val::String(string) => {
+                        let len = string.len();
+                        let index = get0!(index(&rhs, len));
+                        format!("{}", string.getchar(index).unwrap()).into()
+                    }
                     Val::List(list) => {
                         let len = list.borrow().len();
                         let index = get0!(index(&rhs, len));
                         list.borrow()[index].clone()
                     }
-                    Val::String(string) => {
-                        let len = string.len();
-                        let index = get0!(index(&rhs, len));
-                        format!("{}", string.getchar(index).unwrap()).into()
+                    Val::Map(map) => {
+                        let key = match Key::from_val(rhs) {
+                            Ok(key) => key,
+                            Err(rhs) => {
+                                addtrace!();
+                                handle_error!(format!(
+                                    concat!(
+                                        "{:?} is not hashable"
+                                    ),
+                                    rhs,
+                                ).into());
+                            }
+                        };
+                        match map.borrow().get(&key).cloned() {
+                            Some(val) => val,
+                            None => {
+                                addtrace!();
+                                handle_error!(format!(
+                                    concat!(
+                                        "Key not present in the given map",
+                                    ),
+                                )
+                                .into());
+                            }
+                        }
                     }
                     lhs => {
                         addtrace!();
@@ -509,6 +562,7 @@ fn step<H: Handler>(
                     Val::String(s) => Val::Number(s.charlen() as f64),
                     Val::List(list) => Val::Number(list.borrow().len() as f64),
                     Val::Set(set) => Val::Number(set.borrow().len() as f64),
+                    Val::Map(map) => Val::Number(map.borrow().len() as f64),
                     _ => {
                         addtrace!();
                         handle_error!(format!(
@@ -544,6 +598,21 @@ fn step<H: Handler>(
                     let len = list.borrow().len();
                     let j = get0!(index(&j, len));
                     list.borrow_mut()[j] = val;
+                }
+                Val::Map(map) => {
+                    let key = match Key::from_val(j) {
+                        Ok(key) => key,
+                        Err(j) => {
+                            addtrace!();
+                            handle_error!(format!(
+                                concat!(
+                                    "{:?} is not hashable"
+                                ),
+                                j,
+                            ).into());
+                        }
+                    };
+                    map.borrow_mut().insert(key, val);
                 }
                 lhs => {
                     addtrace!();

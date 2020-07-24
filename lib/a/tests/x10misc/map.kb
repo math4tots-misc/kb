@@ -1,0 +1,15 @@
+
+
+TEST Get
+    assert LEN({:}) == 0
+    assert LEN({'a': 33}) == 1
+
+    assert REPR({'a': 33}) == '{"a": 33}'
+
+    map = {'a': 33}
+
+    assert map['a'] == 33
+
+    assert 'a' in map
+    assert 'b' not in map
+end

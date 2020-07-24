@@ -7,6 +7,7 @@ use std::cell::RefCell;
 use std::cell::RefMut;
 use std::cmp;
 use std::collections::HashSet;
+use std::collections::HashMap;
 use std::fmt;
 use std::rc::Rc;
 
@@ -26,6 +27,7 @@ pub enum Val {
 
     List(Rc<List>),
     Set(Rc<Set>),
+    Map(Rc<Map>),
 
     Func(Func),
 
@@ -42,6 +44,7 @@ impl Val {
             Self::String(x) => x.len() > 0,
             Self::List(x) => x.borrow().len() > 0,
             Self::Set(x) => x.borrow().len() > 0,
+            Self::Map(x) => x.borrow().len() > 0,
             Self::Func(_) | Self::GenObj(_) => true,
         }
     }
@@ -134,6 +137,24 @@ impl Val {
                 }
             }
             Self::List(vec) => Ok(vec.borrow().contains(self)),
+            Self::Set(set) => {
+                let key = match Key::from_val(self.clone()) {
+                    Ok(key) => key,
+                    Err(val) => {
+                        return Err(format!("{:?} is not hashable", val).into())
+                    }
+                };
+                Ok(set.borrow().contains(&key))
+            }
+            Self::Map(map) => {
+                let key = match Key::from_val(self.clone()) {
+                    Ok(key) => key,
+                    Err(val) => {
+                        return Err(format!("{:?} is not hashable", val).into())
+                    }
+                };
+                Ok(map.borrow().contains_key(&key))
+            }
             _ => Err(Val::String(
                 format!("{:?} does not support the 'in' operator", other).into(),
             )),
@@ -227,6 +248,17 @@ impl From<HashSet<Key>> for Val {
     }
 }
 
+impl From<HashMap<Key, Val>> for Val {
+    fn from(map: HashMap<Key, Val>) -> Self {
+        Self::Map(
+            Map {
+                map: RefCell::new(map),
+            }
+            .into(),
+        )
+    }
+}
+
 impl fmt::Debug for Val {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -266,6 +298,16 @@ impl fmt::Debug for Val {
                         write!(f, ", ")?;
                     }
                     write!(f, "{:?}", x.clone().to_val())?;
+                }
+                write!(f, "}}")
+            }
+            Val::Map(xs) => {
+                write!(f, "{{")?;
+                for (i, (k, v)) in xs.sorted_pairs().into_iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{:?}: {:?}", k.clone().to_val(), v)?;
                 }
                 write!(f, "}}")
             }
@@ -329,6 +371,28 @@ impl Set {
     pub fn sorted_keys(&self) -> Vec<Key> {
         let mut vec: Vec<_> = self.borrow().clone().into_iter().collect();
         vec.sort();
+        vec
+    }
+}
+
+#[derive(PartialEq)]
+pub struct Map {
+    map: RefCell<HashMap<Key, Val>>,
+}
+
+impl Map {
+    pub fn borrow(&self) -> Ref<HashMap<Key, Val>> {
+        self.map.borrow()
+    }
+    pub fn borrow_mut(&self) -> RefMut<HashMap<Key, Val>> {
+        self.map.borrow_mut()
+    }
+    pub fn into_inner(self) -> HashMap<Key, Val> {
+        self.map.into_inner()
+    }
+    pub fn sorted_pairs(&self) -> Vec<(Key, Val)> {
+        let mut vec: Vec<_> = self.borrow().clone().into_iter().collect();
+        vec.sort_by(|a, b| a.0.cmp(&b.0));
         vec
     }
 }

@@ -502,6 +502,13 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
             }
             code.add(Opcode::MakeSet(items.len() as u32), expr.mark.clone());
         }
+        ExprDesc::Map(items) => {
+            for (key, val) in items {
+                translate_expr(code, scope, key)?;
+                translate_expr(code, scope, val)?;
+            }
+            code.add(Opcode::MakeMap(items.len() as u32), expr.mark.clone());
+        }
         ExprDesc::GetVar(name) => {
             let var = scope.getvar_or_error(&expr.mark, name)?;
             code.add(Opcode::Get(var.vscope, var.index), expr.mark.clone());
