@@ -24,3 +24,7 @@ fn[test] StringLiterals
     x = r"hi"
     assert x == 'hi'
 end
+
+fn[test] NotEqual
+    assert 1 <> 2
+end
