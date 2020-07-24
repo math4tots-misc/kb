@@ -192,6 +192,11 @@ fn prepare_vars_for_stmt(
             prepare_vars_for_target(out, target, prefix)?;
             prepare_vars_for_stmt(out, body, prefix)?;
         }
+        StmtDesc::Try(body, target, onerr) => {
+            prepare_vars_for_stmt(out, body, prefix)?;
+            prepare_vars_for_target(out, target, prefix)?;
+            prepare_vars_for_stmt(out, onerr, prefix)?;
+        }
         StmtDesc::Print(_)
         | StmtDesc::Assert(_)
         | StmtDesc::Expr(_)
@@ -409,6 +414,28 @@ fn translate_stmt(code: &mut Code, scope: &mut Scope, stmt: &Stmt) -> Result<(),
             code.add(Opcode::Label(end_label), stmt.mark.clone());
             code.add(Opcode::Pop, stmt.mark.clone()); // pop start
             code.add(Opcode::Pop, stmt.mark.clone()); // pop end
+        }
+        StmtDesc::Try(body, target, onerr) => {
+            let catch_label = scope.new_label();
+            let end_label = scope.new_label();
+
+            // main body
+            // set up a try, and if successful just jump to the end
+            code.add(
+                Opcode::UnresolvedAddTry(catch_label.clone()),
+                stmt.mark.clone(),
+            );
+            translate_stmt(code, scope, body)?;
+            code.add(Opcode::PopTry, stmt.mark.clone());
+            code.add(Opcode::UnresolvedGoto(end_label.clone()), stmt.mark.clone());
+
+            // catch clause
+            code.add(Opcode::Label(catch_label), stmt.mark.clone());
+            translate_assign(code, scope, target, true)?;
+            translate_stmt(code, scope, onerr)?;
+
+            // Jump location after main body finishes
+            code.add(Opcode::Label(end_label), stmt.mark.clone());
         }
     }
     Ok(())

@@ -1,0 +1,18 @@
+TEST try_
+    # catch case
+    passed_catch = false
+    try
+        1 + 'hi'
+    catch e
+        passed_catch = true
+    end
+    assert passed_catch
+
+    # no catch case
+    passed_catch = false
+    try
+    catch e
+        passed_catch = true
+    end
+    assert not passed_catch
+end

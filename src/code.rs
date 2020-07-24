@@ -30,6 +30,10 @@ pub enum Opcode {
     Set(VarScope, u32),
     Tee(VarScope, u32),
 
+    // error handling
+    AddTry(u32),
+    PopTry,
+
     // control flow
     Goto(u32),
     GotoIfFalse(u32),
@@ -54,6 +58,7 @@ pub enum Opcode {
 
     // (should come last) unresolved control flow ops
     Label(RcStr),
+    UnresolvedAddTry(RcStr),
     UnresolvedGoto(RcStr),
     UnresolvedGotoIfFalse(RcStr),
     UnresolvedGotoIfTrueElsePop(RcStr),
@@ -197,6 +202,13 @@ impl Code {
             }
             match &op {
                 Opcode::Label(_) => {}
+                Opcode::UnresolvedAddTry(label) => {
+                    if let Some(pos) = labels.get(label).cloned() {
+                        op = Opcode::AddTry(pos);
+                    } else {
+                        return Err(not_found(self.marks[i].clone(), label));
+                    }
+                }
                 Opcode::UnresolvedGoto(label) => {
                     if let Some(pos) = labels.get(label).cloned() {
                         op = Opcode::Goto(pos);

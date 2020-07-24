@@ -26,7 +26,7 @@ const POSTFIX_PREC: Prec = 1000;
 
 const KEYWORDS: &[&'static str] = &[
     "fn", "import", "var", "if", "elif", "else", "end", "is", "not", "and", "or", "in", "yield",
-    "assert", "true", "false", "to", "then",
+    "assert", "true", "false", "to", "then", "try", "catch",
     // --------------------- (mostly) legacy all-caps keywords -------------------------
     "PRINT", "GOTO", "DIM", "LET", "IF", "ELSEIF", "ELSE", "END", "DO", "WHILE", "LOOP", "FUNCTION",
     "TO", "THEN", "AND", "OR",
@@ -319,7 +319,11 @@ impl<'a> Parser<'a> {
         let mark = self.mark();
         let mut stmts = Vec::new();
         self.consume_delim();
-        while !self.at_end() && !self.at_elif() && !self.at_else() {
+        while !self.at_end()
+            && !self.at_elif()
+            && !self.at_else()
+            && !self.at(Token::Name("catch"))
+        {
             let new_stmts = self.maybe_labeled_stmt()?;
             self.delim()?;
             stmts.extend(new_stmts);
@@ -480,6 +484,18 @@ impl<'a> Parser<'a> {
                 Ok(Stmt {
                     mark,
                     desc: StmtDesc::Assert(cond),
+                })
+            }
+            Token::Name("try") => {
+                self.gettok();
+                let body = self.block_body()?.into();
+                self.expect(Token::Name("catch"))?;
+                let target = expr_to_assign_target(self.expr(UNARY_PREC)?)?;
+                self.delim()?;
+                let onerr = self.block()?.into();
+                Ok(Stmt {
+                    mark,
+                    desc: StmtDesc::Try(body, target, onerr),
                 })
             }
             Token::Name(name)

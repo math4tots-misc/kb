@@ -59,6 +59,20 @@ impl Val {
             Err(Val::String("Expected number".to_owned().into()))
         }
     }
+    pub fn string(&self) -> Option<&RcStr> {
+        if let Self::String(x) = self {
+            Some(x)
+        } else {
+            None
+        }
+    }
+    pub fn expect_string(&self) -> Result<&RcStr, Val> {
+        if let Some(x) = self.string() {
+            Ok(x)
+        } else {
+            Err(Val::String("Expected string".to_owned().into()))
+        }
+    }
     pub fn list(&self) -> Option<&List> {
         if let Self::List(x) = self {
             Some(x)
