@@ -111,6 +111,9 @@ pub enum Unop {
     Str,
     Repr,
     Not, // logical not
+
+    // concatenate strings
+    Cat,
 }
 
 #[derive(Debug, Clone, Copy)]

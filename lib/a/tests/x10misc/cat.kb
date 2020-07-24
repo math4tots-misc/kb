@@ -1,0 +1,7 @@
+
+
+TEST Cat
+    assert CAT(1, 2, 3) == '123'
+    assert CAT([1, 2, 3], ['aa', 'bb', 'cc']) == '123aabbcc'
+    assert CAT('foo = ', REPR([1, 2, 3])) == 'foo = [1, 2, 3]'
+end

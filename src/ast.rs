@@ -169,6 +169,8 @@ pub enum ExprDesc {
     Yield(Box<Expr>),
     Next(Box<Expr>), // gets [next-or-nil, has_next] from a generator
 
+    Cat(Vec<Expr>),
+
     // Gets the disassembly of a function as a string
     Disasm(Box<Expr>),
 }

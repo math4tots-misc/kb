@@ -115,7 +115,12 @@ fn prepare_args(spec: &ArgSpec, args: &mut Vec<Val>) -> Result<(), Val> {
             }
         } else {
             if argc < argmin || argc > argmax {
-                return Err(rterr!("Expected {} to {} args but got {}", argmin, argmax, argc));
+                return Err(rterr!(
+                    "Expected {} to {} args but got {}",
+                    argmin,
+                    argmax,
+                    argc
+                ));
             }
         }
         let def = &spec.def;
@@ -134,7 +139,11 @@ fn prepare_args(spec: &ArgSpec, args: &mut Vec<Val>) -> Result<(), Val> {
     } else {
         // no variadic parameter and no default parameters
         if args.len() != spec.req.len() {
-            return Err(rterr!("Expected {} args but got {}", spec.req.len(), args.len()));
+            return Err(rterr!(
+                "Expected {} args but got {}",
+                spec.req.len(),
+                args.len()
+            ));
         }
     }
     Ok(())
@@ -323,7 +332,11 @@ fn step<H: Handler>(
                 let vec = get0!(genobj.to_vec(scope, handler));
                 if vec.len() != *n as usize {
                     addtrace!();
-                    handle_error!(rterr!("Expected {} values, but got {} values", n, vec.len()));
+                    handle_error!(rterr!(
+                        "Expected {} values, but got {} values",
+                        n,
+                        vec.len()
+                    ));
                 }
                 stack.extend(vec);
             }
@@ -556,6 +569,11 @@ fn step<H: Handler>(
                 Unop::Str => format!("{}", val).into(),
                 Unop::Repr => format!("{:?}", val).into(),
                 Unop::Not => Val::Bool(!val.truthy()),
+                Unop::Cat => {
+                    let mut string = String::new();
+                    cat(&mut string, &val);
+                    string.into()
+                }
             };
             stack.push(ret);
         }
@@ -601,11 +619,9 @@ fn step<H: Handler>(
                 stack.push(func.0.format().into());
             } else {
                 addtrace!();
-                handle_error!(rterr!(
-                    concat!("DISASM requires a function argument but got {}"),
-                    f,
-                )
-                .into(),);
+                handle_error!(
+                    rterr!(concat!("DISASM requires a function argument but got {}"), f,).into(),
+                );
             }
         }
         Opcode::AddToTest => {
@@ -634,7 +650,8 @@ fn step<H: Handler>(
                 addtrace!();
                 return Err(rterr!(
                     "Assertion failed: expected {} to equal {}",
-                    lhs, rhs,
+                    lhs,
+                    rhs,
                 ));
             }
         }
@@ -875,9 +892,29 @@ fn index(i: &Val, len: usize) -> Result<usize, Val> {
 }
 
 pub fn rterr<S: Into<RcStr>>(message: S) -> Val {
-    let vec: Vec<Val> = vec![
-        "RuntimeError".into(),
-        message.into().into(),
-    ];
+    let vec: Vec<Val> = vec!["RuntimeError".into(), message.into().into()];
     vec.into()
+}
+
+fn cat(out: &mut String, val: &Val) {
+    use std::fmt::Write;
+    match val {
+        Val::List(list) => {
+            for x in list.borrow().iter() {
+                cat(out, x);
+            }
+        }
+        Val::Set(set) => {
+            for key in set.borrow().iter() {
+                cat(out, &key.clone().to_val());
+            }
+        }
+        Val::Map(map) => {
+            for (k, v) in map.borrow().iter() {
+                cat(out, &k.clone().to_val());
+                cat(out, v);
+            }
+        }
+        _ => write!(out, "{}", val).unwrap(),
+    }
 }

@@ -30,9 +30,9 @@ const CONTROL_KEYWORDS: &[&str] = &[
     // ============================= for global items =============================
     "TEST", "SUB", "FUNCTION", "fn", "import",
     // ============================= statement level =============================
-    "var", "if", "elif", "else", "IF", "ELSEIF", "ELSE", "THEN", "then", "DO", "while", "WHILE", "for", "FOR",
-    "LOOP", "TO", "to", "try", "catch", "throw", "PRINT", "GOTO", "DIM", "LET", "assert",
-    "return", "RETURN",
+    "var", "if", "elif", "else", "IF", "ELSEIF", "ELSE", "THEN", "then", "DO", "while", "WHILE",
+    "for", "FOR", "LOOP", "TO", "to", "try", "catch", "throw", "PRINT", "GOTO", "DIM", "LET",
+    "assert", "return", "RETURN",
 ];
 
 const EXPR_KEYWORDS: &[&str] = &["and", "or", "AND", "OR", "in", "IN", "is", "not", "yield"];
@@ -40,7 +40,7 @@ const EXPR_KEYWORDS: &[&str] = &["and", "or", "AND", "OR", "in", "IN", "is", "no
 /// keywords for function-like builtin operators
 const OP_KEYWORDS: &[&str] = &[
     "NEXT", "APPEND", "NAME", "DISASM", "LEN", "STR", "REPR", "COS", "SIN", "TAN", "ACOS", "ASIN",
-    "ATAN", "ATAN2",
+    "ATAN", "ATAN2", "CAT",
 ];
 
 const LITERAL_KEYWORDS: &[&str] = &["true", "false", "nil"];
@@ -612,14 +612,7 @@ impl<'a> Parser<'a> {
                 })
             }
             Token::LParen => {
-                let mut args = Vec::new();
-                while !self.consume(Token::RParen) {
-                    args.push(self.expr(0)?);
-                    if !self.consume(Token::Comma) {
-                        self.expect(Token::RParen)?;
-                        break;
-                    }
-                }
+                let args = self.args()?;
                 Ok(Expr {
                     mark,
                     desc: ExprDesc::CallFunc(e.into(), args),
@@ -888,6 +881,15 @@ impl<'a> Parser<'a> {
                     desc: ExprDesc::Next(genexpr.into()),
                 })
             }
+            Token::Name("CAT") => {
+                self.gettok();
+                self.expect(Token::LParen)?;
+                let exprs = self.args()?;
+                Ok(Expr {
+                    mark,
+                    desc: ExprDesc::Cat(exprs),
+                })
+            }
             Token::Name("DISASM") => {
                 self.gettok();
                 self.expect(Token::LParen)?;
@@ -966,6 +968,17 @@ impl<'a> Parser<'a> {
                 help: None,
             })
         }
+    }
+    fn args(&mut self) -> Result<Vec<Expr>, BasicError> {
+        let mut ret = Vec::new();
+        while !self.consume(Token::RParen) {
+            ret.push(self.expr(0)?);
+            if !self.consume(Token::Comma) {
+                self.expect(Token::RParen)?;
+                break;
+            }
+        }
+        Ok(ret)
     }
 }
 

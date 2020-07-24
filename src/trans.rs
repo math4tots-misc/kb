@@ -6,6 +6,7 @@ use super::Binop;
 use super::Code;
 use super::Opcode;
 use super::RcStr;
+use super::Unop;
 use super::VarScope;
 use super::PRELUDE_NAME;
 use std::collections::HashMap;
@@ -592,6 +593,13 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
             translate_expr(code, scope, genexpr)?;
             code.add(Opcode::Next, expr.mark.clone());
             code.add(Opcode::MakeList(2), expr.mark.clone());
+        }
+        ExprDesc::Cat(exprs) => {
+            for expr in exprs {
+                translate_expr(code, scope, expr)?;
+            }
+            code.add(Opcode::MakeList(exprs.len() as u32), expr.mark.clone());
+            code.add(Opcode::Unop(Unop::Cat), expr.mark.clone());
         }
         ExprDesc::Disasm(fexpr) => {
             translate_expr(code, scope, fexpr)?;
