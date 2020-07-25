@@ -127,11 +127,13 @@ pub enum StmtDesc {
     Throw(Expr),
 }
 
+#[derive(Debug)]
 pub struct AssignTarget {
     pub mark: Mark,
     pub desc: AssignTargetDesc,
 }
 
+#[derive(Debug)]
 pub enum AssignTargetDesc {
     Name(RcStr),
     List(Vec<AssignTarget>),
@@ -153,6 +155,8 @@ pub enum ExprDesc {
     List(Vec<Expr>),
     Set(Vec<Expr>),
     Map(Vec<(Expr, Expr)>),
+
+    ListComprehension(Box<Expr>, Box<AssignTarget>, Box<Expr>, Option<Box<Expr>>),
 
     GetVar(RcStr),
     GetAttr(Box<Expr>, RcStr),

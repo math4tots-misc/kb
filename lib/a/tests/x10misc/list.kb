@@ -33,3 +33,11 @@ test Get
     assert throw list[3]
     assert throw list[-4]
 end
+
+test Comprehension
+    list = [x / 2 for x in range(5, 10)]
+    assert list == [2.5, 3, 3.5, 4, 4.5]
+
+    list = [x * 4 for x in range(10) if x < 5]
+    assert list == [0, 4, 8, 12, 16]
+end

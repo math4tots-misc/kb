@@ -14,3 +14,9 @@ fn* range(a, b=nil, step=1)
         a = a + step
     end
 end
+
+fn* __IterList(list)
+    for i = 0 .. LEN(list)
+        yield list[i]
+    end
+end

@@ -255,6 +255,14 @@ fn prepare_vars_for_expr(
                 prepare_vars_for_expr(out, val, prefix)?;
             }
         }
+        ExprDesc::ListComprehension(body, target, container, cond) => {
+            prepare_vars_for_expr(out, body, prefix)?;
+            prepare_vars_for_target(out, target, prefix)?;
+            prepare_vars_for_expr(out, container, prefix)?;
+            if let Some(cond) = cond {
+                prepare_vars_for_expr(out, cond, prefix)?;
+            }
+        }
         ExprDesc::GetVar(_) => {}
         ExprDesc::GetAttr(owner, _) => {
             prepare_vars_for_expr(out, owner, prefix)?;
@@ -609,6 +617,37 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
                 translate_expr(code, scope, item)?;
             }
             code.add(Opcode::MakeSet(items.len() as u32), expr.mark.clone());
+        }
+        ExprDesc::ListComprehension(body, target, container, cond) => {
+            let start_label = scope.new_label();
+            let end_label = scope.new_label();
+
+            // create the list to add to and prepare the container
+            code.add(Opcode::MakeList(0), expr.mark.clone());
+            translate_expr(code, scope, container)?;
+
+            code.add(Opcode::Label(start_label.clone()), expr.mark.clone());
+            code.add(Opcode::Next, expr.mark.clone());
+            code.add(
+                Opcode::UnresolvedGotoIfFalse(end_label.clone()),
+                expr.mark.clone(),
+            );
+            translate_assign(code, scope, target, true)?;
+            if let Some(cond) = cond {
+                translate_expr(code, scope, cond)?;
+                code.add(Opcode::UnresolvedGotoIfFalse(start_label.clone()), expr.mark.clone());
+            }
+
+            // evaluate and add this next entry to the list
+            translate_expr(code, scope, body)?;
+            code.add(Opcode::Swap12, expr.mark.clone());
+            code.add(Opcode::Binop(Binop::Add), expr.mark.clone());
+            code.add(Opcode::Swap01, expr.mark.clone());
+            code.add(Opcode::UnresolvedGoto(start_label), expr.mark.clone());
+
+            code.add(Opcode::Label(end_label), expr.mark.clone());
+            code.add(Opcode::Pop, expr.mark.clone()); // pop nil
+            code.add(Opcode::Pop, expr.mark.clone()); // pop genobj
         }
         ExprDesc::Map(items) => {
             for (key, val) in items {

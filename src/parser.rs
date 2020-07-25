@@ -755,18 +755,46 @@ impl<'a> Parser<'a> {
             }
             Token::LBracket => {
                 self.gettok();
-                let mut exprs = Vec::new();
-                while !self.consume(Token::RBracket) {
-                    exprs.push(self.expr(0)?);
-                    if !self.consume(Token::Comma) {
+                if self.consume(Token::RBracket) {
+                    Ok(Expr {
+                        mark,
+                        desc: ExprDesc::List(vec![]),
+                    })
+                } else {
+                    let body = self.expr(0)?;
+                    if self.consume(Token::Name("for")) {
+                        let target = expr_to_assign_target(self.expr(UNARY_PREC)?)?;
+                        self.expect(Token::Name("in"))?;
+                        let container = self.expr(0)?;
+                        let cond = if self.consume(Token::Name("if")) {
+                            Some(self.expr(0)?.into())
+                        } else {
+                            None
+                        };
                         self.expect(Token::RBracket)?;
-                        break;
+                        Ok(Expr {
+                            mark,
+                            desc: ExprDesc::ListComprehension(body.into(), target.into(), container.into(), cond),
+                        })
+                    } else {
+                        let mut exprs = vec![body];
+                        if self.consume(Token::Comma) {
+                            while !self.consume(Token::RBracket) {
+                                exprs.push(self.expr(0)?);
+                                if !self.consume(Token::Comma) {
+                                    self.expect(Token::RBracket)?;
+                                    break;
+                                }
+                            }
+                        } else {
+                            self.expect(Token::RBracket)?;
+                        }
+                        Ok(Expr {
+                            mark,
+                            desc: ExprDesc::List(exprs),
+                        })
                     }
                 }
-                Ok(Expr {
-                    mark,
-                    desc: ExprDesc::List(exprs),
-                })
             }
             Token::LBrace => {
                 self.gettok();

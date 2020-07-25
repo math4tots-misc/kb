@@ -480,7 +480,7 @@ fn step<H: Handler>(
 
                 // other
                 Binop::Add => {
-                    match lhs {
+                    match &lhs {
                         Val::List(list) => {
                             list.borrow_mut().push(rhs);
                         }
@@ -512,7 +512,7 @@ fn step<H: Handler>(
                             handle_error!(rterr!("Cannot ADD to a {:?}", lhs.type_()));
                         }
                     }
-                    Val::Nil
+                    lhs
                 }
                 Binop::GetItem => match lhs {
                     Val::String(string) => {
