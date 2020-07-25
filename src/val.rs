@@ -195,6 +195,7 @@ impl Val {
             (Self::String(a), Self::String(b)) => a.as_ptr() == b.as_ptr(),
             (Self::List(a), Self::List(b)) => Rc::as_ptr(a) == Rc::as_ptr(b),
             (Self::Set(a), Self::Set(b)) => Rc::as_ptr(a) == Rc::as_ptr(b),
+            (Self::Map(a), Self::Map(b)) => Rc::as_ptr(a) == Rc::as_ptr(b),
             (Self::Func(a), Self::Func(b)) => a == b,
             (Self::GenObj(a), Self::GenObj(b)) => a == b,
             _ => false,

@@ -44,8 +44,8 @@ end
 
 test Add
     d = {:}
-    ADD(d, ['key', 'val'])
-    ADD(d, ['a', 10])
+    assert ADD(d, ['key', 'val']) is d
+    assert ADD(d, ['a', 10]) is d
 
     assert d == {'a': 10, 'key': 'val'}
 end
