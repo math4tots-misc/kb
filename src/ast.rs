@@ -114,6 +114,7 @@ pub enum StmtDesc {
     Expr(Expr),
     Print(Expr),
     Assert(Expr),
+    AssertThrow(Box<Stmt>),
 
     // Control flow
     Label(RcStr),

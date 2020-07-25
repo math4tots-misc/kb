@@ -1,0 +1,11 @@
+test Throw
+    # assert throw block syntax
+    assert throw
+        throw 10
+    end
+
+    # use before set
+    # assert throw expression syntax
+    assert throw x
+    x = 1
+end

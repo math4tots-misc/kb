@@ -723,6 +723,12 @@ fn step<H: Handler>(
                 ));
             }
         }
+        Opcode::AssertThrowFailed => {
+            addtrace!();
+            return Err(rterr!(
+                "Assertion failed: exception not thrown"
+            ))
+        }
         Opcode::Goto(pos) => {
             *i = *pos as usize;
         }

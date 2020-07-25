@@ -57,6 +57,7 @@ pub enum Opcode {
     AddToTest,
     Assert,
     AssertBinop(AssertBinop),
+    AssertThrowFailed,
 
     // (should come last) unresolved control flow ops
     Label(RcStr),

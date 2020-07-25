@@ -168,6 +168,9 @@ fn prepare_vars_for_stmt(
                 prepare_vars_for_stmt(out, stmt, prefix)?;
             }
         }
+        StmtDesc::AssertThrow(assert_stmt) => {
+            prepare_vars_for_stmt(out, assert_stmt, prefix)?;
+        }
         StmtDesc::Assign(target, other_targets, _) => {
             prepare_vars_for_target(out, target, prefix)?;
             for target in other_targets {
@@ -306,6 +309,18 @@ fn translate_stmt(code: &mut Code, scope: &mut Scope, stmt: &Stmt) -> Result<(),
                 code.add(Opcode::Assert, stmt.mark.clone());
             }
         },
+        StmtDesc::AssertThrow(assert_stmt) => {
+            let catch_label = scope.new_label();
+            code.add(
+                Opcode::UnresolvedAddTry(catch_label.clone()),
+                stmt.mark.clone(),
+            );
+            translate_stmt(code, scope, assert_stmt)?;
+            code.add(Opcode::PopTry, stmt.mark.clone());
+            code.add(Opcode::AssertThrowFailed, stmt.mark.clone());
+            code.add(Opcode::Label(catch_label), stmt.mark.clone());
+            code.add(Opcode::Pop, stmt.mark.clone());
+        }
         StmtDesc::Label(label) => {
             code.add(Opcode::Label(label.clone()), stmt.mark.clone());
         }

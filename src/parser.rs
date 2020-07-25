@@ -505,11 +505,27 @@ impl<'a> Parser<'a> {
             }
             Token::Name("assert") => {
                 self.gettok();
-                let cond = self.expr(0)?;
-                Ok(Stmt {
-                    mark,
-                    desc: StmtDesc::Assert(cond),
-                })
+                if self.consume(Token::Name("throw")) {
+                    let body = if self.at_delim() {
+                        self.block()?
+                    } else {
+                        let expr = self.expr(0)?;
+                        Stmt {
+                            mark: mark.clone(),
+                            desc: StmtDesc::Expr(expr),
+                        }
+                    };
+                    Ok(Stmt {
+                        mark,
+                        desc: StmtDesc::AssertThrow(body.into()),
+                    })
+                } else {
+                    let cond = self.expr(0)?;
+                    Ok(Stmt {
+                        mark,
+                        desc: StmtDesc::Assert(cond),
+                    })
+                }
             }
             Token::Name("try") => {
                 self.gettok();
