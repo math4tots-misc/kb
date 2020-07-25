@@ -31,3 +31,8 @@ test Add
     ADD(set, 10)
     assert set == {1, 2, 3, 10}
 end
+
+test In
+    set = {'a', 2, 5.5}
+    assert 'a' in set
+end
