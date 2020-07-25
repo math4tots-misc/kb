@@ -507,9 +507,9 @@ fn step<H: Handler>(
                 }
                 Binop::GetItem => match lhs {
                     Val::String(string) => {
-                        let len = string.len();
-                        let index = get0!(index(&rhs, len));
-                        format!("{}", string.getchar(index).unwrap()).into()
+                        let len = string.charlen();
+                        let j = get0!(index(&rhs, len));
+                        format!("{}", string.getchar(j).unwrap()).into()
                     }
                     Val::List(list) => {
                         let len = list.borrow().len();
@@ -937,11 +937,11 @@ impl GenObj {
 fn index(i: &Val, len: usize) -> Result<usize, Val> {
     match i {
         Val::Number(i) => {
-            let mut i = *i;
-            if i < 0.0 {
-                i += len as f64;
+            let mut i = *i as i64;
+            if i < 0 {
+                i += len as i64;
             }
-            if i < 0.0 || i >= len as f64 {
+            if i < 0 || i >= len as i64 {
                 Err(rterr!("Index out of bounds (i = {}, len = {})", i, len))
             } else {
                 Ok(i as usize)

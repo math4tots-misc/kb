@@ -1,0 +1,7 @@
+
+
+test GetUnicode
+    x = "한글"
+    assert x[0] == '한'
+    assert x[1] == '글'
+end
