@@ -655,6 +655,16 @@ fn step<H: Handler>(
                             let gen = get0!(applyfunc(scope, handler, &iterlist, vec![val]));
                             gen
                         }
+                        Val::Set(_) => {
+                            let iterset = get0!(scope.iter_set()).clone();
+                            let gen = get0!(applyfunc(scope, handler, &iterset, vec![val]));
+                            gen
+                        }
+                        Val::Map(_) => {
+                            let itermap = get0!(scope.iter_map()).clone();
+                            let gen = get0!(applyfunc(scope, handler, &itermap, vec![val]));
+                            gen
+                        }
                         _ => {
                             addtrace!();
                             handle_error!(rterr!(
@@ -819,6 +829,8 @@ pub struct Scope {
 
     // cached indices into globals
     cache_iter_list: Option<Rc<Code>>,
+    cache_iter_set: Option<Rc<Code>>,
+    cache_iter_map: Option<Rc<Code>>,
 }
 
 impl Scope {
@@ -829,6 +841,8 @@ impl Scope {
             trace: vec![],
             tests: vec![],
             cache_iter_list: None,
+            cache_iter_set: None,
+            cache_iter_map: None,
         }
     }
     pub fn get_name(&self, vscope: VarScope, index: u32) -> &RcStr {
@@ -881,6 +895,28 @@ impl Scope {
             self.cache_iter_list = Some(func);
         }
         Ok(self.cache_iter_list.as_ref().unwrap())
+    }
+    pub fn iter_set(&mut self) -> Result<&Rc<Code>, Val> {
+        if self.cache_iter_set.is_none() {
+            let val = match self.globals.get_by_key(&"__prelude#__IterSet".into()) {
+                Some(val) => val,
+                None => return Err(rterr!("__prelude#__IterSet not found")),
+            };
+            let func = val.expect_func()?.clone();
+            self.cache_iter_set = Some(func);
+        }
+        Ok(self.cache_iter_set.as_ref().unwrap())
+    }
+    pub fn iter_map(&mut self) -> Result<&Rc<Code>, Val> {
+        if self.cache_iter_map.is_none() {
+            let val = match self.globals.get_by_key(&"__prelude#__IterMap".into()) {
+                Some(val) => val,
+                None => return Err(rterr!("__prelude#__IterMap not found")),
+            };
+            let func = val.expect_func()?.clone();
+            self.cache_iter_map = Some(func);
+        }
+        Ok(self.cache_iter_map.as_ref().unwrap())
     }
 }
 

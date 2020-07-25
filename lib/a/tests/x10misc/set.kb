@@ -35,6 +35,9 @@ end
 test In
     set = {'a', 2, 5.5}
     assert 'a' in set
+
+    # maps are not hashable
+    assert throw {1: 2} in set
 end
 
 test Cmp
@@ -46,4 +49,13 @@ test Cmp
     assert {1, 2, 3} >= {1, 2}
     assert {1, 2, 3} <= {1, 2, 3}
     assert {1, 2, 3} < {1, 2, 3, 4}
+end
+
+test ForIn
+    list = []
+    set = {'a', 7, 2, 5.5}
+    for x in set
+        ADD(list, x)
+    end
+    assert list == [2, 5.5, 7, "a"]
 end

@@ -55,3 +55,12 @@ test MapKeys
     # trying to use them as keys throw an error
     assert throw { {1: 2}: 2 }
 end
+
+test ForIn
+    list = []
+    map = {'a': 55, {'x'}: 7, 2: 5.5}
+    for x in map
+        ADD(list, x)
+    end
+    assert list == [[2, 5.5], ["a", 55], [{"x"}, 7]]
+end

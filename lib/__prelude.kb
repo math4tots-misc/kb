@@ -20,3 +20,10 @@ fn* __IterList(list)
         yield list[i]
     end
 end
+
+# By converting these containers to lists before iterating
+# over them, we pay the cost of the entire container right
+# at the start. It's not ideal, but it is simple and allows
+# us to use Rust's native HashSet/HashMap more easily
+fn __IterSet(set) = __IterList(LIST(set))
+fn __IterMap(map) = __IterList(LIST(map))
