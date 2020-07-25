@@ -55,3 +55,12 @@ test Sort
     list = [1, 'a']
     assert throw SORT(list)
 end
+
+test ForIn
+    # Lists should be usable in for loops
+    list = []
+    for x in ['a', 'b', 'c', 'd']
+        ADD(list, CAT(x, 10))
+    end
+    assert list == ["a10", "b10", "c10", "d10"]
+end

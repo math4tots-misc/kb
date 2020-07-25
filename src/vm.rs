@@ -67,6 +67,21 @@ impl<H: Handler> Vm<H> {
     }
 }
 
+pub fn applyfunc<H: Handler>(
+    scope: &mut Scope,
+    handler: &mut H,
+    func: &Rc<Code>,
+    args: Vec<Val>,
+) -> Result<Val, Val> {
+    if func.generator() {
+        // generator; create a generator object
+        mkgenobj(func.clone(), args)
+    } else {
+        // this is a normal function, call it
+        callfunc(scope, handler, func, args)
+    }
+}
+
 pub fn callfunc<H: Handler>(
     scope: &mut Scope,
     handler: &mut H,
@@ -414,15 +429,8 @@ fn step<H: Handler>(
                 handle_error!(rterr!("{} is not a function", func));
             };
 
-            if func.generator() {
-                // generator; create a generator object
-                let genobj = get0!(mkgenobj(func.clone(), args));
-                stack.push(genobj);
-            } else {
-                // this is a normal function, call it
-                let ret = get1!(callfunc(scope, handler, &func, args));
-                stack.push(ret);
-            }
+            let ret = get1!(applyfunc(scope, handler, &func, args));
+            stack.push(ret);
         }
         Opcode::Binop(op) => {
             let rhs = stack.pop().unwrap();
@@ -638,6 +646,23 @@ fn step<H: Handler>(
                 Unop::Str => format!("{}", val).into(),
                 Unop::Repr => format!("{:?}", val).into(),
                 Unop::Not => Val::Bool(!val.truthy()),
+                Unop::Iter => {
+                    match val {
+                        Val::GenObj(_) => val,
+                        Val::List(_) => {
+                            let iterlist = scope.iter_list()?.clone();
+                            let gen = applyfunc(scope, handler, &iterlist, vec![val])?;
+                            gen
+                        }
+                        _ => {
+                            addtrace!();
+                            handle_error!(rterr!(
+                                concat!("{:?} values are not iterable"),
+                                val.type_(),
+                            ));
+                        }
+                    }
+                }
                 Unop::Cat => {
                     let mut string = String::new();
                     cat(&mut string, &val);
@@ -790,6 +815,9 @@ pub struct Scope {
     locals: Vec<IndexedMap>,
     trace: Vec<Mark>,
     tests: Vec<Rc<Code>>,
+
+    // cached indices into globals
+    cache_iter_list: Option<Rc<Code>>,
 }
 
 impl Scope {
@@ -799,6 +827,7 @@ impl Scope {
             locals: vec![],
             trace: vec![],
             tests: vec![],
+            cache_iter_list: None,
         }
     }
     pub fn get_name(&self, vscope: VarScope, index: u32) -> &RcStr {
@@ -840,6 +869,17 @@ impl Scope {
     }
     pub fn pop_trace(&mut self) {
         self.trace.pop();
+    }
+    pub fn iter_list(&mut self) -> Result<&Rc<Code>, Val> {
+        if self.cache_iter_list.is_none() {
+            let val = match self.globals.get_by_key(&"__prelude#__IterList".into()) {
+                Some(val) => val,
+                None => return Err(rterr!("__prelude#__IterList not found")),
+            };
+            let func = val.expect_func()?.clone();
+            self.cache_iter_list = Some(func);
+        }
+        Ok(self.cache_iter_list.as_ref().unwrap())
     }
 }
 

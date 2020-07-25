@@ -462,6 +462,7 @@ fn translate_stmt(code: &mut Code, scope: &mut Scope, stmt: &Stmt) -> Result<(),
             let end_label = scope.new_label();
 
             translate_expr(code, scope, container)?;
+            code.add(Opcode::Unop(Unop::Iter), stmt.mark.clone());
 
             code.add(Opcode::Label(start_label.clone()), stmt.mark.clone());
             code.add(Opcode::Next, stmt.mark.clone());
@@ -625,6 +626,7 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
             // create the list to add to and prepare the container
             code.add(Opcode::MakeList(0), expr.mark.clone());
             translate_expr(code, scope, container)?;
+            code.add(Opcode::Unop(Unop::Iter), expr.mark.clone());
 
             code.add(Opcode::Label(start_label.clone()), expr.mark.clone());
             code.add(Opcode::Next, expr.mark.clone());

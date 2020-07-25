@@ -140,6 +140,8 @@ pub enum Unop {
     Repr,
     Not, // logical not
 
+    Iter,
+
     // concatenate strings
     Cat,
 
