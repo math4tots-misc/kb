@@ -490,7 +490,10 @@ fn step<H: Handler>(
                                 Some(pair) => pair,
                                 None => {
                                     addtrace!();
-                                    handle_error!(rterr!("{:?} is not a proper key-value pair", rhs));
+                                    handle_error!(rterr!(
+                                        "{:?} is not a proper key-value pair",
+                                        rhs
+                                    ));
                                 }
                             };
                             map.borrow_mut().insert(key, val);

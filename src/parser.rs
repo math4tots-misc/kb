@@ -30,12 +30,11 @@ const CONTROL_KEYWORDS: &[&str] = &[
     // ============================= for global items =============================
     "test", "fn", "import", "as",
     // ============================= statement level =============================
-    "var", "if", "elif", "else", "then", "while",
-    "for", "to", "try", "catch", "throw",
-    "assert", "return", "print",
+    "var", "if", "elif", "else", "then", "while", "for", "to", "try", "catch", "throw", "assert",
+    "return", "print",
     // ============================= legacy all-caps keywords =============================
-    "RETURN", "PRINT", "GOTO", "DIM", "LET", "IF", "ELSEIF", "ELSE", "THEN",
-    "DO", "WHILE", "FOR", "LOOP", "TO", "FUNCTION", "END", "SUB", "TEST",
+    "RETURN", "PRINT", "GOTO", "DIM", "LET", "IF", "ELSEIF", "ELSE", "THEN", "DO", "WHILE", "FOR",
+    "LOOP", "TO", "FUNCTION", "END", "SUB", "TEST",
 ];
 
 const EXPR_KEYWORDS: &[&str] = &[
