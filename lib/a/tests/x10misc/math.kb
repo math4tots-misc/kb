@@ -26,3 +26,16 @@ test Exponentiate
     assert 2^(2^3) == 256
     assert (2^2)^3 == 64
 end
+
+test NaNAndInf
+    assert 1000 < 1 / 0
+    assert 1000 > -1 / 0
+
+    # inf are equal if their signs are equal
+    assert 1/0 == 2/0
+    assert 1/0 == 10 * (1/0)
+    assert -1/0 != 2/0
+
+    # NaN weirdness
+    assert 0 / 0 != 0 / 0
+end
