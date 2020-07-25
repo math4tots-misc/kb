@@ -47,7 +47,7 @@ const EXPR_KEYWORDS: &[&str] = &[
 /// These 'pseudo-functions' are all-caps
 const OP_KEYWORDS: &[&str] = &[
     "NEXT", "APPEND", "NAME", "DISASM", "LEN", "STR", "REPR", "COS", "SIN", "TAN", "ACOS", "ASIN",
-    "ATAN", "ATAN2", "CAT", "TYPE", "ADD", "POP", "REMOVE", "DELETE",
+    "ATAN", "ATAN2", "CAT", "TYPE", "ADD", "POP", "REMOVE", "DELETE", "SORT", "SORTED",
 ];
 
 const LITERAL_KEYWORDS: &[&str] = &["true", "false", "nil"];
@@ -59,6 +59,7 @@ const UNOPS: &[(&'static str, Unop)] = &[
     ("LEN", Unop::Len),
     ("TYPE", Unop::Type),
     ("POP", Unop::Pop),
+    ("SORT", Unop::Sort),
     ("SIN", Unop::Arithmetic(ArithmeticUnop::Sin)),
     ("COS", Unop::Arithmetic(ArithmeticUnop::Cos)),
     ("TAN", Unop::Arithmetic(ArithmeticUnop::Tan)),

@@ -41,3 +41,17 @@ test Comprehension
     list = [x * 4 for x in range(10) if x < 5]
     assert list == [0, 4, 8, 12, 16]
 end
+
+test Sort
+    list = []
+    assert SORT(list) is nil
+    assert list == []
+
+    list = [44, 1, -1, -2, -3, 2, 3, 55]
+    assert SORT(list) is nil
+    assert list == [-3, -2, -1, 1, 2, 3, 44, 55]
+
+    # 1 and 'a' are not comparable
+    list = [1, 'a']
+    assert throw SORT(list)
+end

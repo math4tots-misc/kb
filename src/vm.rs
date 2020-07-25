@@ -643,6 +643,11 @@ fn step<H: Handler>(
                     cat(&mut string, &val);
                     string.into()
                 }
+                Unop::Sort => {
+                    let list = get0!(val.expect_list());
+                    get0!(sort(&mut list.borrow_mut()));
+                    Val::Nil
+                }
             };
             stack.push(ret);
         }
@@ -1006,4 +1011,23 @@ fn getkey(val: Val) -> Result<Key, Val> {
         Ok(key) => Ok(key),
         Err(val) => Err(rterr!("{:?} is not hashable", val)),
     }
+}
+
+fn sort(vec: &mut Vec<Val>) -> Result<(), Val> {
+    use std::cmp::Ordering;
+    let mut err = None;
+    vec.sort_by(|a, b| {
+        if err.is_some() {
+            Ordering::Equal
+        } else {
+            match a.cmp(b) {
+                Ok(ord) => ord,
+                Err(e) => {
+                    err = Some(e);
+                    Ordering::Equal
+                }
+            }
+        }
+    });
+    err.map(Err).unwrap_or(Ok(()))
 }

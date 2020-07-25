@@ -201,27 +201,29 @@ impl Val {
             _ => false,
         }
     }
-    pub fn lt(&self, other: &Self) -> Result<bool, Val> {
+    pub fn cmp(&self, other: &Self) -> Result<cmp::Ordering, Val> {
         match (self, other) {
-            (Self::Number(a), Self::Number(b)) => Ok(a < b),
-            (Self::String(a), Self::String(b)) => Ok(a < b),
+            (Self::Number(a), Self::Number(b)) => Ok(f64::partial_cmp(a, b).unwrap_or(cmp::Ordering::Equal)),
+            (Self::String(a), Self::String(b)) => Ok(a.cmp(&b)),
             (Self::List(a), Self::List(b)) => Ok({
                 let a = a.borrow();
                 let b = b.borrow();
                 for (x, y) in a.iter().zip(b.iter()) {
-                    if x.lt(y)? {
-                        return Ok(true);
-                    } else if y.lt(x)? {
-                        return Ok(false);
+                    match x.cmp(y)? {
+                        cmp::Ordering::Equal => {}
+                        ord => return Ok(ord),
                     }
                 }
-                a.len() < b.len()
+                a.len().cmp(&b.len())
             }),
-            (Self::Set(a), Self::Set(b)) => Ok(a.sorted_keys() < b.sorted_keys()),
+            (Self::Set(a), Self::Set(b)) => Ok(a.sorted_keys().cmp(&b.sorted_keys())),
             _ => Err(Val::String(
                 format!("{} and {} are not comparable", self, other).into(),
             )),
         }
+    }
+    pub fn lt(&self, other: &Self) -> Result<bool, Val> {
+        Ok(self.cmp(other)? == cmp::Ordering::Less)
     }
     pub fn as_err(&self) -> ErrVal {
         ErrVal(self)
@@ -380,7 +382,7 @@ impl<'a> fmt::Display for ErrVal<'a> {
             Val::List(list) if list.borrow().len() == 2 => {
                 write!(f, "{}: {}", list.borrow()[0], list.borrow()[1])
             }
-            _ => write!(f, "ERROR: {}", self),
+            _ => write!(f, "ERROR: {}", self.0),
         }
     }
 }

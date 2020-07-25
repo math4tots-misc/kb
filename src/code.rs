@@ -142,6 +142,8 @@ pub enum Unop {
 
     // concatenate strings
     Cat,
+
+    Sort,
 }
 
 #[derive(Debug, Clone, Copy)]
