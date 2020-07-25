@@ -1,6 +1,6 @@
 
 
-TEST GetBeforeSet
+test GetBeforeSet
 
     thrown = false
 

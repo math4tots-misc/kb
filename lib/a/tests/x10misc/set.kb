@@ -1,4 +1,4 @@
-fn[test] Str
+test Str
     # When getting the elements as a list,
     # the set will always sort the input so that the
     # values are deterministic

@@ -28,7 +28,7 @@ const CONTROL_KEYWORDS: &[&str] = &[
     // mixed (used in both global and statement level)
     "end",
     // ============================= for global items =============================
-    "test", "fn", "import",
+    "test", "fn", "import", "as",
     // ============================= statement level =============================
     "var", "if", "elif", "else", "then", "while",
     "for", "to", "try", "catch", "throw",
@@ -190,8 +190,7 @@ impl<'a> Parser<'a> {
                 Token::Name("fn")
                 | Token::Name("test")
                 | Token::Name("FUNCTION")
-                | Token::Name("SUB")
-                | Token::Name("TEST") => funcs.push(self.func()?),
+                | Token::Name("SUB") => funcs.push(self.func()?),
                 _ => stmts.extend(self.maybe_labeled_stmt()?),
             }
             self.delim()?;
@@ -249,27 +248,22 @@ impl<'a> Parser<'a> {
     }
     fn func(&mut self) -> Result<FuncDisplay, BasicError> {
         let mark = self.mark();
-        let mut test = false;
 
         // the leading keyword
         //   * FUNCTION/SUB/fn are all equivalent
-        //   * TEST is almost equivalent, except that it implies [test]
-        if self.consume(Token::Name("TEST")) || self.consume(Token::Name("test")) {
-            test = true;
-        } else if !self.consume(Token::Name("FUNCTION")) && !self.consume(Token::Name("SUB")) {
-            self.expect(Token::Name("fn"))?;
-        }
+        //   * test is almost equivalent, except that it implies [test]
+        let test = if self.consume(Token::Name("test")) {
+            true
+        } else {
+            if !self.consume(Token::Name("FUNCTION")) && !self.consume(Token::Name("SUB")) {
+                self.expect(Token::Name("fn"))?;
+            }
+            false
+        };
 
         // A '*' after the leading function keyword implies this a generator function
         let generator = self.consume(Token::Star);
 
-        // optional '[test]' attribute. Implied if the TEST keyword was used
-        if self.consume(Token::LBracket) {
-            if self.consume(Token::Name("test")) {
-                test = true;
-            }
-            self.expect(Token::RBracket)?;
-        }
         let name = self.expect_name()?;
         let argspec = if self.consume(Token::LParen) {
             let mut req = Vec::new();

@@ -1,4 +1,4 @@
-fn[test] ReprAndStr
+test ReprAndStr
     assert REPR("hello") == '"hello"'
     assert STR("hello") == "hello"
 end

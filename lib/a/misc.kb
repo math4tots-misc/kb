@@ -13,7 +13,7 @@ end
 FUNCTION F(A, B) = A + B
 fn k(a, b) = a * b
 
-fn[test] sanity()
+test sanity()
     PRINT "Hello world!"
 
     other.foo()

@@ -1,6 +1,6 @@
 
 
-TEST Get
+test Get
     assert LEN({:}) == 0
     assert LEN({'a': 33}) == 1
 
@@ -14,7 +14,7 @@ TEST Get
     assert 'b' not in map
 end
 
-TEST SetKeys
+test SetKeys
     d = {
         {1, 2}: 'A',
         {2, 3}: 'B',
@@ -29,7 +29,7 @@ TEST SetKeys
     assert d == {{2, 3}: 'B', {1, 2}: 'C'}
 end
 
-TEST ListKeys
+test ListKeys
     d = {
         [1, 2]: 'LIST1',
         [2, 1]: 'LIST2',
@@ -40,7 +40,7 @@ TEST ListKeys
     assert STR(d) == '{[1, 2]: "LIST1", [2, 1]: "LIST2", {1, 2}: "SET"}'
 end
 
-TEST Add
+test Add
     d = {:}
     ADD(d, ['key', 'val'])
     ADD(d, ['a', 10])

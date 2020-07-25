@@ -1,6 +1,6 @@
 
 
-fn[test] PreludeFunction
+test PreludeFunction
     # Some comments
 
     list = []
@@ -10,6 +10,6 @@ fn[test] PreludeFunction
     assert list == [0, 1, 2, 3, 4]
 end
 
-fn[test] FuncName
+test FuncName
     assert NAME(range) == '__prelude#range'
 end

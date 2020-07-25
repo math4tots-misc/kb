@@ -1,6 +1,6 @@
 
 
-fn[test] StringGetItem
+test StringGetItem
     s = 'abc'
     assert s[0] == 'a'
     assert s[1] == 'b'
@@ -8,14 +8,14 @@ fn[test] StringGetItem
 end
 
 
-fn[test] ListGetItem
+test ListGetItem
     list = ['aaa', 22, 55]
     assert list[0] == 'aaa'
     assert list[1] == 22
     assert list[2] == 55
 end
 
-fn[test] ListSetItem
+test ListSetItem
     list = ['aaa', 22, 55]
     assert list == ['aaa', 22, 55]
     list[1] = 'foo'

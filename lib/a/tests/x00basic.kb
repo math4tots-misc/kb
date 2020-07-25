@@ -1,6 +1,6 @@
 
 
-fn[test] Sanity
+test Sanity
     assert true
     assert 1 != 2
     assert 1 == 1
@@ -12,7 +12,7 @@ fn[test] Sanity
     assert 1 is not 2
 end
 
-fn[test] GotoLineNumber
+test GotoLineNumber
     i = 0
     total = 0
 
@@ -25,11 +25,11 @@ fn[test] GotoLineNumber
     assert total == 45
 end
 
-fn[test] StringLiterals
+test StringLiterals
     x = r"hi"
     assert x == 'hi'
 end
 
-fn[test] NotEqual
+test NotEqual
     assert 1 <> 2
 end

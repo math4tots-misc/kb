@@ -1,5 +1,5 @@
 
-TEST Trig
+test Trig
     assert ACOS(COS(PI / 2)) == PI / 2
     assert COS(PI) == -1
     assert COS(0) == 1
@@ -12,13 +12,13 @@ TEST Trig
     assert ATAN2(1, 1) == PI / 4
 end
 
-TEST SubtractionAssociativity
+test SubtractionAssociativity
     assert 2 - 3 - 4 == -5
     assert (2 - 3) - 4 == -5
     assert 2 - (3 - 4) == 3
 end
 
-TEST Exponentiate
+test Exponentiate
     assert 2^5 == 32
 
     # Test for associativity

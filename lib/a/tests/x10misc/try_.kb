@@ -1,4 +1,4 @@
-TEST Try
+test Try
     # catch case
     passed_catch = false
     try
@@ -17,7 +17,7 @@ TEST Try
     assert not passed_catch
 end
 
-TEST ThrowDirect
+test ThrowDirect
     try
         throw 10
     catch e

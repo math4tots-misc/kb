@@ -1,2 +1,2 @@
-fn[test] ExactModuleNameMatchTest()
+test ExactModuleNameMatchTest()
 end

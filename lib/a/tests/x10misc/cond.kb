@@ -1,5 +1,5 @@
 
-TEST ConditionalExpression
+test ConditionalExpression
     x = if 1 then 'a' else 'b'
     assert x == 'a'
     x = if 0 then 'a' else 'b'
@@ -31,7 +31,7 @@ TEST ConditionalExpression
     assert x == 'y gt 10'
 end
 
-TEST AndOr
+test AndOr
     assert (0 and 1) == 0
     assert (2 and 5) == 5
     assert (1 and 0) == 0
@@ -41,7 +41,7 @@ TEST AndOr
     assert (1 or 0) == 1
 end
 
-TEST Not
+test Not
     assert (not true) == false
     assert (not 0) == true
     assert (not 1) == false
