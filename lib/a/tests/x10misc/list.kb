@@ -1,0 +1,9 @@
+test Add
+
+    list = []
+
+    ADD(list, 10)
+    ADD(list, 20)
+
+    assert list == [10, 20]
+end

@@ -469,7 +469,29 @@ fn step<H: Handler>(
                 Binop::In => Val::Bool(get0!(lhs.in_(&rhs))),
                 Binop::NotIn => Val::Bool(!get0!(lhs.in_(&rhs))),
 
-                // list
+                // other
+                Binop::Add => {
+                    match lhs {
+                        Val::List(list) => {
+                            list.borrow_mut().push(rhs);
+                        }
+                        Val::Set(set) => {
+                            let key = match Key::from_val(rhs) {
+                                Ok(key) => key,
+                                Err(val) => {
+                                    addtrace!();
+                                    handle_error!(rterr!("{:?} is not hashable", val));
+                                }
+                            };
+                            set.borrow_mut().insert(key);
+                        }
+                        _ => {
+                            addtrace!();
+                            handle_error!(rterr!("Cannot ADD to a {:?}", lhs.type_()));
+                        }
+                    }
+                    Val::Nil
+                }
                 Binop::Append => {
                     let list = get0!(lhs.expect_list());
                     list.borrow_mut().push(rhs);
@@ -543,6 +565,7 @@ fn step<H: Handler>(
                         ArithmeticUnop::ATan => Val::Number(val.atan()),
                     }
                 }
+                Unop::Type => Val::Type(val.type_()),
                 Unop::Len => match val {
                     Val::String(s) => Val::Number(s.charlen() as f64),
                     Val::List(list) => Val::Number(list.borrow().len() as f64),

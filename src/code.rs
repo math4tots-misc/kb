@@ -83,7 +83,8 @@ pub enum Binop {
     In,
     NotIn,
 
-    // list, str
+    // for containers
+    Add,
     Append,
     GetItem,
 }
@@ -105,6 +106,8 @@ pub enum ArithmeticBinop {
 #[derive(Debug, Clone, Copy)]
 pub enum Unop {
     Arithmetic(ArithmeticUnop),
+
+    Type, // returns the type of a value
 
     Len,
     Name,

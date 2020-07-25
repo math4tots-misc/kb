@@ -18,3 +18,16 @@ fn[test] Str
     assert set == {1, 2, 3, "a", "ab", "b"}
     assert STR(set) == '{1, 2, 3, "a", "ab", "b"}'
 end
+
+test Add
+    set = {3, 2, 1}
+
+    ADD(set, 10)
+    assert set == {1, 2, 3, 10}
+
+    ADD(set, 3)
+    assert set == {1, 2, 3, 10}
+
+    ADD(set, 10)
+    assert set == {1, 2, 3, 10}
+end

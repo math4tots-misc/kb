@@ -1,0 +1,9 @@
+test TypeCompare
+
+    assert TYPE(10) == TYPE(5)
+    assert TYPE('hi') != TYPE(5)
+
+    # note, types are not strings
+    assert TYPE('hi') != 'String'
+    assert STR(TYPE('hi')) == 'String'
+end

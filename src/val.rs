@@ -19,6 +19,7 @@ pub enum Val {
     Nil,
     Bool(bool),
     Number(f64),
+    Type(ValType),
 
     /// Use of RcStr over Rc<str> is by design --
     /// this allows kb to interoperate with rest of mtots
@@ -35,6 +36,21 @@ pub enum Val {
 }
 
 impl Val {
+    pub fn type_(&self) -> ValType {
+        match self {
+            Self::Invalid => panic!("Val::Invalid.type_()"),
+            Self::Nil => ValType::Nil,
+            Self::Bool(_) => ValType::Bool,
+            Self::Number(_) => ValType::Number,
+            Self::Type(_) => ValType::Type,
+            Self::String(_) => ValType::String,
+            Self::List(_) => ValType::List,
+            Self::Set(_) => ValType::Set,
+            Self::Map(_) => ValType::Map,
+            Self::Func(_) => ValType::Func,
+            Self::GenObj(_) => ValType::GenObj,
+        }
+    }
     pub fn truthy(&self) -> bool {
         match self {
             Self::Invalid => panic!("Val::Invalid.truthy()"),
@@ -45,7 +61,7 @@ impl Val {
             Self::List(x) => x.borrow().len() > 0,
             Self::Set(x) => x.borrow().len() > 0,
             Self::Map(x) => x.borrow().len() > 0,
-            Self::Func(_) | Self::GenObj(_) => true,
+            Self::Type(_) | Self::Func(_) | Self::GenObj(_) => true,
         }
     }
     pub fn number(&self) -> Option<f64> {
@@ -60,6 +76,20 @@ impl Val {
             Ok(x)
         } else {
             Err(Val::String("Expected number".to_owned().into()))
+        }
+    }
+    pub fn as_type(&self) -> Option<ValType> {
+        if let Self::Type(x) = self {
+            Some(*x)
+        } else {
+            None
+        }
+    }
+    pub fn expect_type(&self) -> Result<ValType, Val> {
+        if let Some(x) = self.as_type() {
+            Ok(x)
+        } else {
+            Err(Val::String("Expected type".to_owned().into()))
         }
     }
     pub fn string(&self) -> Option<&RcStr> {
@@ -161,6 +191,7 @@ impl Val {
             (Self::Nil, Self::Nil) => true,
             (Self::Bool(a), Self::Bool(b)) => a == b,
             (Self::Number(a), Self::Number(b)) => a == b,
+            (Self::Type(a), Self::Type(b)) => a == b,
             (Self::String(a), Self::String(b)) => a.as_ptr() == b.as_ptr(),
             (Self::List(a), Self::List(b)) => Rc::as_ptr(a) == Rc::as_ptr(b),
             (Self::Set(a), Self::Set(b)) => Rc::as_ptr(a) == Rc::as_ptr(b),
@@ -265,6 +296,7 @@ impl fmt::Debug for Val {
             Val::Nil => write!(f, "nil"),
             Val::Bool(x) => write!(f, "{}", if *x { "true" } else { "false" }),
             Val::Number(x) => write!(f, "{}", x),
+            Val::Type(x) => write!(f, "{:?}", x),
             Val::String(x) => {
                 write!(f, "\"")?;
                 for c in x.chars() {
@@ -336,6 +368,20 @@ impl<'a> fmt::Display for ErrVal<'a> {
             _ => write!(f, "ERROR: {}", self),
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
+pub enum ValType {
+    Nil,
+    Bool,
+    Number,
+    Type,
+    String,
+    List,
+    Set,
+    Map,
+    Func,
+    GenObj,
 }
 
 /// Wrapper around RefCell<Vec<Val>>

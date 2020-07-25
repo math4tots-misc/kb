@@ -1,5 +1,6 @@
 use super::RcStr;
 use super::Val;
+use super::ValType;
 use std::cmp;
 use std::collections::HashSet;
 use std::hash::Hash;
@@ -12,6 +13,7 @@ pub enum Key {
     Nil,
     Bool(bool),
     FloatBits(u64),
+    Type(ValType),
     String(RcStr),
     List(Vec<Key>),
     Set(HSet),
@@ -25,6 +27,7 @@ impl Key {
             Val::Nil => Ok(Self::Nil),
             Val::Bool(b) => Ok(Self::Bool(b)),
             Val::Number(x) => Ok(Self::FloatBits(x.to_bits())),
+            Val::Type(x) => Ok(Self::Type(x)),
             Val::String(ptr) => Ok(Self::String(ptr)),
             Val::List(vals) => {
                 let vals = match Rc::try_unwrap(vals) {
@@ -57,6 +60,7 @@ impl From<Key> for Val {
             Key::Nil => Self::Nil,
             Key::Bool(b) => Self::Bool(b),
             Key::FloatBits(bits) => Self::Number(f64::from_bits(bits)),
+            Key::Type(x) => Self::Type(x),
             Key::String(ptr) => Self::String(ptr),
             Key::List(keys) => {
                 let vals: Vec<_> = keys.into_iter().map(Val::from).collect();
