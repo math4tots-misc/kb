@@ -26,18 +26,26 @@ const POSTFIX_PREC: Prec = 1000;
 
 const CONTROL_KEYWORDS: &[&str] = &[
     // mixed (used in both global and statement level)
-    "end", "END",
+    "end",
     // ============================= for global items =============================
-    "TEST", "SUB", "FUNCTION", "fn", "import",
+    "test", "fn", "import",
     // ============================= statement level =============================
-    "var", "if", "elif", "else", "IF", "ELSEIF", "ELSE", "THEN", "then", "DO", "while", "WHILE",
-    "for", "FOR", "LOOP", "TO", "to", "try", "catch", "throw", "PRINT", "GOTO", "DIM", "LET",
-    "assert", "return", "RETURN",
+    "var", "if", "elif", "else", "then", "while",
+    "for", "to", "try", "catch", "throw",
+    "assert", "return", "print",
+    // ============================= legacy all-caps keywords =============================
+    "RETURN", "PRINT", "GOTO", "DIM", "LET", "IF", "ELSEIF", "ELSE", "THEN",
+    "DO", "WHILE", "FOR", "LOOP", "TO", "FUNCTION", "END", "SUB", "TEST",
 ];
 
-const EXPR_KEYWORDS: &[&str] = &["and", "or", "AND", "OR", "in", "IN", "is", "not", "yield"];
+const EXPR_KEYWORDS: &[&str] = &[
+    "and", "or", "in", "is", "not", "yield",
+    // ============================= legacy all-caps keywords =============================
+    "AND", "OR", "IN", "NOT",
+];
 
 /// keywords for function-like builtin operators
+/// These 'pseudo-functions' are all-caps
 const OP_KEYWORDS: &[&str] = &[
     "NEXT", "APPEND", "NAME", "DISASM", "LEN", "STR", "REPR", "COS", "SIN", "TAN", "ACOS", "ASIN",
     "ATAN", "ATAN2", "CAT",
@@ -177,6 +185,7 @@ impl<'a> Parser<'a> {
             match self.peek() {
                 Token::Name("import") => imports.push(self.import_()?),
                 Token::Name("fn")
+                | Token::Name("test")
                 | Token::Name("FUNCTION")
                 | Token::Name("SUB")
                 | Token::Name("TEST") => funcs.push(self.func()?),
@@ -242,7 +251,7 @@ impl<'a> Parser<'a> {
         // the leading keyword
         //   * FUNCTION/SUB/fn are all equivalent
         //   * TEST is almost equivalent, except that it implies [test]
-        if self.consume(Token::Name("TEST")) {
+        if self.consume(Token::Name("TEST")) || self.consume(Token::Name("test")) {
             test = true;
         } else if !self.consume(Token::Name("FUNCTION")) && !self.consume(Token::Name("SUB")) {
             self.expect(Token::Name("fn"))?;
@@ -388,7 +397,7 @@ impl<'a> Parser<'a> {
     fn stmt(&mut self) -> Result<Stmt, BasicError> {
         let mark = self.mark();
         match self.peek() {
-            Token::Name("PRINT") => {
+            Token::Name("PRINT") | Token::Name("print") => {
                 self.gettok();
                 let arg = self.expr(0)?;
                 Ok(Stmt {
@@ -416,7 +425,7 @@ impl<'a> Parser<'a> {
                     desc: StmtDesc::Return(expr),
                 })
             }
-            Token::Name("var") | Token::Name("DIM") | Token::Name("LET") => {
+            Token::Name("DIM") | Token::Name("LET") => {
                 self.gettok();
                 let lhs = self.expr(0)?;
                 self.expect(Token::Eq)?;
@@ -445,7 +454,7 @@ impl<'a> Parser<'a> {
                     desc: StmtDesc::If(pairs, other),
                 })
             }
-            Token::Name("while") => {
+            Token::Name("while") | Token::Name("WHILE") => {
                 self.gettok();
                 let cond = self.expr(0)?;
                 self.delim()?;
