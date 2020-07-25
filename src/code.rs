@@ -24,6 +24,8 @@ pub enum Opcode {
     Pop,
     Dup,
     Dup2,
+    Swap01,
+    Swap12,
     Unpack(u32),
 
     // variable access

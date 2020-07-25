@@ -313,6 +313,14 @@ fn step<H: Handler>(
             stack.push(a);
             stack.push(b);
         }
+        Opcode::Swap01 => {
+            let len = stack.len();
+            stack.swap(len - 2, len - 1);
+        }
+        Opcode::Swap12 => {
+            let len = stack.len();
+            stack.swap(len - 3, len - 2);
+        }
         Opcode::Unpack(n) => {
             let elements = stack.pop().unwrap();
             if let Some(list) = elements.list() {

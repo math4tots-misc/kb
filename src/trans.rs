@@ -113,7 +113,7 @@ fn prepare_vars_for_file(out: &mut Vars, file: &mut File) -> Result<(), BasicErr
         imp.unique_name = format!("{}#{}", file_name, imp.alias).into();
     }
 
-    prepare_vars_for_stmt(out, &mut file.body, Some(&file_name))?;
+    prepare_vars_for_stmt(out, &file.body, Some(&file_name))?;
 
     // while we allow variables to be assigned to multiple times,
     // we disallow functions to share names with normal variables
@@ -152,30 +152,45 @@ fn prepare_vars_for_func(func: &mut FuncDisplay) -> Result<(), BasicError> {
         let var = mkvar(func.mark.clone(), param, None, vars.len());
         vars.force_add(var)?;
     }
-    prepare_vars_for_stmt(&mut vars, &mut func.body, None)?;
+    prepare_vars_for_stmt(&mut vars, &func.body, None)?;
     func.vars = vars.list;
     Ok(())
 }
 
 fn prepare_vars_for_stmt(
     out: &mut Vars,
-    stmt: &mut Stmt,
+    stmt: &Stmt,
     prefix: Option<&RcStr>,
 ) -> Result<(), BasicError> {
-    match &mut stmt.desc {
+    match &stmt.desc {
         StmtDesc::Block(stmts) => {
             for stmt in stmts {
                 prepare_vars_for_stmt(out, stmt, prefix)?;
             }
         }
-        StmtDesc::AssertThrow(assert_stmt) => {
-            prepare_vars_for_stmt(out, assert_stmt, prefix)?;
+        StmtDesc::Return(expr) => {
+            if let Some(expr) = expr {
+                prepare_vars_for_expr(out, expr, prefix)?;
+            }
         }
-        StmtDesc::Assign(target, other_targets, _) => {
+        StmtDesc::Assign(target, other_targets, expr) => {
             prepare_vars_for_target(out, target, prefix)?;
             for target in other_targets {
                 prepare_vars_for_target(out, target, prefix)?;
             }
+            prepare_vars_for_expr(out, expr, prefix)?;
+        }
+        StmtDesc::Expr(expr) => {
+            prepare_vars_for_expr(out, expr, prefix)?;
+        }
+        StmtDesc::Print(expr) => {
+            prepare_vars_for_expr(out, expr, prefix)?;
+        }
+        StmtDesc::Assert(expr) => {
+            prepare_vars_for_expr(out, expr, prefix)?;
+        }
+        StmtDesc::AssertThrow(assert_stmt) => {
+            prepare_vars_for_stmt(out, assert_stmt, prefix)?;
         }
         StmtDesc::If(pairs, other) => {
             for (_cond, body) in pairs {
@@ -185,15 +200,19 @@ fn prepare_vars_for_stmt(
                 prepare_vars_for_stmt(out, other, prefix)?;
             }
         }
-        StmtDesc::While(_cond, body) => {
+        StmtDesc::While(cond, body) => {
+            prepare_vars_for_expr(out, cond, prefix)?;
             prepare_vars_for_stmt(out, body, prefix)?;
         }
-        StmtDesc::ForIn(target, _container, body) => {
+        StmtDesc::ForIn(target, container, body) => {
             prepare_vars_for_target(out, target, prefix)?;
+            prepare_vars_for_expr(out, container, prefix)?;
             prepare_vars_for_stmt(out, body, prefix)?;
         }
-        StmtDesc::ForClassic(target, _start, _end, _inclusive, _step, body) => {
+        StmtDesc::ForClassic(target, start, end, _inclusive, _step, body) => {
             prepare_vars_for_target(out, target, prefix)?;
+            prepare_vars_for_expr(out, start, prefix)?;
+            prepare_vars_for_expr(out, end, prefix)?;
             prepare_vars_for_stmt(out, body, prefix)?;
         }
         StmtDesc::Try(body, target, onerr) => {
@@ -201,13 +220,85 @@ fn prepare_vars_for_stmt(
             prepare_vars_for_target(out, target, prefix)?;
             prepare_vars_for_stmt(out, onerr, prefix)?;
         }
-        StmtDesc::Print(_)
-        | StmtDesc::Assert(_)
-        | StmtDesc::Throw(_)
-        | StmtDesc::Expr(_)
-        | StmtDesc::Return(_)
-        | StmtDesc::Label(_)
+        StmtDesc::Throw(expr) => {
+            prepare_vars_for_expr(out, expr, prefix)?;
+        }
+        StmtDesc::Label(_)
         | StmtDesc::Goto(_) => {}
+    }
+    Ok(())
+}
+
+fn prepare_vars_for_expr(
+    out: &mut Vars,
+    expr: &Expr,
+    prefix: Option<&RcStr>,
+) -> Result<(), BasicError> {
+    match &expr.desc {
+        ExprDesc::Nil => {}
+        ExprDesc::Bool(_) => {}
+        ExprDesc::Number(_) => {}
+        ExprDesc::String(_) => {}
+        ExprDesc::List(exprs) => {
+            for expr in exprs {
+                prepare_vars_for_expr(out, expr, prefix)?;
+            }
+        }
+        ExprDesc::Set(exprs) => {
+            for expr in exprs {
+                prepare_vars_for_expr(out, expr, prefix)?;
+            }
+        }
+        ExprDesc::Map(pairs) => {
+            for (key, val) in pairs {
+                prepare_vars_for_expr(out, key, prefix)?;
+                prepare_vars_for_expr(out, val, prefix)?;
+            }
+        }
+        ExprDesc::GetVar(_) => {}
+        ExprDesc::GetAttr(owner, _) => {
+            prepare_vars_for_expr(out, owner, prefix)?;
+        }
+        ExprDesc::CallFunc(f, args) => {
+            prepare_vars_for_expr(out, f, prefix)?;
+            for expr in args {
+                prepare_vars_for_expr(out, expr, prefix)?;
+            }
+        }
+        ExprDesc::Binop(_, a, b) => {
+            prepare_vars_for_expr(out, a, prefix)?;
+            prepare_vars_for_expr(out, b, prefix)?;
+        }
+        ExprDesc::Unop(_, arg) => {
+            prepare_vars_for_expr(out, arg, prefix)?;
+        }
+        ExprDesc::And(a, b) => {
+            prepare_vars_for_expr(out, a, prefix)?;
+            prepare_vars_for_expr(out, b, prefix)?;
+        }
+        ExprDesc::Or(a, b) => {
+            prepare_vars_for_expr(out, a, prefix)?;
+            prepare_vars_for_expr(out, b, prefix)?;
+        }
+        ExprDesc::If(cond, body, other) => {
+            prepare_vars_for_expr(out, cond, prefix)?;
+            prepare_vars_for_expr(out, body, prefix)?;
+            prepare_vars_for_expr(out, other, prefix)?;
+        }
+        ExprDesc::Yield(arg) => {
+            prepare_vars_for_expr(out, arg, prefix)?;
+        }
+        ExprDesc::Next(arg) => {
+            prepare_vars_for_expr(out, arg, prefix)?;
+        }
+        ExprDesc::Cat(args) => {
+            for expr in args {
+                prepare_vars_for_expr(out, expr, prefix)?;
+            }
+        }
+        ExprDesc::Disasm(arg) => {
+            prepare_vars_for_expr(out, arg, prefix)?;
+        }
     }
     Ok(())
 }
