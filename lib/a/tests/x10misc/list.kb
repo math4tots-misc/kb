@@ -9,11 +9,27 @@ test Pop
     list = [1, 2, 3]
     assert POP(list) == 3
     assert list == [1, 2]
-
+    assert POP(list) == 2
+    assert list == [1]
+    assert POP(list) == 1
+    assert list == []
+    assert throw POP(list)
 end
 
 test Remove
     list = [1, 2, 3]
     assert REMOVE(list, 0) == 1
     assert list == [2, 3]
+end
+
+test Get
+    list = ['aaa', 'bb', 'c']
+    assert list[0] == 'aaa'
+    assert list[-1] == 'c'
+    assert list[1] == 'bb'
+    assert list[2] == 'c'
+
+    # index out of bounds
+    assert throw list[3]
+    assert throw list[-4]
 end

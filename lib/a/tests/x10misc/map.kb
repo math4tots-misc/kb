@@ -38,6 +38,8 @@ test ListKeys
 
     assert LEN(d) == 3
     assert STR(d) == '{[1, 2]: "LIST1", [2, 1]: "LIST2", {1, 2}: "SET"}'
+    assert d[[1, 2]] == 'LIST1'
+    assert d[[2, 1]] == 'LIST2'
 end
 
 test Add
@@ -46,4 +48,10 @@ test Add
     ADD(d, ['a', 10])
 
     assert d == {'a': 10, 'key': 'val'}
+end
+
+test MapKeys
+    # Maps are nto considered hashable, so
+    # trying to use them as keys throw an error
+    assert throw { {1: 2}: 2 }
 end
