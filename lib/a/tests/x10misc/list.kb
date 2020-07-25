@@ -1,7 +1,7 @@
 test Add
     list = []
-    ADD(list, 10)
-    ADD(list, 20)
+    assert ADD(list, 10) is list
+    assert ADD(list, 20) is list
     assert list == [10, 20]
 end
 

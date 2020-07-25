@@ -22,13 +22,13 @@ end
 test Add
     set = {3, 2, 1}
 
-    ADD(set, 10)
+    assert ADD(set, 10) is set
     assert set == {1, 2, 3, 10}
 
-    ADD(set, 3)
+    assert ADD(set, 3) is set
     assert set == {1, 2, 3, 10}
 
-    ADD(set, 10)
+    assert ADD(set, 10) is set
     assert set == {1, 2, 3, 10}
 end
 
