@@ -86,6 +86,7 @@ pub enum Binop {
     // for containers
     Add,
     GetItem,
+    Remove,
 }
 
 #[derive(Debug, Clone, Copy)]

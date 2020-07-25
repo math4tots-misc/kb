@@ -1,18 +1,19 @@
 test Add
-
     list = []
-
     ADD(list, 10)
     ADD(list, 20)
-
     assert list == [10, 20]
 end
 
 test Pop
-
     list = [1, 2, 3]
-
     assert POP(list) == 3
     assert list == [1, 2]
 
+end
+
+test Remove
+    list = [1, 2, 3]
+    assert REMOVE(list, 0) == 1
+    assert list == [2, 3]
 end

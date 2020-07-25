@@ -48,7 +48,7 @@ const EXPR_KEYWORDS: &[&str] = &[
 /// These 'pseudo-functions' are all-caps
 const OP_KEYWORDS: &[&str] = &[
     "NEXT", "APPEND", "NAME", "DISASM", "LEN", "STR", "REPR", "COS", "SIN", "TAN", "ACOS", "ASIN",
-    "ATAN", "ATAN2", "CAT", "TYPE", "ADD", "POP",
+    "ATAN", "ATAN2", "CAT", "TYPE", "ADD", "POP", "REMOVE", "DELETE",
 ];
 
 const LITERAL_KEYWORDS: &[&str] = &["true", "false", "nil"];
@@ -70,6 +70,7 @@ const UNOPS: &[(&'static str, Unop)] = &[
 
 const BINOPS: &[(&'static str, Binop)] = &[
     ("ADD", Binop::Add),
+    ("REMOVE", Binop::Remove),
     ("ATAN2", Binop::Arithmetic(ArithmeticBinop::ATan2)),
 ];
 

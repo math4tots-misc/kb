@@ -540,6 +540,24 @@ fn step<H: Handler>(
                         ));
                     }
                 },
+                Binop::Remove => match lhs {
+                    Val::List(list) => {
+                        let j = get0!(index(&rhs, list.borrow().len()));
+                        list.borrow_mut().remove(j)
+                    }
+                    Val::Set(set) => {
+                        let key = get0!(getkey(rhs));
+                        set.borrow_mut().remove(&key).into()
+                    }
+                    Val::Map(map) => {
+                        let key = get0!(getkey(rhs));
+                        map.borrow_mut().remove(&key).unwrap_or(Val::Nil)
+                    }
+                    _ => {
+                        addtrace!();
+                        handle_error!(rterr!("Cannot REMOVE from a {:?}", lhs.type_()));
+                    }
+                },
             };
             stack.push(ret);
         }
@@ -955,5 +973,12 @@ fn cat(out: &mut String, val: &Val) {
             }
         }
         _ => write!(out, "{}", val).unwrap(),
+    }
+}
+
+fn getkey(val: Val) -> Result<Key, Val> {
+    match Key::from_val(val) {
+        Ok(key) => Ok(key),
+        Err(val) => Err(rterr!("{:?} is not hashable", val)),
     }
 }
