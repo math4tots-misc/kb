@@ -485,6 +485,16 @@ fn step<H: Handler>(
                             };
                             set.borrow_mut().insert(key);
                         }
+                        Val::Map(map) => {
+                            let (key, val) = match rhs.try_key_val_pair() {
+                                Some(pair) => pair,
+                                None => {
+                                    addtrace!();
+                                    handle_error!(rterr!("{:?} is not a proper key-value pair", rhs));
+                                }
+                            };
+                            map.borrow_mut().insert(key, val);
+                        }
                         _ => {
                             addtrace!();
                             handle_error!(rterr!("Cannot ADD to a {:?}", lhs.type_()));

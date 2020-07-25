@@ -224,6 +224,19 @@ impl Val {
     pub fn as_err(&self) -> ErrVal {
         ErrVal(self)
     }
+    pub fn try_key_val_pair(&self) -> Option<(Key, Val)> {
+        match self {
+            Val::List(list) if list.borrow().len() == 2 => {
+                let key = match Key::from_val(list.borrow()[0].clone()) {
+                    Ok(key) => key,
+                    Err(_) => return None,
+                };
+                let val = list.borrow()[1].clone();
+                Some((key, val))
+            }
+            _ => None,
+        }
+    }
 }
 
 impl From<bool> for Val {
