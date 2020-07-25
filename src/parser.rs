@@ -47,7 +47,8 @@ const EXPR_KEYWORDS: &[&str] = &[
 /// These 'pseudo-functions' are all-caps
 const OP_KEYWORDS: &[&str] = &[
     "NEXT", "APPEND", "NAME", "DISASM", "LEN", "STR", "REPR", "COS", "SIN", "TAN", "ACOS", "ASIN",
-    "ATAN", "ATAN2", "CAT", "TYPE", "ADD", "POP", "REMOVE", "DELETE", "SORT", "SORTED",
+    "ATAN", "ATAN2", "CAT", "TYPE", "ADD", "POP", "REMOVE", "DELETE", "SORT", "SORTED", "SET",
+    "MAP",
 ];
 
 const LITERAL_KEYWORDS: &[&str] = &["true", "false", "nil"];
@@ -57,6 +58,8 @@ const UNOPS: &[(&'static str, Unop)] = &[
     ("STR", Unop::Str),
     ("REPR", Unop::Repr),
     ("LIST", Unop::List),
+    ("SET", Unop::Set),
+    ("MAP", Unop::Map),
     ("LEN", Unop::Len),
     ("TYPE", Unop::Type),
     ("POP", Unop::Pop),
@@ -776,7 +779,12 @@ impl<'a> Parser<'a> {
                         self.expect(Token::RBracket)?;
                         Ok(Expr {
                             mark,
-                            desc: ExprDesc::ListComprehension(body.into(), target.into(), container.into(), cond),
+                            desc: ExprDesc::ListComprehension(
+                                body.into(),
+                                target.into(),
+                                container.into(),
+                                cond,
+                            ),
                         })
                     } else {
                         let mut exprs = vec![body];

@@ -140,6 +140,8 @@ pub enum Unop {
     Str,
     Repr,
     List,
+    Set,
+    Map,
 
     Not, // logical not
 

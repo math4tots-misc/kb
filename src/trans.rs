@@ -223,8 +223,7 @@ fn prepare_vars_for_stmt(
         StmtDesc::Throw(expr) => {
             prepare_vars_for_expr(out, expr, prefix)?;
         }
-        StmtDesc::Label(_)
-        | StmtDesc::Goto(_) => {}
+        StmtDesc::Label(_) | StmtDesc::Goto(_) => {}
     }
     Ok(())
 }
@@ -637,7 +636,10 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
             translate_assign(code, scope, target, true)?;
             if let Some(cond) = cond {
                 translate_expr(code, scope, cond)?;
-                code.add(Opcode::UnresolvedGotoIfFalse(start_label.clone()), expr.mark.clone());
+                code.add(
+                    Opcode::UnresolvedGotoIfFalse(start_label.clone()),
+                    expr.mark.clone(),
+                );
             }
 
             // evaluate and add this next entry to the list

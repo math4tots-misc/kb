@@ -64,3 +64,9 @@ test ForIn
     end
     assert list == [[2, 5.5], ["a", 55], [{"x"}, 7]]
 end
+
+test Conversion
+    list = [['a', 123], [{}, 'xx'], [[1, 2], 5.5]]
+    map = MAP(list)
+    assert map == {"a": 123, [1, 2]: 5.5, {}: "xx"}
+end

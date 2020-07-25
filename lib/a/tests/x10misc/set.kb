@@ -59,3 +59,9 @@ test ForIn
     end
     assert list == [2, 5.5, 7, "a"]
 end
+
+test Conversion
+    list = ['a', 'bb', 6.6]
+    set = SET(list)
+    assert set == {6.6, "a", "bb"}
+end

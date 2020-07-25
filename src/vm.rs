@@ -646,34 +646,59 @@ fn step<H: Handler>(
                 Unop::Str => format!("{}", val).into(),
                 Unop::Repr => format!("{:?}", val).into(),
                 Unop::List => get0!(to_vec(val, scope, handler)).into(),
-                Unop::Not => Val::Bool(!val.truthy()),
-                Unop::Iter => {
-                    match val {
-                        Val::GenObj(_) => val,
-                        Val::List(_) => {
-                            let iterlist = get0!(scope.iter_list()).clone();
-                            let gen = get0!(applyfunc(scope, handler, &iterlist, vec![val]));
-                            gen
-                        }
-                        Val::Set(_) => {
-                            let iterset = get0!(scope.iter_set()).clone();
-                            let gen = get0!(applyfunc(scope, handler, &iterset, vec![val]));
-                            gen
-                        }
-                        Val::Map(_) => {
-                            let itermap = get0!(scope.iter_map()).clone();
-                            let gen = get0!(applyfunc(scope, handler, &itermap, vec![val]));
-                            gen
-                        }
-                        _ => {
-                            addtrace!();
-                            handle_error!(rterr!(
-                                concat!("{:?} values are not iterable"),
-                                val.type_(),
-                            ));
-                        }
+                Unop::Set => match val {
+                    Val::Set(set) => match Rc::try_unwrap(set) {
+                        Ok(set) => Val::Set(set.into()),
+                        Err(set) => set.borrow().clone().into(),
+                    },
+                    val => {
+                        let set: Result<HashSet<_>, _> = get0!(to_vec(val, scope, handler))
+                            .into_iter()
+                            .map(Key::from_val)
+                            .collect();
+                        get0!(set).into()
                     }
-                }
+                },
+                Unop::Map => match val {
+                    Val::Map(map) => match Rc::try_unwrap(map) {
+                        Ok(map) => Val::Map(map.into()),
+                        Err(map) => map.borrow().clone().into(),
+                    },
+                    val => {
+                        let map: HashMap<_, _> = get0!(to_vec(val, scope, handler))
+                            .into_iter()
+                            .flat_map(|keyval| {
+                                keyval.try_key_val_pair().map(|(key, val)| (key, val))
+                            })
+                            .collect();
+                        map.into()
+                    }
+                },
+                Unop::Not => Val::Bool(!val.truthy()),
+                Unop::Iter => match val {
+                    Val::GenObj(_) => val,
+                    Val::List(_) => {
+                        let iterlist = get0!(scope.iter_list()).clone();
+                        let gen = get0!(applyfunc(scope, handler, &iterlist, vec![val]));
+                        gen
+                    }
+                    Val::Set(_) => {
+                        let iterset = get0!(scope.iter_set()).clone();
+                        let gen = get0!(applyfunc(scope, handler, &iterset, vec![val]));
+                        gen
+                    }
+                    Val::Map(_) => {
+                        let itermap = get0!(scope.iter_map()).clone();
+                        let gen = get0!(applyfunc(scope, handler, &itermap, vec![val]));
+                        gen
+                    }
+                    _ => {
+                        addtrace!();
+                        handle_error!(
+                            rterr!(concat!("{:?} values are not iterable"), val.type_(),)
+                        );
+                    }
+                },
                 Unop::Cat => {
                     let mut string = String::new();
                     cat(&mut string, &val);
@@ -774,9 +799,7 @@ fn step<H: Handler>(
         }
         Opcode::AssertThrowFailed => {
             addtrace!();
-            return Err(rterr!(
-                "Assertion failed: exception not thrown"
-            ))
+            return Err(rterr!("Assertion failed: exception not thrown"));
         }
         Opcode::Goto(pos) => {
             *i = *pos as usize;
@@ -1111,26 +1134,24 @@ fn sort(vec: &mut Vec<Val>) -> Result<(), Val> {
 
 fn to_vec<H: Handler>(val: Val, scope: &mut Scope, handler: &mut H) -> Result<Vec<Val>, Val> {
     match val {
-        Val::List(list) => {
-            Ok(match Rc::try_unwrap(list) {
-                Ok(list) => list.into_inner(),
-                Err(list) => list.borrow().clone(),
-            })
-        }
-        Val::Set(set) => {
-            Ok(set.sorted_keys().into_iter().map(Key::to_val).collect())
-        }
-        Val::Map(map) => {
-            Ok(map.sorted_pairs().into_iter().map(|pair| {
-                let pair: Vec<Val> = vec![
-                    pair.0.to_val(),
-                    pair.1,
-                ];
+        Val::List(list) => Ok(match Rc::try_unwrap(list) {
+            Ok(list) => list.into_inner(),
+            Err(list) => list.borrow().clone(),
+        }),
+        Val::Set(set) => Ok(set.sorted_keys().into_iter().map(Key::to_val).collect()),
+        Val::Map(map) => Ok(map
+            .sorted_pairs()
+            .into_iter()
+            .map(|pair| {
+                let pair: Vec<Val> = vec![pair.0.to_val(), pair.1];
                 let val: Val = pair.into();
                 val
-            }).collect())
-        }
+            })
+            .collect()),
         Val::GenObj(genobj) => genobj.0.borrow_mut().to_vec(scope, handler),
-        val => Err(rterr!("Expected a list, set, map or genobj but got {:?}", val))
+        val => Err(rterr!(
+            "Expected a list, set, map or genobj but got {:?}",
+            val
+        )),
     }
 }

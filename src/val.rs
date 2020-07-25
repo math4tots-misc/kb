@@ -203,7 +203,9 @@ impl Val {
     }
     pub fn cmp(&self, other: &Self) -> Result<cmp::Ordering, Val> {
         match (self, other) {
-            (Self::Number(a), Self::Number(b)) => Ok(f64::partial_cmp(a, b).unwrap_or(cmp::Ordering::Equal)),
+            (Self::Number(a), Self::Number(b)) => {
+                Ok(f64::partial_cmp(a, b).unwrap_or(cmp::Ordering::Equal))
+            }
             (Self::String(a), Self::String(b)) => Ok(a.cmp(&b)),
             (Self::List(a), Self::List(b)) => Ok({
                 let a = a.borrow();
