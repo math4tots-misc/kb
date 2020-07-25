@@ -217,6 +217,7 @@ impl Val {
                 }
                 a.len() < b.len()
             }),
+            (Self::Set(a), Self::Set(b)) => Ok(a.sorted_keys() < b.sorted_keys()),
             _ => Err(Val::String(
                 format!("{} and {} are not comparable", self, other).into(),
             )),
