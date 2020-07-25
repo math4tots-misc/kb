@@ -502,11 +502,6 @@ fn step<H: Handler>(
                     }
                     Val::Nil
                 }
-                Binop::Append => {
-                    let list = get0!(lhs.expect_list());
-                    list.borrow_mut().push(rhs);
-                    lhs
-                }
                 Binop::GetItem => match lhs {
                     Val::String(string) => {
                         let len = string.len();
@@ -589,7 +584,18 @@ fn step<H: Handler>(
                         ));
                     }
                 },
+                Unop::Pop => {
+                    let list = get0!(val.expect_list());
+                    match list.borrow_mut().pop() {
+                        Some(val) => val,
+                        None => {
+                            addtrace!();
+                            handle_error!(rterr!("Pop from empty list"));
+                        }
+                    }
+                }
                 Unop::Name => match val {
+                    Val::Type(type_) => format!("{:?}", type_).into(),
                     Val::Func(func) => func.0.name().into(),
                     _ => {
                         addtrace!();

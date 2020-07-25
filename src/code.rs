@@ -85,7 +85,6 @@ pub enum Binop {
 
     // for containers
     Add,
-    Append,
     GetItem,
 }
 
@@ -110,6 +109,8 @@ pub enum Unop {
     Type, // returns the type of a value
 
     Len,
+    Pop,
+
     Name,
     Str,
     Repr,
