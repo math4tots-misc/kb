@@ -56,7 +56,7 @@ pub enum Opcode {
     // Testing
     AddToTest,
     Assert,
-    AssertEq,
+    AssertBinop(AssertBinop),
 
     // (should come last) unresolved control flow ops
     Label(RcStr),
@@ -89,6 +89,18 @@ pub enum Binop {
     Remove,
 }
 
+impl Binop {
+    pub fn to_assert(&self) -> Option<AssertBinop> {
+        match self {
+            Self::Is => Some(AssertBinop::Is),
+            Self::IsNot => Some(AssertBinop::IsNot),
+            Self::Equal => Some(AssertBinop::Equal),
+            Self::NotEqual => Some(AssertBinop::NotEqual),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum ArithmeticBinop {
     Add,
@@ -101,6 +113,14 @@ pub enum ArithmeticBinop {
 
     // trig
     ATan2,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum AssertBinop {
+    Is,
+    IsNot,
+    Equal,
+    NotEqual,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -323,5 +343,6 @@ mod tests {
     fn enum_sizes() {
         // checking that rust will properly fold nested enums
         assert_eq!(size_of::<Binop>(), size_of::<ArithmeticBinop>());
+        assert_eq!(size_of::<Binop>(), size_of::<usize>() * 2);
     }
 }

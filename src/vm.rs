@@ -1,6 +1,7 @@
 use super::ArgSpec;
 use super::ArithmeticBinop;
 use super::ArithmeticUnop;
+use super::AssertBinop;
 use super::Binop;
 use super::Code;
 use super::Func;
@@ -703,14 +704,21 @@ fn step<H: Handler>(
                 handle_error!(rterr!(concat!("Assertion failed")));
             }
         }
-        Opcode::AssertEq => {
+        Opcode::AssertBinop(op) => {
             let rhs = stack.pop().unwrap();
             let lhs = stack.pop().unwrap();
-            if lhs != rhs {
+            let (cond, msg) = match op {
+                AssertBinop::Is => (lhs.is(&rhs), " to have same identity as "),
+                AssertBinop::IsNot => (!lhs.is(&rhs), " to have distinct identity from "),
+                AssertBinop::Equal => (lhs == rhs, " to equal "),
+                AssertBinop::NotEqual => (lhs != rhs, " to not equal "),
+            };
+            if !cond {
                 addtrace!();
                 return Err(rterr!(
-                    "Assertion failed: expected {:?} to equal {:?}",
+                    "Assertion failed: expected {:?}{}{:?}",
                     lhs,
+                    msg,
                     rhs,
                 ));
             }

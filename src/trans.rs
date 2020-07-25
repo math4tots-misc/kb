@@ -295,10 +295,11 @@ fn translate_stmt(code: &mut Code, scope: &mut Scope, stmt: &Stmt) -> Result<(),
             code.add(Opcode::Print, stmt.mark.clone());
         }
         StmtDesc::Assert(arg) => match &arg.desc {
-            ExprDesc::Binop(Binop::Equal, lhs, rhs) => {
+            ExprDesc::Binop(op, lhs, rhs) if op.to_assert().is_some() => {
+                let aop = op.to_assert().unwrap();
                 translate_expr(code, scope, lhs)?;
                 translate_expr(code, scope, rhs)?;
-                code.add(Opcode::AssertEq, stmt.mark.clone());
+                code.add(Opcode::AssertBinop(aop), stmt.mark.clone());
             }
             _ => {
                 translate_expr(code, scope, arg)?;
