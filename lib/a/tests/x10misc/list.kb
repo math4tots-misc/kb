@@ -64,3 +64,22 @@ test ForIn
     end
     assert list == ["a10", "b10", "c10", "d10"]
 end
+
+test Conversion
+    list = LIST({3, 1, 2})
+    assert list == [1, 2, 3]
+
+    list = LIST({'a': 3, 1: 'b', 2: 'd'})
+    assert list == [[1, 'b'], [2, 'd'], ['a', 3]]
+
+    list = LIST(range(3, 10, 2))
+    assert list == [3, 5, 7, 9]
+
+    original = [{}, 'bob', 654.321]
+    list = LIST(original)
+    assert list == original
+    assert list is not original
+    ADD(original, 10)
+    assert list == [{}, 'bob', 654.321]
+    assert original == [{}, "bob", 654.321, 10]
+end

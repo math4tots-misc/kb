@@ -645,13 +645,14 @@ fn step<H: Handler>(
                 },
                 Unop::Str => format!("{}", val).into(),
                 Unop::Repr => format!("{:?}", val).into(),
+                Unop::List => get0!(to_vec(val, scope, handler)).into(),
                 Unop::Not => Val::Bool(!val.truthy()),
                 Unop::Iter => {
                     match val {
                         Val::GenObj(_) => val,
                         Val::List(_) => {
-                            let iterlist = scope.iter_list()?.clone();
-                            let gen = applyfunc(scope, handler, &iterlist, vec![val])?;
+                            let iterlist = get0!(scope.iter_list()).clone();
+                            let gen = get0!(applyfunc(scope, handler, &iterlist, vec![val]));
                             gen
                         }
                         _ => {
@@ -1070,4 +1071,30 @@ fn sort(vec: &mut Vec<Val>) -> Result<(), Val> {
         }
     });
     err.map(Err).unwrap_or(Ok(()))
+}
+
+fn to_vec<H: Handler>(val: Val, scope: &mut Scope, handler: &mut H) -> Result<Vec<Val>, Val> {
+    match val {
+        Val::List(list) => {
+            Ok(match Rc::try_unwrap(list) {
+                Ok(list) => list.into_inner(),
+                Err(list) => list.borrow().clone(),
+            })
+        }
+        Val::Set(set) => {
+            Ok(set.sorted_keys().into_iter().map(Key::to_val).collect())
+        }
+        Val::Map(map) => {
+            Ok(map.sorted_pairs().into_iter().map(|pair| {
+                let pair: Vec<Val> = vec![
+                    pair.0.to_val(),
+                    pair.1,
+                ];
+                let val: Val = pair.into();
+                val
+            }).collect())
+        }
+        Val::GenObj(genobj) => genobj.0.borrow_mut().to_vec(scope, handler),
+        val => Err(rterr!("Expected a list, set, map or genobj but got {:?}", val))
+    }
 }

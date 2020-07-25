@@ -136,8 +136,11 @@ pub enum Unop {
     Pop,
 
     Name,
+
     Str,
     Repr,
+    List,
+
     Not, // logical not
 
     Iter,

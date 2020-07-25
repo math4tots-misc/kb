@@ -56,6 +56,7 @@ const UNOPS: &[(&'static str, Unop)] = &[
     ("NAME", Unop::Name),
     ("STR", Unop::Str),
     ("REPR", Unop::Repr),
+    ("LIST", Unop::List),
     ("LEN", Unop::Len),
     ("TYPE", Unop::Type),
     ("POP", Unop::Pop),
