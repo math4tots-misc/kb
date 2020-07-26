@@ -92,6 +92,9 @@ pub enum Binop {
     Extend,
     GetItem,
     Remove,
+
+    // Graphics operations
+    VideoDrawPixel,
 }
 
 impl Binop {
@@ -179,6 +182,7 @@ pub enum Zop {
     InitVideo,
     VideoClear,
     VideoPresent,
+    VideoDim,
     Poll,
 }
 

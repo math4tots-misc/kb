@@ -609,6 +609,13 @@ fn step<H: Handler>(
                         handle_error!(rterr!("Cannot REMOVE from a {:?}", lhs.type_()));
                     }
                 },
+                Binop::VideoDrawPixel => {
+                    let x = get0!(lhs.expect_number()) as i32;
+                    let y = get0!(rhs.expect_number()) as i32;
+                    let video = get0!(handler.video());
+                    get0!(video.draw_pixel(x, y));
+                    Val::Nil
+                }
             };
             stack.push(ret);
         }
@@ -768,6 +775,12 @@ fn step<H: Handler>(
                     let video = get0!(handler.video());
                     get0!(video.present());
                     Val::Nil
+                }
+                Zop::VideoDim => {
+                    let video = get0!(handler.video());
+                    let (width, height) = get0!(video.dim());
+                    let pair: Vec<Val> = vec![(width as f64).into(), (height as f64).into()];
+                    pair.into()
                 }
                 Zop::Poll => {
                     let events = get0!(handler.poll());

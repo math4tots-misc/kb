@@ -19,6 +19,10 @@ pub trait VideoHandler {
     fn set_color(&mut self, color: Color) -> Result<(), Val>;
     fn clear(&mut self) -> Result<(), Val>;
     fn present(&mut self) -> Result<(), Val>;
+    fn draw_pixel(&mut self, x: i32, y: i32) -> Result<(), Val>;
+
+    /// returns (width, height) pair of the drawing dimensions of the screen
+    fn dim(&mut self) -> Result<(u32, u32), Val>;
 }
 
 pub struct DefaultHandler;

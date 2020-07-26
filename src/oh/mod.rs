@@ -110,6 +110,18 @@ impl VideoHandler for OtherHandler {
         self.window()?.present();
         Ok(())
     }
+    fn draw_pixel(&mut self, x: i32, y: i32) -> Result<(), Val> {
+        self.window()?.draw_point((x, y))?;
+        Ok(())
+    }
+    fn dim(&mut self) -> Result<(u32, u32), Val> {
+        let (width, height) = self.window()?.logical_size();
+        if width == 0 || height == 0 {
+            Ok(self.window()?.output_size()?)
+        } else {
+            Ok((width, height))
+        }
+    }
 }
 
 fn stoerr<T, S: Into<RcStr>>(r: Result<T, S>) -> Result<T, Val> {

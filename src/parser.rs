@@ -58,6 +58,7 @@ const ZOPS: &[(&'static str, Zop)] = &[
     ("INIT_VIDEO", Zop::InitVideo),
     ("VIDEO_PRESENT", Zop::VideoPresent),
     ("VIDEO_CLEAR", Zop::VideoClear),
+    ("VIDEO_DIM", Zop::VideoDim),
 ];
 
 const UNOPS: &[(&'static str, Unop)] = &[
@@ -86,6 +87,7 @@ const BINOPS: &[(&'static str, Binop)] = &[
     ("EXTEND", Binop::Extend),
     ("REMOVE", Binop::Remove),
     ("ATAN2", Binop::Arithmetic(ArithmeticBinop::ATan2)),
+    ("VIDEO_DRAW_PIXEL", Binop::VideoDrawPixel),
 ];
 
 pub fn parse(source: &Rc<Source>) -> Result<File, BasicError> {

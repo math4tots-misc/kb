@@ -27,3 +27,6 @@ end
 # us to use Rust's native HashSet/HashMap more easily
 fn __IterSet(set) = __IterList(LIST(set))
 fn __IterMap(map) = __IterList(LIST(map))
+
+fn min(x, y) = if x < y then x else y
+fn max(x, y) = if x > y then x else y
