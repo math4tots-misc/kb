@@ -8,13 +8,14 @@ use crate::RcStr;
 use crate::Scope;
 use crate::Val;
 use crate::VideoHandler;
-use sdl2::event::Event as SdlEvent;
 use sdl2::render::WindowCanvas;
 use sdl2::EventPump;
 use sdl2::Sdl;
 use sdl2::VideoSubsystem;
 
 mod conv;
+
+use conv::*;
 
 const START_WINDOW_WIDTH: u32 = 800;
 const START_WINDOW_HEIGHT: u32 = 600;
@@ -79,50 +80,8 @@ impl Handler for OtherHandler {
     fn poll(&mut self) -> Result<Vec<Event>, Val> {
         let mut events = Vec::new();
         for event in self.events()?.poll_iter() {
-            match event {
-                SdlEvent::Quit { timestamp: _ } => {
-                    // TODO: In the future make this configurable
-                    // For now, we always throw on a quit event, so that
-                    // there's a way to exit the application even if you forget
-                    return Err(rterr("Quit"));
-                }
-                SdlEvent::TextInput {
-                    timestamp: _,
-                    window_id: _,
-                    text,
-                } => {
-                    events.push(Event::Text(text));
-                }
-                SdlEvent::KeyDown {
-                    timestamp: _,
-                    window_id: _,
-                    keycode,
-                    scancode: _,
-                    keymod: _,
-                    repeat,
-                } => {
-                    if let Some(keycode) = keycode {
-                        let keycode = format!("{:?}", keycode);
-                        events.push(if repeat {
-                            Event::KeyRepeat(keycode)
-                        } else {
-                            Event::KeyDown(keycode)
-                        });
-                    }
-                }
-                SdlEvent::KeyUp {
-                    timestamp: _,
-                    window_id: _,
-                    keycode,
-                    scancode: _,
-                    keymod: _,
-                    repeat: _,
-                } => {
-                    if let Some(keycode) = keycode {
-                        events.push(Event::KeyUp(format!("{:?}", keycode)));
-                    }
-                }
-                _ => {}
+            if let Some(event) = conve(event)? {
+                events.push(event);
             }
         }
         Ok(events)
