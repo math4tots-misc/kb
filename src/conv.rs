@@ -28,6 +28,7 @@ impl From<Event> for Val {
     fn from(event: Event) -> Self {
         match event {
             Event::Quit => vec!["Quit".into()].into(),
+            Event::Text(string) => vec!["Text".into(), string.into()].into(),
         }
     }
 }
@@ -49,4 +50,5 @@ impl Color {
 #[derive(Debug, Clone)]
 pub enum Event {
     Quit,
+    Text(String),
 }

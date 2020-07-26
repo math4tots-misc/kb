@@ -81,7 +81,17 @@ impl Handler for OtherHandler {
         for event in self.events()?.poll_iter() {
             match event {
                 SdlEvent::Quit { timestamp: _ } => {
-                    events.push(Event::Quit);
+                    // TODO: In the future make this configurable
+                    // For now, we always throw on a quit event, so that
+                    // there's a way to exit the application even if you forget
+                    return Err(rterr("Quit"));
+                }
+                SdlEvent::TextInput {
+                    timestamp: _,
+                    window_id: _,
+                    text,
+                } => {
+                    events.push(Event::Text(text));
                 }
                 _ => {}
             }

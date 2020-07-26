@@ -10,6 +10,8 @@ fn EventLoop
         for [type, *args] in POLL()
             if type == 'Quit'
                 return
+            else
+                print [type, args]
             end
         end
         SLEEP(1 / 60)
