@@ -524,6 +524,35 @@ fn step<H: Handler>(
                     }
                     lhs
                 }
+                Binop::Extend => {
+                    let rhs = get0!(to_vec(rhs, scope, handler));
+                    match &lhs {
+                        Val::List(list) => {
+                            list.borrow_mut().extend(rhs);
+                        }
+                        Val::Set(set) => {
+                            let rhs: Vec<_> = get0!(rhs.into_iter().map(getkey).collect());
+                            set.borrow_mut().extend(rhs);
+                        }
+                        Val::Map(map) => {
+                            let pairs: Option<Vec<_>> =
+                                rhs.into_iter().map(|x| x.try_key_val_pair()).collect();
+                            if let Some(pairs) = pairs {
+                                map.borrow_mut().extend(pairs);
+                            } else {
+                                addtrace!();
+                                handle_error!(rterr!(
+                                    "Invalid key-value pairs encountered when extending map",
+                                ));
+                            }
+                        }
+                        _ => {
+                            addtrace!();
+                            handle_error!(rterr!("Cannot ADD to a {:?}", lhs.type_()));
+                        }
+                    }
+                    lhs
+                }
                 Binop::GetItem => match lhs {
                     Val::String(string) => {
                         let len = string.charlen();

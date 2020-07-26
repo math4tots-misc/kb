@@ -70,3 +70,25 @@ test Conversion
     map = MAP(list)
     assert map == {"a": 123, [1, 2]: 5.5, {}: "xx"}
 end
+
+test Extend
+    map = {1: 2, 3: 4}
+    EXTEND(map, {'a': 'b', 'c': 'd', 0: -1})
+    assert map == {0: -1, 1: 2, 3: 4, "a": "b", "c": "d"}
+
+    map = {1: 'a', 2: 'b'}
+    EXTEND(map, {1: 'xx'})
+    assert map == {1: "xx", 2: "b"}
+end
+
+test Remove
+    map = {1: 2}
+    assert LEN(map) == 1
+
+    REMOVE(map, 1)
+    assert map == {:}
+    assert LEN(map) == 0
+
+    # without the ':', it's an empty set
+    assert map != {}
+end

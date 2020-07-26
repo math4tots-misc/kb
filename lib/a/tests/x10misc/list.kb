@@ -83,3 +83,12 @@ test Conversion
     assert list == [{}, 'bob', 654.321]
     assert original == [{}, "bob", 654.321, 10]
 end
+
+test Extend
+    list = [1, 2, 3]
+    EXTEND(list, ['a', 'b', 'c'])
+    assert list == [1, 2, 3, 'a', 'b', 'c']
+
+    EXTEND(list, {'aa', 'bb', 'cc'})
+    assert list == [1, 2, 3, 'a', 'b', 'c', 'aa', 'bb', 'cc']
+end

@@ -3,6 +3,7 @@ extern crate sdl2;
 
 mod ast;
 mod code;
+mod conv;
 mod handler;
 mod key;
 mod lexer;
@@ -14,10 +15,10 @@ mod rcstr;
 mod trans;
 mod val;
 mod vm;
-mod conv;
 
 pub use ast::*;
 pub use code::*;
+pub use conv::*;
 pub use handler::*;
 pub use key::*;
 pub use lexer::*;
@@ -29,7 +30,6 @@ pub use rcstr::*;
 pub use trans::*;
 pub use val::*;
 pub use vm::*;
-pub use conv::*;
 
 pub const PRELUDE_NAME: &'static str = "__prelude";
 

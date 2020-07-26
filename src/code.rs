@@ -89,6 +89,7 @@ pub enum Binop {
 
     // for containers
     Add,
+    Extend,
     GetItem,
     Remove,
 }

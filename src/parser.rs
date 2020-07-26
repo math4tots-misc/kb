@@ -81,6 +81,7 @@ const UNOPS: &[(&'static str, Unop)] = &[
 
 const BINOPS: &[(&'static str, Binop)] = &[
     ("ADD", Binop::Add),
+    ("EXTEND", Binop::Extend),
     ("REMOVE", Binop::Remove),
     ("ATAN2", Binop::Arithmetic(ArithmeticBinop::ATan2)),
 ];

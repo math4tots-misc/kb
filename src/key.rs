@@ -12,7 +12,16 @@ use std::rc::Rc;
 pub enum Key {
     Nil,
     Bool(bool),
-    FloatBits(u64),
+
+    // we store floatbits in i64 instead of u64 so that
+    // number keys would be ordered in more or less the same
+    // way as their float counterparts
+    // As long as the bit and byte orders between f64 and i64 match
+    // and IEEE 754 is used, everything should be ordered more or
+    // less as you'd expect, except NaNs, which will cluster near
+    // each of the infinities
+    FloatBits(i64),
+
     Type(ValType),
     String(RcStr),
     List(Vec<Key>),
@@ -26,7 +35,7 @@ impl Key {
         match val {
             Val::Nil => Ok(Self::Nil),
             Val::Bool(b) => Ok(Self::Bool(b)),
-            Val::Number(x) => Ok(Self::FloatBits(x.to_bits())),
+            Val::Number(x) => Ok(Self::FloatBits(x.to_bits() as i64)),
             Val::Type(x) => Ok(Self::Type(x)),
             Val::String(ptr) => Ok(Self::String(ptr)),
             Val::List(vals) => {
@@ -59,7 +68,7 @@ impl From<Key> for Val {
         match key {
             Key::Nil => Self::Nil,
             Key::Bool(b) => Self::Bool(b),
-            Key::FloatBits(bits) => Self::Number(f64::from_bits(bits)),
+            Key::FloatBits(bits) => Self::Number(f64::from_bits(bits as u64)),
             Key::Type(x) => Self::Type(x),
             Key::String(ptr) => Self::String(ptr),
             Key::List(keys) => {

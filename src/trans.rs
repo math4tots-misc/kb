@@ -584,7 +584,10 @@ fn translate_assign(
             if !consume {
                 code.add(Opcode::Dup, target.mark.clone());
             }
-            code.add(Opcode::Unpack(list.len() as u32, false), target.mark.clone());
+            code.add(
+                Opcode::Unpack(list.len() as u32, false),
+                target.mark.clone(),
+            );
             for subtarget in list.iter().rev() {
                 translate_assign(code, scope, subtarget, true)?;
             }

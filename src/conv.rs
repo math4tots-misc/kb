@@ -1,5 +1,5 @@
-use crate::Val;
 use crate::rterr;
+use crate::Val;
 
 impl Val {
     pub fn to_color(&self) -> Result<Color, Val> {
@@ -16,7 +16,10 @@ impl Val {
                 };
                 Ok(Color::rgba(r, g, b, a))
             }
-            _ => Err(rterr(format!("Expected color, but got a {:?}", self.type_()))),
+            _ => Err(rterr(format!(
+                "Expected color, but got a {:?}",
+                self.type_()
+            ))),
         }
     }
 }
@@ -24,9 +27,7 @@ impl Val {
 impl From<Event> for Val {
     fn from(event: Event) -> Self {
         match event {
-            Event::Quit => vec![
-                "Quit".into(),
-            ].into(),
+            Event::Quit => vec!["Quit".into()].into(),
         }
     }
 }
@@ -41,9 +42,7 @@ pub struct Color {
 
 impl Color {
     pub fn rgba(r: f64, g: f64, b: f64, a: f64) -> Self {
-        Self {
-            r, g, b, a
-        }
+        Self { r, g, b, a }
     }
 }
 

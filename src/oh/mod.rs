@@ -1,18 +1,18 @@
 //! Handler implementation that binds lots of other stuff like SDL
 //! This way, it's easier to separate out dependencies in the future if needed
 use crate::rterr;
+use crate::Color;
+use crate::Event;
 use crate::Handler;
 use crate::RcStr;
 use crate::Scope;
 use crate::Val;
 use crate::VideoHandler;
-use crate::Color;
-use crate::Event;
+use sdl2::event::Event as SdlEvent;
 use sdl2::render::WindowCanvas;
+use sdl2::EventPump;
 use sdl2::Sdl;
 use sdl2::VideoSubsystem;
-use sdl2::EventPump;
-use sdl2::event::Event as SdlEvent;
 
 mod conv;
 

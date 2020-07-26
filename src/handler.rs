@@ -1,8 +1,8 @@
-use super::Event;
 use super::rterr;
+use super::Color;
+use super::Event;
 use super::Scope;
 use super::Val;
-use super::Color;
 
 /// Interface to the outside world
 pub trait Handler {

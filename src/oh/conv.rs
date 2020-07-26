@@ -1,7 +1,6 @@
 use crate::Color;
 use sdl2::pixels::Color as SdlColor;
 
-
 impl From<Color> for SdlColor {
     fn from(color: Color) -> Self {
         Self::RGBA(

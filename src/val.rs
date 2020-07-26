@@ -353,11 +353,15 @@ impl fmt::Debug for Val {
             }
             Val::Map(xs) => {
                 write!(f, "{{")?;
-                for (i, (k, v)) in xs.sorted_pairs().into_iter().enumerate() {
-                    if i > 0 {
-                        write!(f, ", ")?;
+                if xs.borrow().is_empty() {
+                    write!(f, ":")?;
+                } else {
+                    for (i, (k, v)) in xs.sorted_pairs().into_iter().enumerate() {
+                        if i > 0 {
+                            write!(f, ", ")?;
+                        }
+                        write!(f, "{:?}: {:?}", k.clone().to_val(), v)?;
                     }
-                    write!(f, "{:?}: {:?}", k.clone().to_val(), v)?;
                 }
                 write!(f, "}}")
             }
