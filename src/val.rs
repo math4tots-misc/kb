@@ -251,6 +251,12 @@ impl From<bool> for Val {
     }
 }
 
+impl From<f64> for Val {
+    fn from(x: f64) -> Self {
+        Self::Number(x)
+    }
+}
+
 impl From<&str> for Val {
     fn from(s: &str) -> Self {
         Self::String(s.into())

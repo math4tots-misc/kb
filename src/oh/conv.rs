@@ -1,9 +1,9 @@
 use crate::rterr;
-use crate::Val;
 use crate::Color;
 use crate::Event;
-use sdl2::pixels::Color as SdlColor;
+use crate::Val;
 use sdl2::event::Event as SdlEvent;
+use sdl2::pixels::Color as SdlColor;
 
 impl From<Color> for SdlColor {
     fn from(color: Color) -> Self {
@@ -39,9 +39,7 @@ pub(super) fn conve(event: SdlEvent) -> Result<Option<Event>, Val> {
             timestamp: _,
             window_id: _,
             text,
-        } => {
-            Ok(Some(Event::Text(text)))
-        }
+        } => Ok(Some(Event::Text(text.into()))),
         SdlEvent::KeyDown {
             timestamp: _,
             window_id: _,
@@ -49,16 +47,14 @@ pub(super) fn conve(event: SdlEvent) -> Result<Option<Event>, Val> {
             scancode: _,
             keymod: _,
             repeat,
-        } => {
-            Ok(keycode.map(|keycode| {
-                let keycode = format!("{:?}", keycode);
-                if repeat {
-                    Event::KeyRepeat(keycode)
-                } else {
-                    Event::KeyDown(keycode)
-                }
-            }))
-        }
+        } => Ok(keycode.map(|keycode| {
+            let keycode = format!("{:?}", keycode).into();
+            if repeat {
+                Event::KeyRepeat(keycode)
+            } else {
+                Event::KeyDown(keycode)
+            }
+        })),
         SdlEvent::KeyUp {
             timestamp: _,
             window_id: _,
@@ -66,9 +62,51 @@ pub(super) fn conve(event: SdlEvent) -> Result<Option<Event>, Val> {
             scancode: _,
             keymod: _,
             repeat: _,
-        } => {
-            Ok(keycode.map(|keycode| Event::KeyUp(format!("{:?}", keycode))))
-        }
-        _ => Ok(None)
+        } => Ok(keycode.map(|keycode| Event::KeyUp(format!("{:?}", keycode).into()))),
+        SdlEvent::MouseButtonDown {
+            timestamp: _,
+            window_id: _,
+            which: _,
+            mouse_btn,
+            clicks: _,
+            x,
+            y,
+        } => Ok(Some(Event::MouseDown(
+            format!("{:?}", mouse_btn).into(),
+            x,
+            y,
+        ))),
+        SdlEvent::MouseButtonUp {
+            timestamp: _,
+            window_id: _,
+            which: _,
+            mouse_btn,
+            clicks: _,
+            x,
+            y,
+        } => Ok(Some(Event::MouseUp(
+            format!("{:?}", mouse_btn).into(),
+            x,
+            y,
+        ))),
+        SdlEvent::MouseMotion {
+            timestamp: _,
+            window_id: _,
+            which: _,
+            x,
+            y,
+            mousestate: _,
+            xrel,
+            yrel,
+        } => Ok(Some(Event::MouseMotion(x, y, xrel, yrel))),
+        SdlEvent::MouseWheel {
+            timestamp: _,
+            window_id: _,
+            which: _,
+            x,
+            y,
+            direction: _,
+        } => Ok(Some(Event::MouseWheel(x, y))),
+        _ => Ok(None),
     }
 }

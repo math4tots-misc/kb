@@ -1,4 +1,5 @@
 use crate::rterr;
+use crate::RcStr;
 use crate::Val;
 
 impl Val {
@@ -32,6 +33,34 @@ impl From<Event> for Val {
             Event::KeyDown(string) => vec!["KeyDown".into(), string.into()].into(),
             Event::KeyUp(string) => vec!["KeyUp".into(), string.into()].into(),
             Event::KeyRepeat(string) => vec!["KeyRepeat".into(), string.into()].into(),
+            Event::MouseDown(string, x, y) => vec![
+                "MouseDown".into(),
+                string.into(),
+                (x as f64).into(),
+                (y as f64).into(),
+            ]
+            .into(),
+            Event::MouseUp(string, x, y) => vec![
+                "MouseUp".into(),
+                string.into(),
+                (x as f64).into(),
+                (y as f64).into(),
+            ]
+            .into(),
+            Event::MouseMotion(x, y, xrel, yrel) => vec![
+                "MouseMotion".into(),
+                (x as f64).into(),
+                (y as f64).into(),
+                (xrel as f64).into(),
+                (yrel as f64).into(),
+            ]
+            .into(),
+            Event::MouseWheel(x, y) => vec![
+                "MouseWheel".into(),
+                (x as f64).into(),
+                (y as f64).into(),
+            ]
+            .into(),
         }
     }
 }
@@ -53,8 +82,12 @@ impl Color {
 #[derive(Debug, Clone)]
 pub enum Event {
     Quit,
-    Text(String),
-    KeyDown(String),
-    KeyUp(String),
-    KeyRepeat(String),
+    Text(RcStr),
+    KeyDown(RcStr),
+    KeyUp(RcStr),
+    KeyRepeat(RcStr),
+    MouseDown(RcStr, i32, i32),
+    MouseUp(RcStr, i32, i32),
+    MouseMotion(i32, i32, i32, i32),
+    MouseWheel(i32, i32),
 }
