@@ -35,8 +35,10 @@ const CONTROL_KEYWORDS: &[&str] = &[
     "return", "print",
     // ============================= legacy all-caps keywords =============================
     "RETURN", "PRINT", "GOTO", "DIM", "LET", "IF", "ELSEIF", "ELSE", "THEN", "DO", "WHILE", "FOR",
-    "LOOP", "TO", "FUNCTION", "END", "SUB", "TEST",
+    "LOOP", "TO", "FUNCTION", "END", "SUB", "TEST", "SELECT", "CASE",
 ];
+
+const RESERVED_KEYWORDS: &[&str] = &["switch"];
 
 const EXPR_KEYWORDS: &[&str] = &[
     "and", "or", "in", "is", "not", "yield",
@@ -96,6 +98,7 @@ pub fn parse(source: &Rc<Source>) -> Result<File, BasicError> {
         .chain(UNOPS.iter().map(|(name, _)| name))
         .chain(BINOPS.iter().map(|(name, _)| name))
         .chain(LITERAL_KEYWORDS)
+        .chain(RESERVED_KEYWORDS)
         .map(|s| *s)
         .collect();
     let zop_map: HashMap<&'static str, Zop> = ZOPS.to_vec().into_iter().collect();

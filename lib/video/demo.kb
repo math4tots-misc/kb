@@ -7,8 +7,8 @@ EventLoop()
 
 fn EventLoop
     while true
-        for event in POLL()
-            if event[0] == 'Quit'
+        for [type, *args] in POLL()
+            if type == 'Quit'
                 return
             end
         end
