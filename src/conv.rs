@@ -29,6 +29,7 @@ impl From<Event> for Val {
         match event {
             Event::Quit => vec!["Quit".into()].into(),
             Event::Text(string) => vec!["Text".into(), string.into()].into(),
+            Event::KeyDown(string) => vec!["KeyDown".into(), string.into()].into(),
         }
     }
 }
@@ -51,4 +52,5 @@ impl Color {
 pub enum Event {
     Quit,
     Text(String),
+    KeyDown(String),
 }
