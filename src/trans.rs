@@ -238,9 +238,12 @@ fn prepare_vars_for_expr(
         ExprDesc::Bool(_) => {}
         ExprDesc::Number(_) => {}
         ExprDesc::String(_) => {}
-        ExprDesc::List(exprs) => {
+        ExprDesc::List(exprs, splatexpr) => {
             for expr in exprs {
                 prepare_vars_for_expr(out, expr, prefix)?;
+            }
+            if let Some(splatexpr) = splatexpr {
+                prepare_vars_for_expr(out, splatexpr, prefix)?;
             }
         }
         ExprDesc::Set(exprs) => {
@@ -320,9 +323,12 @@ fn prepare_vars_for_target(
         AssignTargetDesc::Name(name) => {
             out.add(mkvar(target.mark.clone(), name, prefix, out.len()));
         }
-        AssignTargetDesc::List(list) => {
+        AssignTargetDesc::List(list, vtarget) => {
             for subtarget in list {
                 prepare_vars_for_target(out, subtarget, prefix)?;
+            }
+            if let Some(vtarget) = vtarget {
+                prepare_vars_for_target(out, vtarget, prefix)?;
             }
         }
         AssignTargetDesc::Subscript(..) => {}
@@ -580,14 +586,17 @@ fn translate_assign(
                 code.add(Opcode::Tee(var.vscope, var.index), target.mark.clone());
             }
         }
-        AssignTargetDesc::List(list) => {
+        AssignTargetDesc::List(list, vtarget) => {
             if !consume {
                 code.add(Opcode::Dup, target.mark.clone());
             }
             code.add(
-                Opcode::Unpack(list.len() as u32, false),
+                Opcode::Unpack(list.len() as u32, vtarget.is_some()),
                 target.mark.clone(),
             );
+            if let Some(vtarget) = vtarget {
+                translate_assign(code, scope, vtarget, true)?;
+            }
             for subtarget in list.iter().rev() {
                 translate_assign(code, scope, subtarget, true)?;
             }
@@ -610,11 +619,15 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
         ExprDesc::Bool(x) => code.add(Opcode::Bool(*x), expr.mark.clone()),
         ExprDesc::Number(x) => code.add(Opcode::Number(*x), expr.mark.clone()),
         ExprDesc::String(x) => code.add(Opcode::String(x.clone()), expr.mark.clone()),
-        ExprDesc::List(items) => {
+        ExprDesc::List(items, splatexpr) => {
             for item in items {
                 translate_expr(code, scope, item)?;
             }
             code.add(Opcode::MakeList(items.len() as u32), expr.mark.clone());
+            if let Some(splatexpr) = splatexpr {
+                translate_expr(code, scope, splatexpr)?;
+                code.add(Opcode::Binop(Binop::Extend), expr.mark.clone());
+            }
         }
         ExprDesc::Set(items) => {
             for item in items {

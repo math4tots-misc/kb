@@ -777,7 +777,7 @@ impl<'a> Parser<'a> {
                 if self.consume(Token::RBracket) {
                     Ok(Expr {
                         mark,
-                        desc: ExprDesc::List(vec![]),
+                        desc: ExprDesc::List(vec![], None),
                     })
                 } else {
                     let body = self.expr(0)?;
@@ -802,8 +802,14 @@ impl<'a> Parser<'a> {
                         })
                     } else {
                         let mut exprs = vec![body];
+                        let mut variadic = None;
                         if self.consume(Token::Comma) {
                             while !self.consume(Token::RBracket) {
+                                if self.consume(Token::Star) {
+                                    variadic = Some(self.expr(0)?.into());
+                                    self.expect(Token::RBracket)?;
+                                    break;
+                                }
                                 exprs.push(self.expr(0)?);
                                 if !self.consume(Token::Comma) {
                                     self.expect(Token::RBracket)?;
@@ -815,7 +821,7 @@ impl<'a> Parser<'a> {
                         }
                         Ok(Expr {
                             mark,
-                            desc: ExprDesc::List(exprs),
+                            desc: ExprDesc::List(exprs, variadic),
                         })
                     }
                 }
@@ -1071,14 +1077,19 @@ fn expr_to_assign_target(expr: Expr) -> Result<AssignTarget, BasicError> {
             mark: expr.mark,
             desc: AssignTargetDesc::Name(name),
         }),
-        ExprDesc::List(exprs) => {
+        ExprDesc::List(exprs, vtargetexpr) => {
             let mut targets = Vec::new();
             for expr in exprs {
                 targets.push(expr_to_assign_target(expr)?);
             }
+            let vtarget = if let Some(vtargetexpr) = vtargetexpr {
+                Some(expr_to_assign_target(*vtargetexpr)?.into())
+            } else {
+                None
+            };
             Ok(AssignTarget {
                 mark: expr.mark,
-                desc: AssignTargetDesc::List(targets),
+                desc: AssignTargetDesc::List(targets, vtarget),
             })
         }
         ExprDesc::Binop(Binop::GetItem, owner, index) => Ok(AssignTarget {

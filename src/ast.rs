@@ -137,7 +137,7 @@ pub struct AssignTarget {
 #[derive(Debug)]
 pub enum AssignTargetDesc {
     Name(RcStr),
-    List(Vec<AssignTarget>),
+    List(Vec<AssignTarget>, Option<Box<AssignTarget>>),
     Subscript(Expr, Expr),
 }
 
@@ -153,7 +153,7 @@ pub enum ExprDesc {
     Bool(bool),
     Number(f64),
     String(RcStr),
-    List(Vec<Expr>),
+    List(Vec<Expr>, Option<Box<Expr>>),
     Set(Vec<Expr>),
     Map(Vec<(Expr, Expr)>),
 
