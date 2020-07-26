@@ -337,24 +337,19 @@ fn step<H: Handler>(
             let len = stack.len();
             stack.swap(len - 3, len - 2);
         }
-        Opcode::Unpack(n) => {
+        Opcode::Unpack(n, variadic) => {
             let elements = stack.pop().unwrap();
-            if let Some(list) = elements.list() {
-                if list.borrow().len() != *n as usize {
+            let mut vec = get0!(to_vec(elements, scope, handler));
+            if *variadic {
+                if vec.len() < *n as usize {
                     addtrace!();
                     handle_error!(rterr!(
-                        "Expected {} values, but got a list with {} values",
+                        "Expected at least {} values, but got {} values",
                         n,
-                        list.borrow().len(),
+                        vec.len(),
                     ));
                 }
-                for item in list.borrow().iter() {
-                    stack.push(item.clone());
-                }
             } else {
-                let genobj = get0!(elements.expect_genobj());
-                let mut genobj = genobj.0.borrow_mut();
-                let vec = get0!(genobj.to_vec(scope, handler));
                 if vec.len() != *n as usize {
                     addtrace!();
                     handle_error!(rterr!(
@@ -363,6 +358,12 @@ fn step<H: Handler>(
                         vec.len()
                     ));
                 }
+            }
+            if *variadic {
+                let rest: Vec<_> = vec.drain(*n as usize..).collect();
+                stack.extend(vec);
+                stack.push(rest.into());
+            } else {
                 stack.extend(vec);
             }
         }

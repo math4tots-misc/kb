@@ -26,7 +26,7 @@ pub enum Opcode {
     Dup2,
     Swap01,
     Swap12,
-    Unpack(u32),
+    Unpack(u32, bool),
 
     // variable access
     Get(VarScope, u32),
