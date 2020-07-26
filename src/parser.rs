@@ -9,6 +9,7 @@ use super::Mark;
 use super::RcStr;
 use super::Unop;
 use super::Val;
+use super::Zop;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::rc::Rc;
@@ -45,15 +46,20 @@ const EXPR_KEYWORDS: &[&str] = &[
 
 /// keywords for function-like builtin operators
 /// These 'pseudo-functions' are all-caps
-const OP_KEYWORDS: &[&str] = &[
-    "NEXT", "APPEND", "NAME", "DISASM", "LEN", "STR", "REPR", "COS", "SIN", "TAN", "ACOS", "ASIN",
-    "ATAN", "ATAN2", "CAT", "TYPE", "ADD", "POP", "REMOVE", "DELETE", "SORT", "SORTED", "SET",
-    "MAP",
-];
+const OP_KEYWORDS: &[&str] = &["NEXT", "DISASM", "CAT", "DELETE", "SORTED"];
 
 const LITERAL_KEYWORDS: &[&str] = &["true", "false", "nil"];
 
+/// Zero argument operators
+const ZOPS: &[(&'static str, Zop)] = &[
+    ("POLL", Zop::Poll),
+    ("INIT_VIDEO", Zop::InitVideo),
+    ("VIDEO_PRESENT", Zop::VideoPresent),
+    ("VIDEO_CLEAR", Zop::VideoClear),
+];
+
 const UNOPS: &[(&'static str, Unop)] = &[
+    ("SLEEP", Unop::Sleep),
     ("NAME", Unop::Name),
     ("STR", Unop::Str),
     ("REPR", Unop::Repr),
@@ -70,6 +76,7 @@ const UNOPS: &[(&'static str, Unop)] = &[
     ("ASIN", Unop::Arithmetic(ArithmeticUnop::ASin)),
     ("ACOS", Unop::Arithmetic(ArithmeticUnop::ACos)),
     ("ATAN", Unop::Arithmetic(ArithmeticUnop::ATan)),
+    ("VIDEO_SET_COLOR", Unop::VideoSetColor),
 ];
 
 const BINOPS: &[(&'static str, Binop)] = &[
@@ -84,9 +91,13 @@ pub fn parse(source: &Rc<Source>) -> Result<File, BasicError> {
         .iter()
         .chain(EXPR_KEYWORDS)
         .chain(OP_KEYWORDS)
+        .chain(ZOPS.iter().map(|(name, _)| name))
+        .chain(UNOPS.iter().map(|(name, _)| name))
+        .chain(BINOPS.iter().map(|(name, _)| name))
         .chain(LITERAL_KEYWORDS)
         .map(|s| *s)
         .collect();
+    let zop_map: HashMap<&'static str, Zop> = ZOPS.to_vec().into_iter().collect();
     let unop_map: HashMap<&'static str, Unop> = UNOPS.to_vec().into_iter().collect();
     let binop_map: HashMap<&'static str, Binop> = BINOPS.to_vec().into_iter().collect();
     let mut parser = Parser {
@@ -94,6 +105,7 @@ pub fn parse(source: &Rc<Source>) -> Result<File, BasicError> {
         toks,
         i: 0,
         keywords,
+        zop_map,
         unop_map,
         binop_map,
     };
@@ -106,6 +118,7 @@ struct Parser<'a> {
     toks: Vec<(Token<'a>, Mark)>,
     i: usize,
     keywords: HashSet<&'static str>,
+    zop_map: HashMap<&'static str, Zop>,
     unop_map: HashMap<&'static str, Unop>,
     binop_map: HashMap<&'static str, Binop>,
 }
@@ -984,6 +997,16 @@ impl<'a> Parser<'a> {
                 Ok(Expr {
                     mark,
                     desc: ExprDesc::Unop(op, expr.into()),
+                })
+            }
+            Token::Name(name) if self.zop_map.contains_key(name) => {
+                let op = *self.zop_map.get(name).unwrap();
+                self.gettok();
+                self.expect(Token::LParen)?;
+                self.expect(Token::RParen)?;
+                Ok(Expr {
+                    mark,
+                    desc: ExprDesc::Zop(op),
                 })
             }
             Token::Name(name) if !self.keywords.contains(name) => {

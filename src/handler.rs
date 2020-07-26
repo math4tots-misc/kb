@@ -1,9 +1,24 @@
+use super::Event;
+use super::rterr;
 use super::Scope;
 use super::Val;
+use super::Color;
 
 /// Interface to the outside world
 pub trait Handler {
     fn print(&mut self, scope: &mut Scope, val: Val) -> Result<(), Val>;
+    fn video(&mut self) -> Result<&mut dyn VideoHandler, Val> {
+        Err(rterr("Video mode not supported in this environment"))
+    }
+    fn poll(&mut self) -> Result<Vec<Event>, Val> {
+        Err(rterr("Event polling is not supported in this environment"))
+    }
+}
+
+pub trait VideoHandler {
+    fn set_color(&mut self, color: Color) -> Result<(), Val>;
+    fn clear(&mut self) -> Result<(), Val>;
+    fn present(&mut self) -> Result<(), Val>;
 }
 
 pub struct DefaultHandler;

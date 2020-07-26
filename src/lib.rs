@@ -1,4 +1,5 @@
 //! A BASIC dialect
+extern crate sdl2;
 
 mod ast;
 mod code;
@@ -7,11 +8,13 @@ mod key;
 mod lexer;
 mod loader;
 mod m;
+mod oh;
 mod parser;
 mod rcstr;
 mod trans;
 mod val;
 mod vm;
+mod conv;
 
 pub use ast::*;
 pub use code::*;
@@ -20,11 +23,13 @@ pub use key::*;
 pub use lexer::*;
 pub use loader::*;
 pub use m::*;
+pub use oh::*;
 pub use parser::*;
 pub use rcstr::*;
 pub use trans::*;
 pub use val::*;
 pub use vm::*;
+pub use conv::*;
 
 pub const PRELUDE_NAME: &'static str = "__prelude";
 

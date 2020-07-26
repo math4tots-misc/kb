@@ -51,6 +51,7 @@ pub enum Opcode {
     CallFunc(u32),
     Binop(Binop),
     Unop(Unop),
+    Zop(Zop),
     SetItem,
     Print,
     Disasm,
@@ -151,6 +152,10 @@ pub enum Unop {
     Cat,
 
     Sort,
+
+    Sleep,
+
+    VideoSetColor,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -165,6 +170,15 @@ pub enum ArithmeticUnop {
     ASin,
     ACos,
     ATan,
+}
+
+/// Zero argument operator
+#[derive(Debug, Clone, Copy)]
+pub enum Zop {
+    InitVideo,
+    VideoClear,
+    VideoPresent,
+    Poll,
 }
 
 #[derive(Clone)]

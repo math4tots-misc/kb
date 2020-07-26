@@ -14,6 +14,7 @@ use super::RcStr;
 use super::Unop;
 use super::Val;
 use super::Var;
+use super::Zop;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -708,6 +709,40 @@ fn step<H: Handler>(
                     let list = get0!(val.expect_list());
                     get0!(sort(&mut list.borrow_mut()));
                     Val::Nil
+                }
+                Unop::Sleep => {
+                    let nsec = get0!(val.expect_number());
+                    std::thread::sleep(std::time::Duration::from_secs_f64(nsec));
+                    Val::Nil
+                }
+                Unop::VideoSetColor => {
+                    let video = get0!(handler.video());
+                    get0!(video.set_color(get0!(val.to_color())));
+                    Val::Nil
+                }
+            };
+            stack.push(ret);
+        }
+        Opcode::Zop(zop) => {
+            let ret = match zop {
+                Zop::InitVideo => {
+                    get0!(handler.video());
+                    Val::Nil
+                }
+                Zop::VideoClear => {
+                    let video = get0!(handler.video());
+                    get0!(video.clear());
+                    Val::Nil
+                }
+                Zop::VideoPresent => {
+                    let video = get0!(handler.video());
+                    get0!(video.present());
+                    Val::Nil
+                }
+                Zop::Poll => {
+                    let events = get0!(handler.poll());
+                    let events: Vec<_> = events.into_iter().map(Val::from).collect();
+                    events.into()
                 }
             };
             stack.push(ret);

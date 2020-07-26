@@ -3,6 +3,7 @@ use super::Binop;
 use super::RcStr;
 use super::Unop;
 use super::VarScope;
+use super::Zop;
 use std::fmt;
 use std::fmt::Write;
 use std::rc::Rc;
@@ -165,6 +166,7 @@ pub enum ExprDesc {
 
     Binop(Binop, Box<Expr>, Box<Expr>),
     Unop(Unop, Box<Expr>),
+    Zop(Zop),
 
     // Logical operators
     And(Box<Expr>, Box<Expr>),

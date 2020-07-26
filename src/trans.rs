@@ -279,6 +279,7 @@ fn prepare_vars_for_expr(
         ExprDesc::Unop(_, arg) => {
             prepare_vars_for_expr(out, arg, prefix)?;
         }
+        ExprDesc::Zop(_) => {}
         ExprDesc::And(a, b) => {
             prepare_vars_for_expr(out, a, prefix)?;
             prepare_vars_for_expr(out, b, prefix)?;
@@ -700,6 +701,9 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
         ExprDesc::Unop(unop, subexpr) => {
             translate_expr(code, scope, subexpr)?;
             code.add(Opcode::Unop(*unop), expr.mark.clone());
+        }
+        ExprDesc::Zop(zop) => {
+            code.add(Opcode::Zop(*zop), expr.mark.clone());
         }
         ExprDesc::Or(a, b) => {
             let end_label = scope.new_label();

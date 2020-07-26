@@ -1,8 +1,8 @@
 use super::translate_files;
 use super::BasicError;
-use super::DefaultHandler;
 use super::Handler;
 use super::Loader;
+use super::OtherHandler;
 use super::RcStr;
 use super::Source;
 use super::Val;
@@ -55,7 +55,7 @@ pub fn main() {
 fn run(loader: &mut Loader, module_name: &RcStr) -> Result<(), BasicError> {
     let files = loader.load(&module_name)?;
     let code = translate_files(files)?;
-    let mut vm = Vm::new(DefaultHandler);
+    let mut vm = Vm::new(OtherHandler::new());
     match vm.exec(&code) {
         Ok(_) => Ok(()),
         Err(error) => Err(BasicError {
@@ -88,7 +88,7 @@ fn run_tests(loader: &mut Loader, module_name: &RcStr) -> Result<(), BasicError>
 
     let files = loader.load(&"[test]".into())?;
     let code = translate_files(files)?;
-    let mut vm = Vm::new(DefaultHandler);
+    let mut vm = Vm::new(OtherHandler::new());
 
     println!("testing {}", module_name);
     let r = vm.exec_and_run_tests(&code, &test_prefixes);

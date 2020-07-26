@@ -1,0 +1,17 @@
+
+INIT_VIDEO()
+VIDEO_SET_COLOR([1/2, 1, 1/2])
+VIDEO_CLEAR()
+VIDEO_PRESENT()
+EventLoop()
+
+fn EventLoop
+    while true
+        for event in POLL()
+            if event[0] == 'Quit'
+                return
+            end
+        end
+        SLEEP(1 / 60)
+    end
+end
