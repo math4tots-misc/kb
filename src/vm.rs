@@ -762,6 +762,9 @@ fn step<H: Handler>(
         }
         Opcode::Zop(zop) => {
             let ret = match zop {
+                Zop::Time => {
+                    handler.time().into()
+                }
                 Zop::InitVideo => {
                     get0!(handler.video());
                     Val::Nil

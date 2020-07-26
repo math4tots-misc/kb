@@ -179,6 +179,7 @@ pub enum ArithmeticUnop {
 /// Zero argument operator
 #[derive(Debug, Clone, Copy)]
 pub enum Zop {
+    Time,
     InitVideo,
     VideoClear,
     VideoPresent,

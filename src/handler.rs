@@ -7,6 +7,12 @@ use super::Val;
 /// Interface to the outside world
 pub trait Handler {
     fn print(&mut self, scope: &mut Scope, val: Val) -> Result<(), Val>;
+
+    /// Returns seconds since UNIX epoch as float
+    fn time(&mut self) -> f64 {
+        std::time::UNIX_EPOCH.elapsed().unwrap().as_secs_f64()
+    }
+
     fn video(&mut self) -> Result<&mut dyn VideoHandler, Val> {
         Err(rterr("Video mode not supported in this environment"))
     }
