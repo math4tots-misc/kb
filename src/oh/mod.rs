@@ -99,10 +99,27 @@ impl Handler for OtherHandler {
                     keycode,
                     scancode: _,
                     keymod: _,
+                    repeat,
+                } => {
+                    if let Some(keycode) = keycode {
+                        let keycode = format!("{:?}", keycode);
+                        events.push(if repeat {
+                            Event::KeyRepeat(keycode)
+                        } else {
+                            Event::KeyDown(keycode)
+                        });
+                    }
+                }
+                SdlEvent::KeyUp {
+                    timestamp: _,
+                    window_id: _,
+                    keycode,
+                    scancode: _,
+                    keymod: _,
                     repeat: _,
                 } => {
                     if let Some(keycode) = keycode {
-                        events.push(Event::KeyDown(format!("{:?}", keycode)));
+                        events.push(Event::KeyUp(format!("{:?}", keycode)));
                     }
                 }
                 _ => {}
