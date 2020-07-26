@@ -93,7 +93,14 @@ impl Handler for OtherHandler {
                 } => {
                     events.push(Event::Text(text));
                 }
-                SdlEvent::KeyDown { timestamp: _, window_id: _, keycode, scancode: _, keymod: _, repeat: _ } => {
+                SdlEvent::KeyDown {
+                    timestamp: _,
+                    window_id: _,
+                    keycode,
+                    scancode: _,
+                    keymod: _,
+                    repeat: _,
+                } => {
                     if let Some(keycode) = keycode {
                         events.push(Event::KeyDown(format!("{:?}", keycode)));
                     }

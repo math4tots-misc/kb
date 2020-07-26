@@ -30,6 +30,7 @@ impl From<Event> for Val {
             Event::Quit => vec!["Quit".into()].into(),
             Event::Text(string) => vec!["Text".into(), string.into()].into(),
             Event::KeyDown(string) => vec!["KeyDown".into(), string.into()].into(),
+            Event::KeyUp(string) => vec!["KeyUp".into(), string.into()].into(),
         }
     }
 }
@@ -53,4 +54,5 @@ pub enum Event {
     Quit,
     Text(String),
     KeyDown(String),
+    KeyUp(String),
 }
