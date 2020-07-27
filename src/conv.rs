@@ -55,12 +55,9 @@ impl From<Event> for Val {
                 (yrel as f64).into(),
             ]
             .into(),
-            Event::MouseWheel(x, y) => vec![
-                "MouseWheel".into(),
-                (x as f64).into(),
-                (y as f64).into(),
-            ]
-            .into(),
+            Event::MouseWheel(x, y) => {
+                vec!["MouseWheel".into(), (x as f64).into(), (y as f64).into()].into()
+            }
         }
     }
 }
