@@ -1,0 +1,9 @@
+test ManuallyCallNext
+    iter = range(3)
+
+    [x, more] = NEXT(iter)
+    assert [x, more] == [0, true]
+    assert NEXT(iter) == [1, true]
+    assert NEXT(iter) == [2, true]
+    assert NEXT(iter) == [nil, false]
+end

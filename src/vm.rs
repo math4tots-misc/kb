@@ -189,8 +189,8 @@ fn exec<H: Handler>(scope: &mut Scope, handler: &mut H, code: &Code) -> Result<V
             StepVal::Yield(_) => return Err("Yielding does not make sense here".into()),
         }
     }
-    assert!(frame.stack.is_empty());
-    assert!(frame.trystack.is_empty());
+    assert!(frame.stack.is_empty(), "Stack is non-empty: {:?}", frame.stack);
+    assert!(frame.trystack.is_empty(), "Trystack is non-empty: {:?}", frame.trystack);
     Ok(Val::Nil)
 }
 

@@ -763,6 +763,8 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
             translate_expr(code, scope, genexpr)?;
             code.add(Opcode::Next, expr.mark.clone());
             code.add(Opcode::MakeList(2), expr.mark.clone());
+            code.add(Opcode::Swap01, expr.mark.clone());
+            code.add(Opcode::Pop, expr.mark.clone());
         }
         ExprDesc::Cat(exprs) => {
             for expr in exprs {
