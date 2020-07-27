@@ -1,0 +1,9 @@
+G_INIT = 0
+G_POLL = 1
+
+
+fn Init(width = 800, height = 600)
+    GUI([G_INIT, width, height])
+end
+
+fn Poll() = GUI([G_POLL])

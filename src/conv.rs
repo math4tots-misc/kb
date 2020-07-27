@@ -29,8 +29,7 @@ impl From<Event> for Val {
         match event {
             Event::Quit => vec!["Quit".into()].into(),
             Event::Text(string) => vec!["Text".into(), string.into()].into(),
-            Event::KeyDown(string) => vec!["KeyDown".into(), string.into()].into(),
-            Event::KeyUp(string) => vec!["KeyUp".into(), string.into()].into(),
+            Event::Key(string) => vec!["Key".into(), string.into()].into(),
             Event::KeyRepeat(string) => vec!["KeyRepeat".into(), string.into()].into(),
             Event::MouseDown(string, x, y) => vec![
                 "MouseDown".into(),
@@ -79,8 +78,7 @@ impl Color {
 pub enum Event {
     Quit,
     Text(String),
-    KeyDown(String),
-    KeyUp(String),
+    Key(String),
     KeyRepeat(String),
     MouseDown(String, i32, i32),
     MouseUp(String, i32, i32),

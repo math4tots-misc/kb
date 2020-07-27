@@ -46,11 +46,11 @@ pub struct DefaultHandler;
 
 impl Handler for DefaultHandler {
     fn run(source_roots: Vec<String>, module_name: String) {
-        Self::run_with_handler(DefaultHandler, source_roots, module_name, false)
+        Self::run_with_handler(DefaultHandler, source_roots, module_name, false);
     }
 
     fn test(source_roots: Vec<String>, module_name: String) {
-        Self::run_with_handler(DefaultHandler, source_roots, module_name, true)
+        Self::run_with_handler(DefaultHandler, source_roots, module_name, true);
     }
 
     fn print(&mut self, _: &mut Scope, val: Val) -> Result<(), Val> {
@@ -66,9 +66,9 @@ impl DefaultHandler {
         source_roots: Vec<String>,
         module_name: String,
         test: bool,
-    ) {
+    ) -> Vm<H> {
         match Self::run_with_handler0(handler, source_roots, module_name, test) {
-            Ok(()) => {}
+            Ok(vm) => vm,
             Err(error) => {
                 eprintln!("{}", error.format());
                 std::process::exit(1);
@@ -80,7 +80,7 @@ impl DefaultHandler {
         source_roots: Vec<String>,
         module_name: String,
         test: bool,
-    ) -> Result<(), BasicError> {
+    ) -> Result<Vm<H>, BasicError> {
         let module_name: RcStr = module_name.into();
         let mut loader = Loader::new();
         for source_root in source_roots {
@@ -110,7 +110,10 @@ impl DefaultHandler {
         } else {
             vm.exec(&code)
         };
-        err_trace(&mut vm, r)
+        match err_trace(&mut vm, r) {
+            Ok(()) => Ok(vm),
+            Err(error) => Err(error),
+        }
     }
 }
 

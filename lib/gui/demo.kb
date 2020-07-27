@@ -1,6 +1,19 @@
-G_INIT = 0
+import gui
 
-GUI([G_INIT, 800, 600])
-SLEEP(5)
-GUI([G_INIT, 800, 600])
+gui.Init()
 
+Main()
+
+fn Main
+    start = TIME()
+    while TIME() < start + 10
+        events = gui.Poll()
+        if events
+            if ['Key', 'Escape'] in events
+                return
+            end
+            print events
+        end
+        SLEEP(1 / 30)
+    end
+end

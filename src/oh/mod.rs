@@ -1,27 +1,32 @@
 //! Handler implementation that binds lots of other stuff like SDL
 //! This way, it's easier to separate out dependencies in the future if needed
+use crate::rterr;
 use crate::DefaultHandler;
+use crate::Event;
 use crate::Handler;
 use crate::Scope;
 use crate::Val;
-use crate::rterr;
+use std::convert::TryFrom;
 use std::sync::mpsc;
 use winit::event::Event as WinitEvent;
 use winit::event::WindowEvent;
 use winit::event_loop::ControlFlow;
 use winit::event_loop::EventLoop;
 use winit::window::WindowBuilder;
-use std::convert::TryFrom;
 
 mod conv;
+mod ebuf;
 mod req;
 mod res;
 
+use ebuf::*;
 use req::*;
 use res::*;
 
 // const START_WINDOW_WIDTH: u32 = 800;
 // const START_WINDOW_HEIGHT: u32 = 600;
+
+const EVENTS_BUFFER_SIZE: usize = 8;
 
 #[allow(dead_code)]
 pub struct OtherHandler {
@@ -68,7 +73,10 @@ fn run(source_roots: Vec<String>, module_name: String, test: bool) {
         .name("kb-main".to_owned())
         .spawn(move || {
             let handler = OtherHandler::new(qtx, srx);
-            DefaultHandler::run_with_handler(handler, source_roots, module_name, test);
+            let handler =
+                DefaultHandler::run_with_handler(handler, source_roots, module_name, test)
+                    .into_handler();
+            handler.qtx.send(Request::Quit).unwrap();
         })
         .unwrap();
 
@@ -93,6 +101,7 @@ fn run(source_roots: Vec<String>, module_name: String, test: bool) {
                 .build(&event_loop)
                 .unwrap();
             stx.send(Response::Ok).unwrap();
+            let mut events = EventBuffer::new(EVENTS_BUFFER_SIZE);
             event_loop.run(move |event, _, control_flow| match event {
                 WinitEvent::WindowEvent {
                     event,
@@ -101,16 +110,40 @@ fn run(source_roots: Vec<String>, module_name: String, test: bool) {
                     WindowEvent::CloseRequested => {
                         *control_flow = ControlFlow::Exit;
                     }
+                    WindowEvent::KeyboardInput {
+                        device_id: _,
+                        input,
+                        is_synthetic: _,
+                    } => {
+                        if let Some(keycode) = input.virtual_keycode {
+                            events.push(Event::Key(format!("{:?}", keycode)));
+                        }
+                    }
                     _ => {}
                 },
                 WinitEvent::UserEvent(request) => {
-                    stx.send(match request {
-                        Request::Init(..) => Response::Err("GUI already initialized".to_owned()),
-                    }).unwrap();
+                    if let Request::Quit = request {
+                        *control_flow = ControlFlow::Exit;
+                    } else {
+                        stx.send(match request {
+                            Request::Quit => panic!("Impossible Quit"),
+                            Request::Init(..) => {
+                                Response::Err("GUI already initialized".to_owned())
+                            }
+                            Request::Poll => Response::Events(events.clear()),
+                        })
+                        .unwrap();
+                    }
                 }
                 _ => {}
             });
         }
+
+        Ok(_) => stx
+            .send(Response::Err(format!(
+                "GUI request made before being initialized"
+            )))
+            .unwrap(),
 
         // GUI mode was never requested
         Err(mpsc::RecvError) => {}

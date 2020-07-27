@@ -66,6 +66,9 @@ impl<H: Handler> Vm<H> {
     pub fn trace(&self) -> &Vec<Mark> {
         &self.scope.trace
     }
+    pub fn into_handler(self) -> H {
+        self.handler
+    }
 }
 
 pub fn applyfunc<H: Handler>(
