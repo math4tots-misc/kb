@@ -53,6 +53,25 @@ impl OtherHandler {
     pub fn events(&mut self) -> Result<&mut EventPump, Val> {
         if self.events.is_none() {
             self.events = Some(stoerr(self.sdl()?.event_pump())?);
+            // Kind of a dirty hack here...
+            // SDL2 on macos will disable inertial scrolling by default
+            // I don't like that. So we turn it back on here manually
+            // See also:
+            // https://stackoverflow.com/questions/43335291/smooth-inertial-scrolling-with-sdl2
+            #[cfg(target_os = "macos")]
+            unsafe {
+                use objc::class;
+                use objc::msg_send;
+                use objc::runtime::objc_release;
+                use objc::runtime::Object;
+                use objc::runtime::YES;
+                use objc::sel;
+                use objc::sel_impl;
+                let key: *mut Object = msg_send![class!(NSString), stringWithUTF8String: "AppleMomentumScrollSupported\0"];
+                let defs: *mut Object = msg_send![class!(NSUserDefaults), standardUserDefaults];
+                let _: () = msg_send![defs, setBool:YES forKey:key];
+                objc_release(key);
+            }
         }
         Ok(self.events.as_mut().unwrap())
     }

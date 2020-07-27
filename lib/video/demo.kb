@@ -58,7 +58,7 @@ fn EventLoop
                 end_ = TIME()
                 print ['draw time', end_ - start]
             else
-                # print [type, args]
+                print [type, args]
             end
         end
         SLEEP(1 / 60)

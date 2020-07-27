@@ -11,3 +11,6 @@ description = "K's BASIC"
 
 [dependencies]
 sdl2 = "0.34"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc = "0.2"

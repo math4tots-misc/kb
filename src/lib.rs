@@ -1,6 +1,4 @@
 //! A BASIC dialect
-extern crate sdl2;
-
 mod ast;
 mod code;
 mod conv;
