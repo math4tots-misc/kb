@@ -53,9 +53,7 @@ const OP_KEYWORDS: &[&str] = &["NEXT", "DISASM", "CAT", "DELETE", "SORTED"];
 const LITERAL_KEYWORDS: &[&str] = &["true", "false", "nil"];
 
 /// Zero argument operators
-const ZOPS: &[(&'static str, Zop)] = &[
-    ("TIME", Zop::Time),
-];
+const ZOPS: &[(&'static str, Zop)] = &[("TIME", Zop::Time)];
 
 const UNOPS: &[(&'static str, Unop)] = &[
     ("SLEEP", Unop::Sleep),
