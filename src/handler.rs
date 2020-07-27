@@ -11,14 +11,8 @@ use super::Source;
 pub trait Handler where Self: Sized {
     fn run(source_roots: Vec<String>, module_name: String);
 
-    fn test(self, source_roots: Vec<String>, module_name: String) {
-        match run_test(source_roots, module_name) {
-            Ok(()) => {}
-            Err(error) => {
-                eprintln!("{}", error.format());
-                std::process::exit(1);
-            }
-        }
+    fn test(_source_roots: Vec<String>, _module_name: String) {
+        panic!("Testing with {:?} is not supported", std::any::type_name::<Self>())
     }
 
     /// Behavior on 'print' statements
@@ -38,6 +32,16 @@ pub struct DefaultHandler;
 impl Handler for DefaultHandler {
     fn run(source_roots: Vec<String>, module_name: String) {
         match run(Self, source_roots, module_name) {
+            Ok(()) => {}
+            Err(error) => {
+                eprintln!("{}", error.format());
+                std::process::exit(1);
+            }
+        }
+    }
+
+    fn test(source_roots: Vec<String>, module_name: String) {
+        match run_test(source_roots, module_name) {
             Ok(()) => {}
             Err(error) => {
                 eprintln!("{}", error.format());

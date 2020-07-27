@@ -43,8 +43,8 @@ pub fn main() {
 
     if test_flag {
         match handler_type {
-            HandlerType::Default => DefaultHandler.test(source_roots, module_name),
-            HandlerType::Other => OtherHandler::new().test(source_roots, module_name),
+            HandlerType::Default => DefaultHandler::test(source_roots, module_name),
+            HandlerType::Other => OtherHandler::test(source_roots, module_name),
         }
     } else {
         let run = match handler_type {
