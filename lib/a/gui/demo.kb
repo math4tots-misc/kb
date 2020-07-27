@@ -6,12 +6,17 @@ Main()
 
 fn Main
     while true
-        events = gui.Poll()
-        if events
-            if ['Key', 'Escape'] in events
-                return
+        for [type, *args] in gui.Poll()
+            if type == 'Key'
+                [key] = args
+                if key == 'Escape'
+                    return
+                else
+                    print ['key', key]
+                end
+            else
+                print [type, args]
             end
-            print events
         end
         SLEEP(1 / 30)
     end
