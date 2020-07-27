@@ -1,3 +1,4 @@
+use super::rterr;
 use super::translate_files;
 use super::BasicError;
 use super::Loader;
@@ -30,6 +31,15 @@ where
     fn time(&mut self) -> f64 {
         std::time::UNIX_EPOCH.elapsed().unwrap().as_secs_f64()
     }
+
+    /// Interact with/send a message to the GUI
+    /// The actual semantics depend on the handler implementation
+    fn gui_send(&mut self, _message: Val) -> Result<Val, Val> {
+        Err(rterr(format!(
+            "GUI calls not supported in this environment ({:?})",
+            std::any::type_name::<Self>()
+        )))
+    }
 }
 
 pub struct DefaultHandler;
@@ -51,7 +61,12 @@ impl Handler for DefaultHandler {
 
 /// Some helper functions to make implementing Handlers more convenient
 impl DefaultHandler {
-    pub(crate) fn run_with_handler<H: Handler>(handler: H, source_roots: Vec<String>, module_name: String, test: bool) {
+    pub(crate) fn run_with_handler<H: Handler>(
+        handler: H,
+        source_roots: Vec<String>,
+        module_name: String,
+        test: bool,
+    ) {
         match Self::run_with_handler0(handler, source_roots, module_name, test) {
             Ok(()) => {}
             Err(error) => {
@@ -60,7 +75,12 @@ impl DefaultHandler {
             }
         }
     }
-    pub(crate) fn run_with_handler0<H: Handler>(handler: H, source_roots: Vec<String>, module_name: String, test: bool) -> Result<(), BasicError> {
+    pub(crate) fn run_with_handler0<H: Handler>(
+        handler: H,
+        source_roots: Vec<String>,
+        module_name: String,
+        test: bool,
+    ) -> Result<(), BasicError> {
         let module_name: RcStr = module_name.into();
         let mut loader = Loader::new();
         for source_root in source_roots {
@@ -80,10 +100,13 @@ impl DefaultHandler {
 
         let r = if test {
             println!("testing {}", module_name);
-            vm.exec_and_run_tests(&code, &vec![
-                format!("{}#", module_name).into(),
-                format!("{}.", module_name).into(),
-            ])
+            vm.exec_and_run_tests(
+                &code,
+                &vec![
+                    format!("{}#", module_name).into(),
+                    format!("{}.", module_name).into(),
+                ],
+            )
         } else {
             vm.exec(&code)
         };

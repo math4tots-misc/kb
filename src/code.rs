@@ -155,6 +155,9 @@ pub enum Unop {
     Sort,
 
     Sleep,
+
+    // Send a message to the GUI subsystem
+    Gui,
 }
 
 #[derive(Debug, Clone, Copy)]

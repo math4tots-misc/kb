@@ -765,6 +765,7 @@ fn step<H: Handler>(
                     std::thread::sleep(std::time::Duration::from_secs_f64(nsec));
                     Val::Nil
                 }
+                Unop::Gui => get0!(handler.gui_send(val)),
             };
             frame.stack.push(ret);
         }

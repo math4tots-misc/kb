@@ -67,6 +67,7 @@ const UNOPS: &[(&'static str, Unop)] = &[
     ("TYPE", Unop::Type),
     ("POP", Unop::Pop),
     ("SORT", Unop::Sort),
+    ("GUI", Unop::Gui),
     ("SIN", Unop::Arithmetic(ArithmeticUnop::Sin)),
     ("COS", Unop::Arithmetic(ArithmeticUnop::Cos)),
     ("TAN", Unop::Arithmetic(ArithmeticUnop::Tan)),
