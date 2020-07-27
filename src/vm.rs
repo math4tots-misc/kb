@@ -112,9 +112,7 @@ fn mkgenobj(func: Rc<Code>, mut args: Vec<Val>) -> Result<Val, Val> {
     let genobj = GenObj {
         code: func,
         locals,
-        i: 0,
-        stack: vec![],
-        trystack: vec![],
+        frame: Frame::new(),
     };
 
     Ok(Val::GenObj(GenObjPtr(Rc::new(RefCell::new(genobj)))))
@@ -166,19 +164,33 @@ fn prepare_args(spec: &ArgSpec, args: &mut Vec<Val>) -> Result<(), Val> {
     Ok(())
 }
 
-pub fn exec<H: Handler>(scope: &mut Scope, handler: &mut H, code: &Code) -> Result<Val, Val> {
-    let mut i = 0;
-    let mut stack = Vec::new();
-    let mut trystack = Vec::new();
-    while i < code.len() {
-        match step(scope, handler, code, &mut i, &mut stack, &mut trystack)? {
+struct Frame {
+    i: usize,
+    stack: Vec<Val>,
+    trystack: Vec<(u32, u32)>,
+}
+
+impl Frame {
+    pub fn new() -> Self {
+        Self {
+            i: 0,
+            stack: vec![],
+            trystack: vec![],
+        }
+    }
+}
+
+fn exec<H: Handler>(scope: &mut Scope, handler: &mut H, code: &Code) -> Result<Val, Val> {
+    let mut frame = Frame::new();
+    while frame.i < code.len() {
+        match step(scope, handler, code, &mut frame)? {
             StepVal::None => {}
             StepVal::Return(val) => return Ok(val),
             StepVal::Yield(_) => return Err("Yielding does not make sense here".into()),
         }
     }
-    assert!(stack.is_empty());
-    assert!(trystack.is_empty());
+    assert!(frame.stack.is_empty());
+    assert!(frame.trystack.is_empty());
     Ok(Val::Nil)
 }
 
@@ -188,31 +200,30 @@ enum StepVal {
     Yield(Val),
 }
 
+#[inline(always)]
 fn step<H: Handler>(
     scope: &mut Scope,
     handler: &mut H,
     code: &Code,
-    i: &mut usize,
-    stack: &mut Vec<Val>,
-    trystack: &mut Vec<(u32, u32)>,
+    frame: &mut Frame,
 ) -> Result<StepVal, Val> {
-    let op = code.fetch(*i);
-    *i += 1;
+    let op = code.fetch(frame.i);
+    frame.i += 1;
 
     macro_rules! addtrace {
         () => {
-            scope.push_trace(code.marks()[*i - 1].clone());
+            scope.push_trace(code.marks()[frame.i - 1].clone());
         };
     }
 
     macro_rules! handle_error {
         ($err:expr $(,)?) => {{
             let err: Val = $err;
-            if let Some((tracelen, pos)) = trystack.pop() {
+            if let Some((tracelen, pos)) = frame.trystack.pop() {
                 scope.trunc_tracelen(tracelen as usize);
-                *i = pos as usize;
-                stack.clear();
-                stack.push(err);
+                frame.i = pos as usize;
+                frame.stack.clear();
+                frame.stack.push(err);
                 return Ok(StepVal::None);
             } else {
                 return Err(err);
@@ -253,28 +264,29 @@ fn step<H: Handler>(
 
     match op {
         Opcode::Nil => {
-            stack.push(Val::Nil);
+            frame.stack.push(Val::Nil);
         }
         Opcode::Bool(x) => {
-            stack.push(Val::Bool(*x));
+            frame.stack.push(Val::Bool(*x));
         }
         Opcode::Number(x) => {
-            stack.push(Val::Number(*x));
+            frame.stack.push(Val::Number(*x));
         }
         Opcode::String(x) => {
-            stack.push(Val::String(x.clone()));
+            frame.stack.push(Val::String(x.clone()));
         }
         Opcode::MakeList(len) => {
-            let start = stack.len() - *len as usize;
-            let list: Vec<_> = stack.drain(start..).collect();
-            stack.push(list.into());
+            let start = frame.stack.len() - *len as usize;
+            let list: Vec<_> = frame.stack.drain(start..).collect();
+            frame.stack.push(list.into());
         }
         Opcode::MakeSet(len) => {
-            let start = stack.len() - *len as usize;
-            let set: Result<HashSet<_>, Val> = stack.drain(start..).map(Key::from_val).collect();
+            let start = frame.stack.len() - *len as usize;
+            let set: Result<HashSet<_>, Val> =
+                frame.stack.drain(start..).map(Key::from_val).collect();
             match set {
                 Ok(set) => {
-                    stack.push(set.into());
+                    frame.stack.push(set.into());
                 }
                 Err(val) => {
                     addtrace!();
@@ -289,9 +301,9 @@ fn step<H: Handler>(
             }
         }
         Opcode::MakeMap(len) => {
-            let start = stack.len() - 2 * *len as usize;
+            let start = frame.stack.len() - 2 * *len as usize;
             let mut map = HashMap::new();
-            let vals: Vec<_> = stack.drain(start..).collect();
+            let vals: Vec<_> = frame.stack.drain(start..).collect();
             let mut vals = vals.into_iter();
             while let Some(key) = vals.next() {
                 let key = match Key::from_val(key) {
@@ -310,35 +322,35 @@ fn step<H: Handler>(
                 let val = vals.next().unwrap();
                 map.insert(key, val);
             }
-            stack.push(map.into());
+            frame.stack.push(map.into());
         }
         Opcode::NewFunc(code) => {
-            stack.push(Val::Func(Func(code.clone())));
+            frame.stack.push(Val::Func(Func(code.clone())));
         }
         Opcode::Pop => {
-            stack.pop().unwrap();
+            frame.stack.pop().unwrap();
         }
         Opcode::Dup => {
-            let x = stack.last().unwrap().clone();
-            stack.push(x);
+            let x = frame.stack.last().unwrap().clone();
+            frame.stack.push(x);
         }
         Opcode::Dup2 => {
-            let len = stack.len();
-            let a = stack[len - 2].clone();
-            let b = stack[len - 1].clone();
-            stack.push(a);
-            stack.push(b);
+            let len = frame.stack.len();
+            let a = frame.stack[len - 2].clone();
+            let b = frame.stack[len - 1].clone();
+            frame.stack.push(a);
+            frame.stack.push(b);
         }
         Opcode::Swap01 => {
-            let len = stack.len();
-            stack.swap(len - 2, len - 1);
+            let len = frame.stack.len();
+            frame.stack.swap(len - 2, len - 1);
         }
         Opcode::Swap12 => {
-            let len = stack.len();
-            stack.swap(len - 3, len - 2);
+            let len = frame.stack.len();
+            frame.stack.swap(len - 3, len - 2);
         }
         Opcode::Unpack(n, variadic) => {
-            let elements = stack.pop().unwrap();
+            let elements = frame.stack.pop().unwrap();
             let mut vec = get0!(to_vec(elements, scope, handler));
             if *variadic {
                 if vec.len() < *n as usize {
@@ -361,10 +373,10 @@ fn step<H: Handler>(
             }
             if *variadic {
                 let rest: Vec<_> = vec.drain(*n as usize..).collect();
-                stack.extend(vec);
-                stack.push(rest.into());
+                frame.stack.extend(vec);
+                frame.stack.push(rest.into());
             } else {
-                stack.extend(vec);
+                frame.stack.extend(vec);
             }
         }
         Opcode::Get(vscope, index) => {
@@ -376,54 +388,54 @@ fn step<H: Handler>(
                     scope.get_name(*vscope, *index)
                 ));
             }
-            stack.push(val);
+            frame.stack.push(val);
         }
         Opcode::Set(vscope, index) => {
-            let val = stack.pop().unwrap();
+            let val = frame.stack.pop().unwrap();
             scope.set(*vscope, *index, val);
         }
         Opcode::Tee(vscope, index) => {
-            let val = stack.last().unwrap().clone();
+            let val = frame.stack.last().unwrap().clone();
             scope.set(*vscope, *index, val);
         }
         Opcode::AddTry(pos) => {
-            trystack.push((scope.tracelen() as u32, *pos));
+            frame.trystack.push((scope.tracelen() as u32, *pos));
         }
         Opcode::PopTry => {
-            trystack.pop();
+            frame.trystack.pop();
         }
         Opcode::Throw => {
-            let exc = stack.pop().unwrap();
+            let exc = frame.stack.pop().unwrap();
             handle_error!(exc);
         }
         Opcode::Return => {
-            let val = stack.pop().unwrap();
+            let val = frame.stack.pop().unwrap();
             return Ok(StepVal::Return(val));
         }
         Opcode::Yield => {
-            let val = stack.pop().unwrap();
+            let val = frame.stack.pop().unwrap();
             return Ok(StepVal::Yield(val));
         }
         Opcode::Next => {
-            let genobj = stack.last().unwrap().clone();
+            let genobj = frame.stack.last().unwrap().clone();
             let genobj = get0!(genobj.expect_genobj());
             let mut genobj = genobj.0.borrow_mut();
             match get1!(genobj.resume(scope, handler, Val::Nil)) {
                 Some(val) => {
-                    stack.push(val);
-                    stack.push(true.into());
+                    frame.stack.push(val);
+                    frame.stack.push(true.into());
                 }
                 None => {
-                    stack.push(Val::Nil);
-                    stack.push(false.into());
+                    frame.stack.push(Val::Nil);
+                    frame.stack.push(false.into());
                 }
             }
         }
         Opcode::CallFunc(argc) => {
-            let old_len = stack.len();
+            let old_len = frame.stack.len();
             let new_len = old_len - (*argc as usize);
-            let args: Vec<Val> = stack.drain(new_len..).collect();
-            let func = stack.pop().unwrap();
+            let args: Vec<Val> = frame.stack.drain(new_len..).collect();
+            let func = frame.stack.pop().unwrap();
             let func = if let Some(func) = func.func() {
                 func
             } else {
@@ -432,11 +444,11 @@ fn step<H: Handler>(
             };
 
             let ret = get1!(applyfunc(scope, handler, &func, args));
-            stack.push(ret);
+            frame.stack.push(ret);
         }
         Opcode::Binop(op) => {
-            let rhs = stack.pop().unwrap();
-            let lhs = stack.pop().unwrap();
+            let rhs = frame.stack.pop().unwrap();
+            let lhs = frame.stack.pop().unwrap();
             let ret = match op {
                 // arithmetic operators
                 Binop::Arithmetic(aop) => {
@@ -617,10 +629,10 @@ fn step<H: Handler>(
                     Val::Nil
                 }
             };
-            stack.push(ret);
+            frame.stack.push(ret);
         }
         Opcode::Unop(op) => {
-            let val = stack.pop().unwrap();
+            let val = frame.stack.pop().unwrap();
             let ret = match op {
                 Unop::Arithmetic(aop) => {
                     let val = if let Some(val) = val.number() {
@@ -758,13 +770,11 @@ fn step<H: Handler>(
                     Val::Nil
                 }
             };
-            stack.push(ret);
+            frame.stack.push(ret);
         }
         Opcode::Zop(zop) => {
             let ret = match zop {
-                Zop::Time => {
-                    handler.time().into()
-                }
+                Zop::Time => handler.time().into(),
                 Zop::InitVideo => {
                     get0!(handler.video());
                     Val::Nil
@@ -791,12 +801,12 @@ fn step<H: Handler>(
                     events.into()
                 }
             };
-            stack.push(ret);
+            frame.stack.push(ret);
         }
         Opcode::SetItem => {
-            let j = stack.pop().unwrap();
-            let owner = stack.pop().unwrap();
-            let val = stack.pop().unwrap();
+            let j = frame.stack.pop().unwrap();
+            let owner = frame.stack.pop().unwrap();
+            let val = frame.stack.pop().unwrap();
             match owner {
                 Val::List(list) => {
                     let len = list.borrow().len();
@@ -826,13 +836,13 @@ fn step<H: Handler>(
             }
         }
         Opcode::Print => {
-            let x = stack.pop().unwrap();
+            let x = frame.stack.pop().unwrap();
             get0!(handler.print(scope, x));
         }
         Opcode::Disasm => {
-            let f = stack.pop().unwrap();
+            let f = frame.stack.pop().unwrap();
             if let Val::Func(func) = &f {
-                stack.push(func.0.format().into());
+                frame.stack.push(func.0.format().into());
             } else {
                 addtrace!();
                 handle_error!(
@@ -841,7 +851,7 @@ fn step<H: Handler>(
             }
         }
         Opcode::AddToTest => {
-            let val = stack.last().unwrap().clone();
+            let val = frame.stack.last().unwrap().clone();
             if let Val::Func(code) = &val {
                 scope.tests.push(code.0.clone());
             } else {
@@ -853,15 +863,15 @@ fn step<H: Handler>(
             }
         }
         Opcode::Assert => {
-            let val = stack.pop().unwrap();
+            let val = frame.stack.pop().unwrap();
             if !val.truthy() {
                 addtrace!();
                 handle_error!(rterr!(concat!("Assertion failed")));
             }
         }
         Opcode::AssertBinop(op) => {
-            let rhs = stack.pop().unwrap();
-            let lhs = stack.pop().unwrap();
+            let rhs = frame.stack.pop().unwrap();
+            let lhs = frame.stack.pop().unwrap();
             let (cond, msg) = match op {
                 AssertBinop::Is => (lhs.is(&rhs), " to have same identity as "),
                 AssertBinop::IsNot => (!lhs.is(&rhs), " to have distinct identity from "),
@@ -883,28 +893,28 @@ fn step<H: Handler>(
             return Err(rterr!("Assertion failed: exception not thrown"));
         }
         Opcode::Goto(pos) => {
-            *i = *pos as usize;
+            frame.i = *pos as usize;
         }
         Opcode::GotoIfFalse(pos) => {
-            let item = stack.pop().unwrap();
+            let item = frame.stack.pop().unwrap();
             if !item.truthy() {
-                *i = *pos as usize;
+                frame.i = *pos as usize;
             }
         }
         Opcode::GotoIfFalseElsePop(pos) => {
-            let item = stack.last().unwrap();
+            let item = frame.stack.last().unwrap();
             if !item.truthy() {
-                *i = *pos as usize;
+                frame.i = *pos as usize;
             } else {
-                stack.pop().unwrap();
+                frame.stack.pop().unwrap();
             }
         }
         Opcode::GotoIfTrueElsePop(pos) => {
-            let item = stack.last().unwrap();
+            let item = frame.stack.last().unwrap();
             if item.truthy() {
-                *i = *pos as usize;
+                frame.i = *pos as usize;
             } else {
-                stack.pop().unwrap();
+                frame.stack.pop().unwrap();
             }
         }
         Opcode::Label(_)
@@ -1078,32 +1088,26 @@ impl IndexedMap {
 pub struct GenObj {
     code: Rc<Code>,
     locals: IndexedMap,
-    i: usize,
-    stack: Vec<Val>,
-    trystack: Vec<(u32, u32)>,
+    frame: Frame,
 }
 
 impl GenObj {
-    pub fn resume<H: Handler>(
+    fn resume<H: Handler>(
         &mut self,
         scope: &mut Scope,
         handler: &mut H,
         val: Val,
     ) -> Result<Option<Val>, Val> {
-        if self.i >= self.code.len() {
+        if self.frame.i >= self.code.len() {
             return Ok(None);
         }
         scope.push_existing_locals(std::mem::replace(&mut self.locals, IndexedMap::new()));
-        self.stack.push(val);
+        self.frame.stack.push(val);
         let result = self.loop_(scope, handler);
         self.locals = scope.pop();
         result
     }
-    pub fn to_vec<H: Handler>(
-        &mut self,
-        scope: &mut Scope,
-        handler: &mut H,
-    ) -> Result<Vec<Val>, Val> {
+    fn to_vec<H: Handler>(&mut self, scope: &mut Scope, handler: &mut H) -> Result<Vec<Val>, Val> {
         let mut ret = Vec::new();
         while let Some(val) = self.resume(scope, handler, Val::Nil)? {
             ret.push(val);
@@ -1115,18 +1119,11 @@ impl GenObj {
         scope: &mut Scope,
         handler: &mut H,
     ) -> Result<Option<Val>, Val> {
-        while self.i < self.code.len() {
-            match step(
-                scope,
-                handler,
-                &self.code,
-                &mut self.i,
-                &mut self.stack,
-                &mut self.trystack,
-            )? {
+        while self.frame.i < self.code.len() {
+            match step(scope, handler, &self.code, &mut self.frame)? {
                 StepVal::None => {}
                 StepVal::Return(_) => {
-                    self.i = self.code.len();
+                    self.frame.i = self.code.len();
                     self.clear(); // release all local vars etc
                     return Ok(None);
                 }
@@ -1137,7 +1134,7 @@ impl GenObj {
         Ok(None)
     }
     fn clear(&mut self) {
-        self.stack = vec![];
+        self.frame.stack = vec![];
         self.locals = IndexedMap::new();
     }
 }
