@@ -5,8 +5,7 @@ gui.Init()
 Main()
 
 fn Main
-    start = TIME()
-    while TIME() < start + 10
+    while true
         events = gui.Poll()
         if events
             if ['Key', 'Escape'] in events
