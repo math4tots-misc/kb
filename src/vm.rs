@@ -621,13 +621,6 @@ fn step<H: Handler>(
                         handle_error!(rterr!("Cannot REMOVE from a {:?}", lhs.type_()));
                     }
                 },
-                Binop::VideoDrawPixel => {
-                    let x = get0!(lhs.expect_number()) as i32;
-                    let y = get0!(rhs.expect_number()) as i32;
-                    let video = get0!(handler.video());
-                    get0!(video.draw_pixel(x, y));
-                    Val::Nil
-                }
             };
             frame.stack.push(ret);
         }
@@ -764,42 +757,12 @@ fn step<H: Handler>(
                     std::thread::sleep(std::time::Duration::from_secs_f64(nsec));
                     Val::Nil
                 }
-                Unop::VideoSetColor => {
-                    let video = get0!(handler.video());
-                    get0!(video.set_color(get0!(val.to_color())));
-                    Val::Nil
-                }
             };
             frame.stack.push(ret);
         }
         Opcode::Zop(zop) => {
             let ret = match zop {
                 Zop::Time => handler.time().into(),
-                Zop::InitVideo => {
-                    get0!(handler.video());
-                    Val::Nil
-                }
-                Zop::VideoClear => {
-                    let video = get0!(handler.video());
-                    get0!(video.clear());
-                    Val::Nil
-                }
-                Zop::VideoPresent => {
-                    let video = get0!(handler.video());
-                    get0!(video.present());
-                    Val::Nil
-                }
-                Zop::VideoDim => {
-                    let video = get0!(handler.video());
-                    let (width, height) = get0!(video.dim());
-                    let pair: Vec<Val> = vec![(width as f64).into(), (height as f64).into()];
-                    pair.into()
-                }
-                Zop::Poll => {
-                    let events = get0!(handler.poll());
-                    let events: Vec<_> = events.into_iter().map(Val::from).collect();
-                    events.into()
-                }
             };
             frame.stack.push(ret);
         }

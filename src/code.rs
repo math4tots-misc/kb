@@ -92,9 +92,6 @@ pub enum Binop {
     Extend,
     GetItem,
     Remove,
-
-    // Graphics operations
-    VideoDrawPixel,
 }
 
 impl Binop {
@@ -158,8 +155,6 @@ pub enum Unop {
     Sort,
 
     Sleep,
-
-    VideoSetColor,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -180,11 +175,6 @@ pub enum ArithmeticUnop {
 #[derive(Debug, Clone, Copy)]
 pub enum Zop {
     Time,
-    InitVideo,
-    VideoClear,
-    VideoPresent,
-    VideoDim,
-    Poll,
 }
 
 #[derive(Clone)]
