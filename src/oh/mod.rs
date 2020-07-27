@@ -93,7 +93,7 @@ fn run(source_roots: Vec<String>, module_name: String, test: bool) {
                 .build(&event_loop)
                 .unwrap();
             stx.send(Response::Ok).unwrap();
-            event_loop.run(|event, _, control_flow| match event {
+            event_loop.run(move |event, _, control_flow| match event {
                 WinitEvent::WindowEvent {
                     event,
                     window_id: _,
@@ -103,6 +103,11 @@ fn run(source_roots: Vec<String>, module_name: String, test: bool) {
                     }
                     _ => {}
                 },
+                WinitEvent::UserEvent(request) => {
+                    stx.send(match request {
+                        Request::Init(..) => Response::Err("GUI already initialized".to_owned()),
+                    }).unwrap();
+                }
                 _ => {}
             });
         }

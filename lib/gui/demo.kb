@@ -1,4 +1,6 @@
 G_INIT = 0
 
 GUI([G_INIT, 800, 600])
+SLEEP(5)
+GUI([G_INIT, 800, 600])
 
