@@ -23,6 +23,29 @@ impl Loader {
         }
     }
 
+    /// Creates and adds a new pseudo-source '[test]' that will import all known modules
+    /// under the given root_name.
+    pub fn add_test_source(&mut self, root_name: &RcStr) -> Result<(), BasicError> {
+        use std::fmt::Write;
+        let child_modules = self.list_child_modules(&root_name)?;
+        let mut test_src = String::new();
+        let test_out = &mut test_src;
+
+        for child_module in child_modules {
+            writeln!(test_out, "import {}", child_module).unwrap();
+        }
+
+        self.add_source(
+            Source {
+                name: "[test]".into(),
+                data: test_src.into(),
+            }
+            .into(),
+        );
+
+        Ok(())
+    }
+
     pub fn add_source(&mut self, source: Rc<Source>) {
         self.map.insert(source.name.clone(), source);
     }

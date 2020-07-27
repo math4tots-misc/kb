@@ -3,38 +3,33 @@
 use crate::Handler;
 use crate::Scope;
 use crate::Val;
-use crate::RcStr;
-use crate::Loader;
-use crate::translate_files;
-use crate::Vm;
-use crate::BasicError;
+use crate::DefaultHandler;
+use std::sync::mpsc;
 
 mod conv;
 
 // const START_WINDOW_WIDTH: u32 = 800;
 // const START_WINDOW_HEIGHT: u32 = 600;
 
-pub struct OtherHandler {}
+#[allow(dead_code)]
+pub struct OtherHandler {
+    qtx: mpsc::Sender<Request>,
+    srx: mpsc::Receiver<Response>,
+}
 
 impl OtherHandler {
-    pub fn new() -> Self {
-        Self {}
+    fn new(qtx: mpsc::Sender<Request>, srx: mpsc::Receiver<Response>) -> Self {
+        Self { qtx, srx }
     }
 }
 
 impl Handler for OtherHandler {
     fn run(source_roots: Vec<String>, module_name: String) {
-        let _handle = std::thread::Builder::new().name("kb-main".to_owned()).spawn(|| {
-            let handler = OtherHandler::new();
-            match run(handler, source_roots, module_name) {
-                Ok(()) => {}
-                Err(error) => {
-                    eprintln!("{}", error.format());
-                    std::process::exit(1);
-                }
-            }
-        }).unwrap();
-        _handle.join().unwrap();
+        run(source_roots, module_name, false);
+    }
+
+    fn test(source_roots: Vec<String>, module_name: String) {
+        run(source_roots, module_name, true);
     }
 
     fn print(&mut self, _scope: &mut Scope, val: Val) -> Result<(), Val> {
@@ -42,6 +37,33 @@ impl Handler for OtherHandler {
         Ok(())
     }
 }
+
+fn run(
+    source_roots: Vec<String>,
+    module_name: String,
+    test: bool,
+) {
+    let (qtx, qrx) = mpsc::channel::<Request>();
+    let (_stx, srx) = mpsc::channel::<Response>();
+    let _handle = std::thread::Builder::new()
+        .name("kb-main".to_owned())
+        .spawn(move || {
+            let handler = OtherHandler::new(qtx, srx);
+            DefaultHandler::run_with_handler(handler, source_roots, module_name, test);
+        })
+        .unwrap();
+
+    match qrx.recv() {
+        Ok(_) => {}
+        Err(mpsc::RecvError) => {}
+    }
+
+    _handle.join().unwrap();
+}
+
+enum Request {}
+
+enum Response {}
 
 // fn stoerr<T, S: Into<RcStr>>(r: Result<T, S>) -> Result<T, Val> {
 //     match r {
@@ -56,23 +78,3 @@ impl Handler for OtherHandler {
 //         Err(e) => Err(rterr(format!("{:?}", e))),
 //     }
 // }
-
-
-fn run(handler: OtherHandler, source_roots: Vec<String>, module_name: String) -> Result<(), BasicError> {
-    let module_name: RcStr = module_name.into();
-    let mut loader = Loader::new();
-    for source_root in source_roots {
-        loader.add_source_root(source_root);
-    }
-    let files = loader.load(&module_name)?;
-    let code = translate_files(files)?;
-    let mut vm = Vm::new(handler);
-    match vm.exec(&code) {
-        Ok(_) => Ok(()),
-        Err(error) => Err(BasicError {
-            marks: vm.trace().clone(),
-            message: format!("{}", error.as_err()),
-            help: None,
-        }),
-    }
-}

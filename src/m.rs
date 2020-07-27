@@ -1,6 +1,6 @@
+use super::DefaultHandler;
 use super::Handler;
 use super::OtherHandler;
-use super::DefaultHandler;
 
 pub fn main() {
     let mut module_name: Option<String> = None;

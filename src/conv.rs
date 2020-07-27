@@ -1,5 +1,4 @@
 use crate::rterr;
-use crate::RcStr;
 use crate::Val;
 
 impl Val {
@@ -79,12 +78,12 @@ impl Color {
 #[derive(Debug, Clone)]
 pub enum Event {
     Quit,
-    Text(RcStr),
-    KeyDown(RcStr),
-    KeyUp(RcStr),
-    KeyRepeat(RcStr),
-    MouseDown(RcStr, i32, i32),
-    MouseUp(RcStr, i32, i32),
+    Text(String),
+    KeyDown(String),
+    KeyUp(String),
+    KeyRepeat(String),
+    MouseDown(String, i32, i32),
+    MouseUp(String, i32, i32),
     MouseMotion(i32, i32, i32, i32),
     MouseWheel(i32, i32),
 }
