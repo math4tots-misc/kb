@@ -1,6 +1,8 @@
 G_INIT = 0
 G_POLL = 1
 
+# DPI should be invisible to the user --
+# all coordinates are in logical pixel coordinates
 
 fn Init(width = 800, height = 600)
     GUI([G_INIT, width, height])

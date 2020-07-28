@@ -101,7 +101,7 @@ fn run(source_roots: Vec<String>, module_name: String, test: bool) {
                 .unwrap();
             let window = WindowBuilder::new()
                 .with_inner_size(LogicalSize { width, height })
-                // .with_resizable(false)
+                .with_resizable(false)
                 .build(&event_loop)
                 .unwrap();
             stx.send(Response::Ok).unwrap();
