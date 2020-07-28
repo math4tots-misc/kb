@@ -8,11 +8,11 @@ use crate::Scope;
 use crate::Val;
 use std::convert::TryFrom;
 use std::sync::mpsc;
-use winit::event::Event as WinitEvent;
-use winit::event::WindowEvent;
 use winit::dpi::LogicalPosition;
 use winit::dpi::LogicalSize;
 use winit::event::ElementState;
+use winit::event::Event as WinitEvent;
+use winit::event::WindowEvent;
 use winit::event_loop::ControlFlow;
 use winit::event_loop::EventLoop;
 use winit::window::WindowBuilder;
@@ -141,8 +141,13 @@ fn run(source_roots: Vec<String>, module_name: String, test: bool) {
                             }
                         }
                     }
-                    WindowEvent::CursorMoved { device_id: _, position, .. } => {
-                        cursor_pos =  LogicalPosition::from_physical(position, window.scale_factor());
+                    WindowEvent::CursorMoved {
+                        device_id: _,
+                        position,
+                        ..
+                    } => {
+                        cursor_pos =
+                            LogicalPosition::from_physical(position, window.scale_factor());
                     }
                     _ => {}
                 },
