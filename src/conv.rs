@@ -30,7 +30,6 @@ impl From<Event> for Val {
             Event::Quit => vec!["Quit".into()].into(),
             Event::Text(string) => vec!["Text".into(), string.into()].into(),
             Event::Key(string) => vec!["Key".into(), string.into()].into(),
-            Event::KeyRepeat(string) => vec!["KeyRepeat".into(), string.into()].into(),
             Event::MouseDown(string, x, y) => vec![
                 "MouseDown".into(),
                 string.into(),
@@ -79,9 +78,8 @@ pub enum Event {
     Quit,
     Text(String),
     Key(String),
-    KeyRepeat(String),
-    MouseDown(String, i32, i32),
-    MouseUp(String, i32, i32),
+    MouseDown(String, f64, f64),
+    MouseUp(String, f64, f64),
     MouseMotion(i32, i32, i32, i32),
     MouseWheel(i32, i32),
 }

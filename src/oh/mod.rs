@@ -10,6 +10,9 @@ use std::convert::TryFrom;
 use std::sync::mpsc;
 use winit::event::Event as WinitEvent;
 use winit::event::WindowEvent;
+use winit::dpi::LogicalPosition;
+use winit::dpi::LogicalSize;
+use winit::event::ElementState;
 use winit::event_loop::ControlFlow;
 use winit::event_loop::EventLoop;
 use winit::window::WindowBuilder;
@@ -96,12 +99,14 @@ fn run(source_roots: Vec<String>, module_name: String, test: bool) {
                     }
                 })
                 .unwrap();
-            let _window = WindowBuilder::new()
-                .with_inner_size(winit::dpi::LogicalSize { width, height })
+            let window = WindowBuilder::new()
+                .with_inner_size(LogicalSize { width, height })
+                // .with_resizable(false)
                 .build(&event_loop)
                 .unwrap();
             stx.send(Response::Ok).unwrap();
             let mut events = EventBuffer::new(EVENTS_BUFFER_SIZE);
+            let mut cursor_pos: LogicalPosition<f64> = (0.0, 0.0).into();
             event_loop.run(move |event, _, control_flow| match event {
                 WinitEvent::WindowEvent {
                     event,
@@ -118,6 +123,26 @@ fn run(source_roots: Vec<String>, module_name: String, test: bool) {
                         if let Some(keycode) = input.virtual_keycode {
                             events.push(Event::Key(format!("{:?}", keycode)));
                         }
+                    }
+                    WindowEvent::MouseInput {
+                        device_id: _,
+                        state,
+                        button,
+                        ..
+                    } => {
+                        let x = cursor_pos.x;
+                        let y = cursor_pos.y;
+                        match state {
+                            ElementState::Pressed => {
+                                events.push(Event::MouseDown(format!("{:?}", button), x, y));
+                            }
+                            ElementState::Released => {
+                                events.push(Event::MouseUp(format!("{:?}", button), x, y));
+                            }
+                        }
+                    }
+                    WindowEvent::CursorMoved { device_id: _, position, .. } => {
+                        cursor_pos =  LogicalPosition::from_physical(position, window.scale_factor());
                     }
                     _ => {}
                 },
