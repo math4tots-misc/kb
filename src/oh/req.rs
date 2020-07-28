@@ -1,12 +1,20 @@
 use crate::rterr;
 use crate::RcStr;
 use crate::Val;
+use a2d::Color;
 use std::convert::TryFrom;
 
 pub(super) enum Request {
     Quit,
     Init(u32, u32),
     Poll,
+    SetSheet(u16, SheetDesc),
+
+}
+
+pub(super) enum SheetDesc {
+    Courier,
+    Color(Color),
 }
 
 impl TryFrom<Val> for Request {
@@ -31,6 +39,20 @@ impl TryFrom<Val> for Request {
             1 => {
                 checkargc("Poll", arr.len(), 0)?;
                 Ok(Request::Poll)
+            }
+            // SetSheet
+            10 => {
+                let id = getopt(arr.get(1), "GUI SETSHEET: missing slot id")?.expect_number()? as u16;
+                let desc = getopt(arr.get(2), "GUI SETSHEET: missing descriptor")?;
+                let desc = match desc {
+                    Val::String(string) => match string.as_ref() {
+                        "text" => SheetDesc::Courier,
+                        _ => return Err(rterr(format!("Could not process sheet descriptor: {:?}" ,desc))),
+                    },
+                    Val::List(_) => SheetDesc::Color(desc.to_color()?),
+                    _ => return Err(rterr(format!("Could not process sheet descriptor: {:?}" ,desc))),
+                };
+                Ok(Request::SetSheet(id, desc))
             }
             req => Err(rterr(format!("Unrecognized request type: {:?}", req))),
         }

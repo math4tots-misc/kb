@@ -1,20 +1,21 @@
 use crate::rterr;
 use crate::Val;
+use a2d::Color;
 
 impl Val {
     pub fn to_color(&self) -> Result<Color, Val> {
         match self {
             Val::List(list) if list.borrow().len() == 4 || list.borrow().len() == 3 => {
                 let list = list.borrow();
-                let r = list[0].expect_number()?;
-                let g = list[1].expect_number()?;
-                let b = list[2].expect_number()?;
+                let r = list[0].expect_number()? as f32;
+                let g = list[1].expect_number()? as f32;
+                let b = list[2].expect_number()? as f32;
                 let a = if list.len() == 4 {
-                    list[3].expect_number()?
+                    list[3].expect_number()? as f32
                 } else {
                     1.0
                 };
-                Ok(Color::rgba(r, g, b, a))
+                Ok([r, g, b, a].into())
             }
             _ => Err(rterr(format!(
                 "Expected color, but got a {:?}",
@@ -56,20 +57,6 @@ impl From<Event> for Val {
                 vec!["MouseWheel".into(), (x as f64).into(), (y as f64).into()].into()
             }
         }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Color {
-    pub r: f64,
-    pub g: f64,
-    pub b: f64,
-    pub a: f64,
-}
-
-impl Color {
-    pub fn rgba(r: f64, g: f64, b: f64, a: f64) -> Self {
-        Self { r, g, b, a }
     }
 }
 

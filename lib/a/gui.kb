@@ -1,5 +1,6 @@
 G_INIT = 0
 G_POLL = 1
+G_SET_SHEET = 10
 
 # DPI should be invisible to the user --
 # all coordinates are in logical pixel coordinates

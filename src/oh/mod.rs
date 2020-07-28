@@ -104,6 +104,8 @@ fn run(source_roots: Vec<String>, module_name: String, test: bool) {
                 .with_resizable(false)
                 .build(&event_loop)
                 .unwrap();
+            let mut graphics: a2d::Graphics2D =
+                futures::executor::block_on(a2d::Graphics2D::new(width, height, &window)).unwrap();
             stx.send(Response::Ok).unwrap();
             let mut events = EventBuffer::new(EVENTS_BUFFER_SIZE);
             let mut cursor_pos: LogicalPosition<f64> = (0.0, 0.0).into();
@@ -161,6 +163,19 @@ fn run(source_roots: Vec<String>, module_name: String, test: bool) {
                                 Response::Err("GUI already initialized".to_owned())
                             }
                             Request::Poll => Response::Events(events.clear()),
+                            Request::SetSheet(id, desc) => {
+                                let r = match desc {
+                                    SheetDesc::Courier => graphics.set_sheet(
+                                        id,
+                                        a2d::SpriteSheetDesc::Courier
+                                    ),
+                                    SheetDesc::Color(color) => graphics.set_sheet(id, color),
+                                };
+                                match r {
+                                    Ok(_) => Response::Ok,
+                                    Err(error) => Response::Err(format!("{:?}", error)),
+                                }
+                            }
                         })
                         .unwrap();
                     }
