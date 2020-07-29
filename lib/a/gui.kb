@@ -1,6 +1,7 @@
 G_INIT = 0
 G_POLL = 1
-G_SET_SHEET = 10
+G_FLUSH = 32
+G_SET_PIXEL = 33
 
 # DPI should be invisible to the user --
 # all coordinates are in logical pixel coordinates
@@ -10,3 +11,7 @@ fn Init(width = 800, height = 600)
 end
 
 fn Poll() = GUI([G_POLL])
+
+fn Flush() = GUI([G_FLUSH])
+
+fn SetPixel(x, y, color) = GUI([G_SET_PIXEL, x, y, color])

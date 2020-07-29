@@ -8,13 +8,8 @@ pub(super) enum Request {
     Quit,
     Init(u32, u32),
     Poll,
-    SetSheet(u16, SheetDesc),
-
-}
-
-pub(super) enum SheetDesc {
-    Courier,
-    Color(Color),
+    Flush,
+    SetPixel(u32, u32, Color),
 }
 
 impl TryFrom<Val> for Request {
@@ -40,19 +35,17 @@ impl TryFrom<Val> for Request {
                 checkargc("Poll", arr.len(), 0)?;
                 Ok(Request::Poll)
             }
-            // SetSheet
-            10 => {
-                let id = getopt(arr.get(1), "GUI SETSHEET: missing slot id")?.expect_number()? as u16;
-                let desc = getopt(arr.get(2), "GUI SETSHEET: missing descriptor")?;
-                let desc = match desc {
-                    Val::String(string) => match string.as_ref() {
-                        "text" => SheetDesc::Courier,
-                        _ => return Err(rterr(format!("Could not process sheet descriptor: {:?}" ,desc))),
-                    },
-                    Val::List(_) => SheetDesc::Color(desc.to_color()?),
-                    _ => return Err(rterr(format!("Could not process sheet descriptor: {:?}" ,desc))),
-                };
-                Ok(Request::SetSheet(id, desc))
+            32 => {
+                checkargc("Flush", arr.len(), 0)?;
+                Ok(Request::Flush)
+            }
+            // Set pixel
+            33 => {
+                checkargc("SetPixel", arr.len(), 3)?;
+                let x = getopt(arr.get(1), "GUI SET_PIXEL: missing x")?.expect_number()? as u32;
+                let y = getopt(arr.get(2), "GUI SET_PIXEL: missing y")?.expect_number()? as u32;
+                let color = getopt(arr.get(3), "GUI SET_PIXEL: missing color")?.to_color()?;
+                Ok(Request::SetPixel(x, y, color))
             }
             req => Err(rterr(format!("Unrecognized request type: {:?}", req))),
         }

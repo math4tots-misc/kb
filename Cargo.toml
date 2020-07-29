@@ -11,5 +11,5 @@ description = "K's BASIC"
 
 [dependencies]
 winit = "0.22"
-a2d = "0.1.11"
+a2d = { version = "0.1.11", path = "../a2d" }
 futures = "0.3"

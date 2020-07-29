@@ -109,78 +109,84 @@ fn run(source_roots: Vec<String>, module_name: String, test: bool) {
             stx.send(Response::Ok).unwrap();
             let mut events = EventBuffer::new(EVENTS_BUFFER_SIZE);
             let mut cursor_pos: LogicalPosition<f64> = (0.0, 0.0).into();
-            event_loop.run(move |event, _, control_flow| match event {
-                WinitEvent::WindowEvent {
-                    event,
-                    window_id: _,
-                } => match event {
-                    WindowEvent::CloseRequested => {
-                        *control_flow = ControlFlow::Exit;
+            event_loop.run(move |event, _, control_flow| {
+                *control_flow = ControlFlow::Wait;
+                match event {
+                    WinitEvent::RedrawRequested(_) => {
+                        graphics.force_render().unwrap();
                     }
-                    WindowEvent::KeyboardInput {
-                        device_id: _,
-                        input,
-                        is_synthetic: _,
-                    } => {
-                        if let Some(keycode) = input.virtual_keycode {
-                            events.push(Event::Key(format!("{:?}", keycode)));
+                    WinitEvent::MainEventsCleared => {
+                        graphics.render_if_dirty().unwrap();
+                    }
+                    WinitEvent::WindowEvent {
+                        event,
+                        window_id: _,
+                    } => match event {
+                        WindowEvent::CloseRequested => {
+                            *control_flow = ControlFlow::Exit;
                         }
-                    }
-                    WindowEvent::MouseInput {
-                        device_id: _,
-                        state,
-                        button,
-                        ..
-                    } => {
-                        let x = cursor_pos.x;
-                        let y = cursor_pos.y;
-                        match state {
-                            ElementState::Pressed => {
-                                events.push(Event::MouseDown(format!("{:?}", button), x, y));
-                            }
-                            ElementState::Released => {
-                                events.push(Event::MouseUp(format!("{:?}", button), x, y));
+                        WindowEvent::KeyboardInput {
+                            device_id: _,
+                            input,
+                            is_synthetic: _,
+                        } => {
+                            if let Some(keycode) = input.virtual_keycode {
+                                events.push(Event::Key(format!("{:?}", keycode)));
                             }
                         }
-                    }
-                    WindowEvent::CursorMoved {
-                        device_id: _,
-                        position,
-                        ..
-                    } => {
-                        cursor_pos =
-                            LogicalPosition::from_physical(position, window.scale_factor());
-                    }
-                    _ => {}
-                },
-                WinitEvent::UserEvent(request) => {
-                    if let Request::Quit = request {
-                        *control_flow = ControlFlow::Exit;
-                    } else {
-                        stx.send(match request {
-                            Request::Quit => panic!("Impossible Quit"),
-                            Request::Init(..) => {
-                                Response::Err("GUI already initialized".to_owned())
-                            }
-                            Request::Poll => Response::Events(events.clear()),
-                            Request::SetSheet(id, desc) => {
-                                let r = match desc {
-                                    SheetDesc::Courier => graphics.set_sheet(
-                                        id,
-                                        a2d::SpriteSheetDesc::Courier
-                                    ),
-                                    SheetDesc::Color(color) => graphics.set_sheet(id, color),
-                                };
-                                match r {
-                                    Ok(_) => Response::Ok,
-                                    Err(error) => Response::Err(format!("{:?}", error)),
+                        WindowEvent::MouseInput {
+                            device_id: _,
+                            state,
+                            button,
+                            ..
+                        } => {
+                            let x = cursor_pos.x;
+                            let y = cursor_pos.y;
+                            match state {
+                                ElementState::Pressed => {
+                                    events.push(Event::MouseDown(format!("{:?}", button), x, y));
+                                }
+                                ElementState::Released => {
+                                    events.push(Event::MouseUp(format!("{:?}", button), x, y));
                                 }
                             }
-                        })
-                        .unwrap();
+                        }
+                        WindowEvent::CursorMoved {
+                            device_id: _,
+                            position,
+                            ..
+                        } => {
+                            cursor_pos =
+                                LogicalPosition::from_physical(position, window.scale_factor());
+                        }
+                        _ => {}
+                    },
+                    WinitEvent::UserEvent(request) => {
+                        if let Request::Quit = request {
+                            *control_flow = ControlFlow::Exit;
+                        } else {
+                            stx.send(match request {
+                                Request::Quit => panic!("Impossible Quit"),
+                                Request::Init(..) => {
+                                    Response::Err("GUI already initialized".to_owned())
+                                }
+                                Request::Poll => Response::Events(events.clear()),
+                                Request::Flush => match graphics.flush() {
+                                    Ok(()) => Response::Ok,
+                                    Err(error) => Response::Err(format!("{:?}", error)),
+                                },
+                                Request::SetPixel(x, y, color) => {
+                                    match graphics.set_pixel(x as usize, y as usize, color) {
+                                        Ok(()) => Response::Ok,
+                                        Err(error) => Response::Err(format!("{:?}", error)),
+                                    }
+                                }
+                            })
+                            .unwrap();
+                        }
                     }
+                    _ => {}
                 }
-                _ => {}
             });
         }
 
