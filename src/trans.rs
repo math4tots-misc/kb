@@ -54,6 +54,45 @@ pub fn translate_files(mut files: Vec<File>) -> Result<Code, BasicError> {
         }
     }
 
+    // initialize all classes right after functions
+    for file in &files {
+        scope.file_name = file.name().clone();
+        for cls in &file.clss {
+            let cls_full_name = &cls.as_var.as_ref().unwrap().name;
+
+            // part1: class full name
+            code.add(Opcode::String(cls_full_name.clone()), cls.mark.clone());
+
+            // part2: method short names
+            for func_short_name in &cls.methods {
+                code.add(Opcode::String(func_short_name.clone()), cls.mark.clone());
+            }
+
+            // part3: methods
+            for func_short_name in &cls.methods {
+                let method_full_name = format!("{}->{}", cls_full_name, func_short_name);
+                let func_var = scope.getvar_or_error(&cls.mark, &method_full_name)?;
+                code.add(
+                    Opcode::Get(func_var.vscope, func_var.index),
+                    cls.mark.clone(),
+                );
+            }
+
+            // part4: bases
+            for base in &cls.bases {
+                translate_expr(&mut code, &mut scope, base)?;
+            }
+
+            // part5: NewClass
+            code.add(
+                Opcode::NewClass(cls.bases.len() as u32, cls.methods.len() as u32),
+                cls.mark.clone(),
+            );
+            let cls_var = cls.as_var.as_ref().unwrap();
+            code.add(Opcode::Set(cls_var.vscope, cls_var.index), cls.mark.clone());
+        }
+    }
+
     // translate all other global statements
     for file in &files {
         scope.file_name = file.name().clone();
@@ -116,10 +155,10 @@ fn prepare_vars_for_file(out: &mut Vars, file: &mut File) -> Result<(), BasicErr
     prepare_vars_for_stmt(out, &file.body, Some(&file_name))?;
 
     // while we allow variables to be assigned to multiple times,
-    // we disallow functions to share names with normal variables
-    // or even other functions.
+    // we disallow functions or classes to share names with normal variables
+    // or even other functions or classes.
     //
-    // To enforce this, we add the function variables last, and
+    // To enforce this, we add the function and class variables last, and
     // raise an error if we encounter any conflicts
 
     for func in &mut file.funcs {
@@ -131,6 +170,17 @@ fn prepare_vars_for_file(out: &mut Vars, file: &mut File) -> Result<(), BasicErr
             out.len(),
         );
         func.as_var = Some(var.clone());
+        out.force_add(var)?;
+    }
+
+    for cls in &mut file.clss {
+        let var = mkvar(
+            cls.mark.clone(),
+            &cls.short_name,
+            Some(&file_name),
+            out.len(),
+        );
+        cls.as_var = Some(var.clone());
         out.force_add(var)?;
     }
 
@@ -271,6 +321,12 @@ fn prepare_vars_for_expr(
         }
         ExprDesc::CallFunc(f, args) => {
             prepare_vars_for_expr(out, f, prefix)?;
+            for expr in args {
+                prepare_vars_for_expr(out, expr, prefix)?;
+            }
+        }
+        ExprDesc::CallMethod(owner, _method_name, args) => {
+            prepare_vars_for_expr(out, owner, prefix)?;
             for expr in args {
                 prepare_vars_for_expr(out, expr, prefix)?;
             }
@@ -714,6 +770,14 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
                 translate_expr(code, scope, arg)?;
             }
             code.add(Opcode::CallFunc(args.len() as u32), expr.mark.clone());
+        }
+        ExprDesc::CallMethod(owner, method_name, args) => {
+            translate_expr(code, scope, owner)?;
+            code.add(Opcode::GetMethod(method_name.clone()), expr.mark.clone());
+            for arg in args {
+                translate_expr(code, scope, arg)?;
+            }
+            code.add(Opcode::CallFunc((args.len() + 1) as u32), expr.mark.clone());
         }
         ExprDesc::Binop(binop, lhs, rhs) => {
             translate_expr(code, scope, lhs)?;

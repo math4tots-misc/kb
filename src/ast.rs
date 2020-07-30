@@ -54,6 +54,7 @@ pub struct File {
     pub source: Rc<Source>,
     pub imports: Vec<Import>,
     pub funcs: Vec<FuncDisplay>,
+    pub clss: Vec<ClassDisplay>,
     pub body: Stmt,
 
     // annotated data
@@ -82,6 +83,20 @@ pub struct Import {
 
     // annotated data
     pub unique_name: RcStr,
+}
+
+pub struct ClassDisplay {
+    pub mark: Mark,
+    pub short_name: RcStr,
+    pub bases: Vec<Expr>,
+
+    // list of method names
+    // the corresponding functions are deduced later based on the
+    // class's full name
+    pub methods: Vec<RcStr>,
+
+    // annotated data
+    pub as_var: Option<Var>,
 }
 
 pub struct FuncDisplay {
@@ -163,6 +178,7 @@ pub enum ExprDesc {
     GetAttr(Box<Expr>, RcStr),
 
     CallFunc(Box<Expr>, Vec<Expr>),
+    CallMethod(Box<Expr>, RcStr, Vec<Expr>),
 
     Binop(Binop, Box<Expr>, Box<Expr>),
     Unop(Unop, Box<Expr>),

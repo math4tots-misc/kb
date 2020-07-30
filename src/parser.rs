@@ -29,7 +29,7 @@ const CONTROL_KEYWORDS: &[&str] = &[
     // mixed (used in both global and statement level)
     "end",
     // ============================= for global items =============================
-    "test", "fn", "import", "as",
+    "test", "fn", "import", "as", "class",
     // ============================= statement level =============================
     "var", "if", "elif", "else", "then", "while", "for", "to", "try", "catch", "throw", "assert",
     "return", "print",
@@ -57,6 +57,8 @@ const ZOPS: &[(&'static str, Zop)] = &[("TIME", Zop::Time)];
 
 const UNOPS: &[(&'static str, Unop)] = &[
     ("SLEEP", Unop::Sleep),
+    ("CLASS", Unop::GetClass),
+    ("NEW", Unop::New),
     ("NAME", Unop::Name),
     ("STR", Unop::Str),
     ("REPR", Unop::Repr),
@@ -198,6 +200,7 @@ impl<'a> Parser<'a> {
         let mark = self.mark();
         let mut imports = Vec::new();
         let mut funcs = Vec::new();
+        let mut clss = Vec::new();
         let mut stmts = Vec::new();
         self.consume_delim();
         while !self.at(Token::EOF) {
@@ -207,6 +210,9 @@ impl<'a> Parser<'a> {
                 | Token::Name("test")
                 | Token::Name("FUNCTION")
                 | Token::Name("SUB") => funcs.push(self.func()?),
+                Token::Name("class") => {
+                    self.cls(&mut clss, &mut funcs)?;
+                }
                 _ => stmts.extend(self.maybe_labeled_stmt()?),
             }
             self.delim()?;
@@ -215,6 +221,7 @@ impl<'a> Parser<'a> {
             source: self.source.clone(),
             imports,
             funcs,
+            clss,
             body: Stmt {
                 mark,
                 desc: StmtDesc::Block(stmts),
@@ -342,6 +349,39 @@ impl<'a> Parser<'a> {
             vars: vec![],
             as_var: None,
         })
+    }
+    fn cls(
+        &mut self,
+        clss: &mut Vec<ClassDisplay>,
+        funcs: &mut Vec<FuncDisplay>,
+    ) -> Result<(), BasicError> {
+        let mark = self.mark();
+        self.expect(Token::Name("class"))?;
+        let class_short_name = self.expect_name()?;
+        let mut bases = Vec::new();
+        if self.consume(Token::LParen) {
+            bases = self.args()?;
+        }
+        self.delim()?;
+        let mut method_pairs = Vec::new();
+        while !self.at_end() {
+            let mut func = self.func()?;
+            self.delim()?;
+            let func_short_name = func.short_name;
+            let method_short_name = format!("{}->{}", class_short_name, func_short_name);
+            func.short_name = method_short_name.into();
+            method_pairs.push(func_short_name);
+            funcs.push(func);
+        }
+        self.expect_end()?;
+        clss.push(ClassDisplay {
+            mark,
+            short_name: class_short_name,
+            bases,
+            methods: method_pairs,
+            as_var: None,
+        });
+        Ok(())
     }
     fn block(&mut self) -> Result<Stmt, BasicError> {
         let block = self.block_body()?;
@@ -647,6 +687,15 @@ impl<'a> Parser<'a> {
                 Ok(Expr {
                     mark,
                     desc: ExprDesc::GetAttr(e.into(), attr),
+                })
+            }
+            Token::RightArrow => {
+                let method_name = self.expect_name()?;
+                self.expect(Token::LParen)?;
+                let args = self.args()?;
+                Ok(Expr {
+                    mark,
+                    desc: ExprDesc::CallMethod(e.into(), method_name, args),
                 })
             }
             Token::LParen => {
@@ -1138,7 +1187,7 @@ fn precof<'a>(tok: &Token<'a>) -> Prec {
         Token::Minus | Token::Plus => ADD_PREC,
         Token::Star | Token::Slash | Token::Slash2 | Token::Percent => MUL_PREC,
         Token::Caret => POW_PREC,
-        Token::LParen | Token::LBracket | Token::Dot => POSTFIX_PREC,
+        Token::LParen | Token::LBracket | Token::Dot | Token::RightArrow => POSTFIX_PREC,
         Token::Name("AND") | Token::Name("and") => AND_PREC,
         Token::Name("OR") | Token::Name("or") => OR_PREC,
         _ => -1,

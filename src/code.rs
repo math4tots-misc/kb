@@ -57,6 +57,13 @@ pub enum Opcode {
     Disasm,
     Send(u32),
 
+    // classes and objects
+    GetAttr(RcStr),
+    SetAttr(RcStr),
+    TeeAttr(RcStr),
+    GetMethod(RcStr), // inserts method at TOS1 (keeps object on TOS)
+    NewClass(u32, u32),
+
     // Testing
     AddToTest,
     Assert,
@@ -153,6 +160,9 @@ pub enum Unop {
 
     // concatenate strings
     Cat,
+
+    GetClass, // Gets the class for an object
+    New,      // instantiates a class
 
     Sort,
 
@@ -312,6 +322,15 @@ impl Code {
     }
     pub fn name(&self) -> &RcStr {
         &self.name
+    }
+    pub fn basename(&self) -> &str {
+        if self.name.contains("->") {
+            self.name.rsplit("->").next().unwrap()
+        } else if self.name.contains('#') {
+            self.name.rsplit('#').next().unwrap()
+        } else {
+            self.name.rsplit('.').next().unwrap()
+        }
     }
     pub fn argspec(&self) -> &ArgSpec {
         &self.argspec

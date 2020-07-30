@@ -23,9 +23,6 @@ pub enum Val {
     Number(f64),
     Type(ValType),
 
-    /// Use of RcStr over Rc<str> is by design --
-    /// this allows kb to interoperate with rest of mtots
-    /// without copying the String all over the place
     String(RcStr),
 
     Bytes(Rc<Bytes>),
@@ -36,6 +33,9 @@ pub enum Val {
     Func(Func),
 
     GenObj(GenObjPtr),
+
+    Class(Rc<Class>),
+    Object(Rc<Object>),
 
     /// Handle to an external resource.
     /// Effectively opaque. I would prefer passing around raw integer values
@@ -59,6 +59,8 @@ impl Val {
             Self::Map(_) => ValType::Map,
             Self::Func(_) => ValType::Func,
             Self::GenObj(_) => ValType::GenObj,
+            Self::Class(_) => ValType::Class,
+            Self::Object(_) => ValType::Object,
             Self::Handle(_) => ValType::Handle,
         }
     }
@@ -73,7 +75,12 @@ impl Val {
             Self::List(x) => x.borrow().len() > 0,
             Self::Set(x) => x.borrow().len() > 0,
             Self::Map(x) => x.borrow().len() > 0,
-            Self::Type(_) | Self::Func(_) | Self::GenObj(_) | Self::Handle(_) => true,
+            Self::Type(_)
+            | Self::Func(_)
+            | Self::GenObj(_)
+            | Self::Class(_)
+            | Self::Object(_)
+            | Self::Handle(_) => true,
         }
     }
     pub fn number(&self) -> Option<f64> {
@@ -168,6 +175,20 @@ impl Val {
             Ok(number as u8)
         }
     }
+    pub fn expect_class(&self) -> Result<&Rc<Class>, Val> {
+        if let Self::Class(cls) = self {
+            Ok(cls)
+        } else {
+            Err(rterr!("Expected a class"))
+        }
+    }
+    pub fn expect_object(&self) -> Result<&Rc<Object>, Val> {
+        if let Self::Object(obj) = self {
+            Ok(obj)
+        } else {
+            Err(rterr!("Expected an object"))
+        }
+    }
     pub fn expect_handle_raw(&self) -> Result<&Rc<Handle>, Val> {
         if let Self::Handle(handle) = self {
             Ok(handle)
@@ -228,6 +249,8 @@ impl Val {
             (Self::Set(a), Self::Set(b)) => Rc::as_ptr(a) == Rc::as_ptr(b),
             (Self::Map(a), Self::Map(b)) => Rc::as_ptr(a) == Rc::as_ptr(b),
             (Self::Func(a), Self::Func(b)) => a == b,
+            (Self::Class(a), Self::Class(b)) => a == b,
+            (Self::Object(a), Self::Object(b)) => a == b,
             (Self::GenObj(a), Self::GenObj(b)) => a == b,
             _ => false,
         }
@@ -302,6 +325,52 @@ impl Val {
                 self.add_to_bytes(&mut out)?;
                 Ok(out)
             }
+        }
+    }
+    pub fn getattr<S>(&self, attr: &S) -> Result<Val, Val>
+    where
+        RcStr: std::borrow::Borrow<S>,
+        S: fmt::Debug + std::hash::Hash + cmp::Eq,
+    {
+        let opt = match self {
+            Self::Class(cls) => cls.attrs.borrow().get(attr).cloned(),
+            Self::Object(obj) => obj.fields.borrow().get(attr).cloned(),
+            _ => {
+                return Err(rterr!(
+                    "getattr requires a Class or Object but got {:?}",
+                    self.type_()
+                ))
+            }
+        };
+        if let Some(val) = opt {
+            Ok(val)
+        } else {
+            Err(rterr!("Attribute {:?} not found", attr))
+        }
+    }
+    pub fn setattr(&self, attr: RcStr, val: Val) -> Result<(), Val> {
+        let mut map = match self {
+            Self::Class(cls) => cls.attrs.borrow_mut(),
+            Self::Object(obj) => obj.fields.borrow_mut(),
+            _ => {
+                return Err(rterr!(
+                    "setattr requires a Class or Object but got {:?}",
+                    self.type_()
+                ))
+            }
+        };
+        map.insert(attr, val);
+        Ok(())
+    }
+    pub fn get_method(&self, method_name: &RcStr) -> Result<Val, Val> {
+        let obj = self.expect_object()?;
+        match obj.cls.methods.get(method_name) {
+            Some(method) => Ok(method.clone()),
+            None => Err(rterr!(
+                "Mehtod {:?} not found for {:?}",
+                method_name,
+                obj.cls.name
+            )),
         }
     }
 }
@@ -386,6 +455,36 @@ impl From<HashMap<Key, Val>> for Val {
     }
 }
 
+impl From<Rc<Class>> for Val {
+    fn from(cls: Rc<Class>) -> Self {
+        Self::Class(cls)
+    }
+}
+
+impl From<&Rc<Class>> for Val {
+    fn from(cls: &Rc<Class>) -> Self {
+        Self::Class(cls.clone())
+    }
+}
+
+impl From<Object> for Val {
+    fn from(obj: Object) -> Self {
+        Self::Object(Rc::new(obj))
+    }
+}
+
+impl From<Rc<Object>> for Val {
+    fn from(obj: Rc<Object>) -> Self {
+        Self::Object(obj)
+    }
+}
+
+impl From<&Rc<Object>> for Val {
+    fn from(obj: &Rc<Object>) -> Self {
+        Self::Object(obj.clone())
+    }
+}
+
 impl fmt::Debug for Val {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -455,6 +554,8 @@ impl fmt::Debug for Val {
             }
             Val::Func(func) => write!(f, "<func {}>", func.0.name()),
             Val::GenObj(_) => write!(f, "<genobj>"),
+            Val::Class(cls) => write!(f, "<class {}>", cls.name),
+            Val::Object(obj) => write!(f, "<object {}/{:?}>", obj.cls.name, Rc::as_ptr(obj)),
             Val::Handle(handle) => write!(
                 f,
                 "<handle {}/{:?}{}>",
@@ -505,6 +606,8 @@ pub enum ValType {
     Map,
     Func,
     GenObj,
+    Class,
+    Object,
     Handle,
 }
 
@@ -625,6 +728,77 @@ impl cmp::PartialEq for GenObjPtr {
 
 impl cmp::Eq for GenObjPtr {}
 
+pub struct Class {
+    name: RcStr,
+    methods: HashMap<RcStr, Val>,
+    attrs: RefCell<HashMap<RcStr, Val>>,
+}
+
+impl Class {
+    pub fn new(
+        name: RcStr,
+        methods: HashMap<RcStr, Val>,
+        attrs: RefCell<HashMap<RcStr, Val>>,
+    ) -> Rc<Self> {
+        Rc::new(Self {
+            name,
+            methods,
+            attrs,
+        })
+    }
+    pub fn name(&self) -> &RcStr {
+        &self.name
+    }
+    pub fn methods(&self) -> &HashMap<RcStr, Val> {
+        &self.methods
+    }
+    pub fn attrs(&self) -> Ref<HashMap<RcStr, Val>> {
+        self.attrs.borrow()
+    }
+    pub fn attrs_mut(&self) -> RefMut<HashMap<RcStr, Val>> {
+        self.attrs.borrow_mut()
+    }
+}
+
+impl cmp::PartialEq for Class {
+    fn eq(&self, other: &Self) -> bool {
+        self as *const _ == other as *const _
+    }
+}
+
+impl cmp::Eq for Class {}
+
+pub struct Object {
+    cls: Rc<Class>,
+    fields: RefCell<HashMap<RcStr, Val>>,
+}
+
+impl Object {
+    pub fn new(cls: Rc<Class>) -> Self {
+        Self {
+            cls,
+            fields: RefCell::new(HashMap::new()),
+        }
+    }
+    pub fn cls(&self) -> &Rc<Class> {
+        &self.cls
+    }
+    pub fn fields(&self) -> Ref<HashMap<RcStr, Val>> {
+        self.fields.borrow()
+    }
+    pub fn fields_mut(&self) -> RefMut<HashMap<RcStr, Val>> {
+        self.fields.borrow_mut()
+    }
+}
+
+impl cmp::PartialEq for Object {
+    fn eq(&self, other: &Self) -> bool {
+        self as *const _ == other as *const _
+    }
+}
+
+impl cmp::Eq for Object {}
+
 pub struct Handle {
     type_name: &'static str,
     value: RefCell<Option<Box<dyn Any>>>,
@@ -644,27 +818,44 @@ impl Handle {
         self.value.borrow().is_none()
     }
     pub fn has_type<T: Any>(&self) -> bool {
-        self.value.borrow().as_ref().map(|bx| bx.is::<T>()).unwrap_or(false)
+        self.value
+            .borrow()
+            .as_ref()
+            .map(|bx| bx.is::<T>())
+            .unwrap_or(false)
     }
     pub fn borrow<T: Any>(&self) -> Result<Ref<T>, Val> {
         if self.has_type::<T>() {
-            Ok(Ref::map(self.value.borrow(), |bx| bx.as_ref().unwrap().downcast_ref::<T>().unwrap()))
+            Ok(Ref::map(self.value.borrow(), |bx| {
+                bx.as_ref().unwrap().downcast_ref::<T>().unwrap()
+            }))
         } else {
-            Err(rterr!("Handle does not contain {}", std::any::type_name::<T>()))
+            Err(rterr!(
+                "Handle does not contain {}",
+                std::any::type_name::<T>()
+            ))
         }
     }
     pub fn borrow_mut<T: Any>(&self) -> Result<RefMut<T>, Val> {
         if self.has_type::<T>() {
-            Ok(RefMut::map(self.value.borrow_mut(), |bx| bx.as_mut().unwrap().downcast_mut::<T>().unwrap()))
+            Ok(RefMut::map(self.value.borrow_mut(), |bx| {
+                bx.as_mut().unwrap().downcast_mut::<T>().unwrap()
+            }))
         } else {
-            Err(rterr!("Handle does not contain {}", std::any::type_name::<T>()))
+            Err(rterr!(
+                "Handle does not contain {}",
+                std::any::type_name::<T>()
+            ))
         }
     }
     pub fn get<T: Any>(&self) -> Result<T, Val> {
         if self.has_type::<T>() {
             Ok(*self.value.replace(None).unwrap().downcast().unwrap())
         } else {
-            Err(rterr!("Handle does not contain {}", std::any::type_name::<T>()))
+            Err(rterr!(
+                "Handle does not contain {}",
+                std::any::type_name::<T>()
+            ))
         }
     }
 }

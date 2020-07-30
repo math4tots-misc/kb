@@ -3,12 +3,14 @@ use super::ArithmeticBinop;
 use super::ArithmeticUnop;
 use super::AssertBinop;
 use super::Binop;
+use super::Class;
 use super::Code;
 use super::Func;
 use super::GenObjPtr;
 use super::Handler;
 use super::Key;
 use super::Mark;
+use super::Object;
 use super::Opcode;
 use super::RcStr;
 use super::Unop;
@@ -772,6 +774,8 @@ fn step<H: Handler>(
                     cat(&mut string, &val);
                     string.into()
                 }
+                Unop::GetClass => get0!(val.expect_object()).cls().into(),
+                Unop::New => Object::new(get0!(val.expect_class()).clone()).into(),
                 Unop::Sort => {
                     let list = get0!(val.expect_list());
                     get0!(sort(&mut list.borrow_mut()));
@@ -850,6 +854,60 @@ fn step<H: Handler>(
             let code = get0!(frame.stack.pop().unwrap().expect_number()) as u32;
             let response = get0!(handler.send(code, args));
             frame.stack.push(response);
+        }
+        Opcode::GetAttr(attr) => {
+            let owner = frame.stack.pop().unwrap();
+            frame.stack.push(get0!(owner.getattr(attr)));
+        }
+        Opcode::SetAttr(attr) => {
+            let owner = frame.stack.pop().unwrap();
+            let val = frame.stack.pop().unwrap();
+            get0!(owner.setattr(attr.clone(), val));
+        }
+        Opcode::TeeAttr(attr) => {
+            let owner = frame.stack.pop().unwrap();
+            let val = frame.stack.last().unwrap().clone();
+            get0!(owner.setattr(attr.clone(), val));
+        }
+        Opcode::GetMethod(method_name) => {
+            let owner = frame.stack.pop().unwrap();
+            let method = get0!(owner.get_method(method_name));
+            frame.stack.push(method);
+            frame.stack.push(owner);
+        }
+        Opcode::NewClass(nbases, nmethods) => {
+            let start_len = frame.stack.len();
+            let bases: Vec<Rc<Class>> = get0!(frame
+                .stack
+                .drain(start_len - (*nbases as usize)..)
+                .map(|base| base.expect_class().map(|cls| cls.clone()))
+                .collect());
+            let methods: Vec<Val> = frame
+                .stack
+                .drain(start_len - ((*nbases + *nmethods) as usize)..)
+                .collect();
+            let method_names: Vec<RcStr> = get0!(frame
+                .stack
+                .drain(start_len - ((*nbases + 2 * *nmethods) as usize)..)
+                .map(|name| name.expect_string().map(|s| s.clone()))
+                .collect());
+            let mut method_pairs: Vec<_> = method_names.into_iter().zip(methods).collect();
+            for base in bases {
+                method_pairs.extend(base.methods().clone());
+            }
+            let name = get0!(frame.stack.pop().unwrap().expect_string()).clone();
+            let mut method_map = HashMap::new();
+            for (method_name, method) in method_pairs {
+                match method_map.entry(method_name) {
+                    std::collections::hash_map::Entry::Occupied(_) => {}
+                    std::collections::hash_map::Entry::Vacant(entry) => {
+                        entry.insert(method);
+                    }
+                }
+            }
+            frame
+                .stack
+                .push(Class::new(name, method_map, RefCell::new(HashMap::new())).into());
         }
         Opcode::AddToTest => {
             let val = frame.stack.last().unwrap().clone();

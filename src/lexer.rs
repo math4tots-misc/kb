@@ -37,6 +37,8 @@ pub enum Token<'a> {
     Bar,
     Excalamation,
     QMark,
+    RightArrow,
+    LeftArrow,
 
     Eq2,
     Ne,
@@ -143,7 +145,15 @@ pub fn lex(source: &Rc<Source>) -> Result<Vec<(Token, Mark)>, BasicError> {
                         ',' => Some(Token::Comma),
                         ';' => Some(Token::Semicolon),
                         '+' => Some(Token::Plus),
-                        '-' => Some(Token::Minus),
+                        '-' => Some(
+                            if ret.last().map(|p| &p.0) == Some(&Token::LessThan) && last_ig_ws < i - 1
+                            {
+                                ret.pop().unwrap();
+                                Token::LeftArrow
+                            } else {
+                                Token::Minus
+                            },
+                        ),
                         '*' => Some(Token::Star),
                         '/' => Some(
                             if ret.last().map(|p| &p.0) == Some(&Token::Slash) && last_ig_ws < i - 1
@@ -160,12 +170,20 @@ pub fn lex(source: &Rc<Source>) -> Result<Vec<(Token, Mark)>, BasicError> {
                         '!' => Some(Token::Excalamation),
                         '<' => Some(Token::LessThan),
                         '>' => Some(
-                            if ret.last().map(|p| &p.0) == Some(&Token::LessThan)
-                                && last_ig_ws < i - 1
-                            {
-                                // old school BASIC way of spelling of '!='
-                                ret.pop().unwrap();
-                                Token::Ne
+                            if last_ig_ws < i - 1 {
+                                match ret.last() {
+                                    // old school BASIC way of spelling of '!='
+                                    Some((Token::LessThan, _)) => {
+                                        ret.pop().unwrap();
+                                        Token::Ne
+                                    }
+                                    // ->
+                                    Some((Token::Minus, _)) => {
+                                        ret.pop().unwrap();
+                                        Token::RightArrow
+                                    }
+                                    _ => Token::GreaterThan,
+                                }
                             } else {
                                 Token::GreaterThan
                             },

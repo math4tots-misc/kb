@@ -1,0 +1,30 @@
+class Sample
+    fn foo(self) = 10
+    fn bar(self, x) = x + 123 + self->foo()
+end
+
+test Equality
+    r###"
+    Equality of objects are by identity
+    "###
+
+    sample1 = NEW(Sample)
+    assert sample1 is sample1
+    assert sample1 == sample1
+    sample2 = NEW(Sample)
+    assert sample2 is sample2
+    assert sample2 == sample2
+    assert sample1 is not sample2
+    assert sample1 != sample2
+end
+
+test Methods
+    sample = NEW(Sample)
+    assert sample->foo() == 10
+    assert sample->bar(6) == 139
+end
+
+test GetClass
+    sample = NEW(Sample)
+    assert CLASS(sample) is Sample
+end
