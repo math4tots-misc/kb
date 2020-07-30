@@ -1,12 +1,14 @@
 import a.gui
 
-gui.Init(800, 300)
+width = 800
+height = 600
+gui.Init(width, height)
 
 start = TIME()
 print 'setting pixels'
-for x = 0 .. 200
-    for y = 0 .. 200
-        gui.SetPixel(x, y, [x/100, y/100, 0])
+for x = 0 .. width
+    for y = 0 .. height
+        gui.SetPixel(x, y, [x/width, y/height, 0])
     end
 end
 gui.Flush()
@@ -19,7 +21,7 @@ Main()
 fn Main
     while true
         for [type, *args] in gui.Poll()
-            if type == 'Key'
+            if type == 'KeyDown'
                 [key] = args
                 if key == 'Escape'
                     return

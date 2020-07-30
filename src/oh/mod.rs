@@ -2,13 +2,14 @@
 //! This way, it's easier to separate out dependencies in the future if needed
 use crate::rterr;
 use crate::DefaultHandler;
-use crate::VideoHandler;
 use crate::Event;
 use crate::Handler;
 use crate::Scope;
 use crate::Val;
-use std::sync::mpsc;
+use crate::VideoHandler;
+use a2d::Color;
 use std::collections::HashMap;
+use std::sync::mpsc;
 use winit::dpi::LogicalPosition;
 use winit::dpi::LogicalSize;
 use winit::event::ElementState;
@@ -17,7 +18,6 @@ use winit::event::WindowEvent;
 use winit::event_loop::ControlFlow;
 use winit::event_loop::EventLoop;
 use winit::window::WindowBuilder;
-use a2d::Color;
 
 mod conv;
 mod ebuf;
@@ -43,7 +43,11 @@ pub struct OtherHandler {
 
 impl OtherHandler {
     fn new(qtx: mpsc::Sender<Request>, srx: mpsc::Receiver<Response>) -> Self {
-        Self { qtx, srx, pending_pixel_writes: HashMap::new() }
+        Self {
+            qtx,
+            srx,
+            pending_pixel_writes: HashMap::new(),
+        }
     }
 
     fn send(&mut self, req: Request) -> Result<Response, Val> {
@@ -87,7 +91,10 @@ impl Handler for OtherHandler {
 impl VideoHandler for OtherHandler {
     fn flush(&mut self) -> Result<(), Val> {
         let pixel_writes = if !self.pending_pixel_writes.is_empty() {
-            Some(std::mem::replace(&mut self.pending_pixel_writes, HashMap::new()))
+            Some(std::mem::replace(
+                &mut self.pending_pixel_writes,
+                HashMap::new(),
+            ))
         } else {
             None
         };
@@ -171,7 +178,14 @@ fn run(source_roots: Vec<String>, module_name: String, test: bool) {
                             is_synthetic: _,
                         } => {
                             if let Some(keycode) = input.virtual_keycode {
-                                events.push(Event::Key(format!("{:?}", keycode)));
+                                match input.state {
+                                    ElementState::Pressed => {
+                                        events.push(Event::KeyDown(format!("{:?}", keycode)))
+                                    }
+                                    ElementState::Released => {
+                                        events.push(Event::KeyUp(format!("{:?}", keycode)))
+                                    }
+                                }
                             }
                         }
                         WindowEvent::MouseInput {
@@ -214,7 +228,9 @@ fn run(source_roots: Vec<String>, module_name: String, test: bool) {
                                 Request::Flush(pixel_writes) => {
                                     if let Some(pixel_writes) = pixel_writes {
                                         for ((x, y), color) in pixel_writes {
-                                            graphics.set_pixel(x as usize, y as usize, color).unwrap();
+                                            graphics
+                                                .set_pixel(x as usize, y as usize, color)
+                                                .unwrap();
                                         }
                                     }
                                     match graphics.flush() {

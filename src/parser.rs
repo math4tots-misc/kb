@@ -55,7 +55,6 @@ const LITERAL_KEYWORDS: &[&str] = &["true", "false", "nil"];
 /// Zero argument operators
 const ZOPS: &[(&'static str, Zop)] = &[
     ("TIME", Zop::Time),
-
     // video operators
     ("FLUSH_VIDEO", Zop::FlushVideo),
     ("POLL", Zop::Poll),

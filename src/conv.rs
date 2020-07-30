@@ -35,8 +35,7 @@ impl Val {
             }
             _ => Err(rterr(format!(
                 "Expected list of {} numbers, but got {:?}",
-                len,
-                self,
+                len, self,
             ))),
         }
     }
@@ -52,7 +51,8 @@ impl From<Event> for Val {
         match event {
             Event::Quit => vec!["Quit".into()].into(),
             Event::Text(string) => vec!["Text".into(), string.into()].into(),
-            Event::Key(string) => vec!["Key".into(), string.into()].into(),
+            Event::KeyUp(string) => vec!["KeyUp".into(), string.into()].into(),
+            Event::KeyDown(string) => vec!["KeyDown".into(), string.into()].into(),
             Event::MouseDown(string, x, y) => vec![
                 "MouseDown".into(),
                 string.into(),
@@ -86,7 +86,8 @@ impl From<Event> for Val {
 pub enum Event {
     Quit,
     Text(String),
-    Key(String),
+    KeyUp(String),
+    KeyDown(String),
     MouseDown(String, f64, f64),
     MouseUp(String, f64, f64),
     MouseMotion(i32, i32, i32, i32),

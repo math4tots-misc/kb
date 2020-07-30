@@ -1,12 +1,12 @@
 use super::rterr;
 use super::translate_files;
 use super::BasicError;
+use super::Event;
 use super::Loader;
 use super::RcStr;
 use super::Scope;
 use super::Val;
 use super::Vm;
-use super::Event;
 use a2d::Color;
 
 /// Interface to the outside world
