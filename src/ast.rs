@@ -154,6 +154,7 @@ pub enum AssignTargetDesc {
     Name(RcStr),
     List(Vec<AssignTarget>, Option<Box<AssignTarget>>),
     Subscript(Expr, Expr),
+    Attribute(Expr, RcStr),
 }
 
 #[derive(Debug)]

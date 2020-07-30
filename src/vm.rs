@@ -704,10 +704,11 @@ fn step<H: Handler>(
                 Unop::Name => match val {
                     Val::Type(type_) => format!("{:?}", type_).into(),
                     Val::Func(func) => func.0.name().into(),
+                    Val::Class(cls) => cls.name().into(),
                     _ => {
                         addtrace!();
                         handle_error!(rterr!(
-                            concat!("NAME requires a function argument but got {}"),
+                            concat!("NAME requires a type, function, or class argument but got {}"),
                             val,
                         ));
                     }

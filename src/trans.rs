@@ -393,7 +393,13 @@ fn prepare_vars_for_target(
                 prepare_vars_for_target(out, vtarget, prefix)?;
             }
         }
-        AssignTargetDesc::Subscript(..) => {}
+        AssignTargetDesc::Subscript(owner, index) => {
+            prepare_vars_for_expr(out, owner, prefix)?;
+            prepare_vars_for_expr(out, index, prefix)?;
+        }
+        AssignTargetDesc::Attribute(owner, _attr) => {
+            prepare_vars_for_expr(out, owner, prefix)?;
+        }
     }
     Ok(())
 }
@@ -671,6 +677,14 @@ fn translate_assign(
             translate_expr(code, scope, index)?;
             code.add(Opcode::SetItem, target.mark.clone());
         }
+        AssignTargetDesc::Attribute(owner, attr) => {
+            translate_expr(code, scope, owner)?;
+            if consume {
+                code.add(Opcode::SetAttr(attr.clone()), target.mark.clone());
+            } else {
+                code.add(Opcode::TeeAttr(attr.clone()), target.mark.clone());
+            }
+        }
     }
     Ok(())
 }
@@ -758,10 +772,8 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
                 code.add(Opcode::Get(var.vscope, var.index), expr.mark.clone());
             } else {
                 // this is an attribute access
-                return Err(BasicError::new(
-                    vec![expr.mark.clone()],
-                    format!("Attribute access not yet supported"),
-                ));
+                translate_expr(code, scope, owner)?;
+                code.add(Opcode::GetAttr(attr.clone()), expr.mark.clone());
             }
         }
         ExprDesc::CallFunc(f, args) => {

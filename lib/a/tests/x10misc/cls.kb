@@ -28,3 +28,23 @@ test GetClass
     sample = NEW(Sample)
     assert CLASS(sample) is Sample
 end
+
+test Attrs
+    sample = NEW(Sample)
+    sample.x = 'asdfasdf'
+    assert sample.x == 'asdfasdf'
+
+    # Throw on attributes not found
+    assert throw sample.y
+end
+
+test StaticAttrs
+    Sample.some_attr = 'some attr'
+    assert Sample.some_attr == 'some attr'
+
+    assert throw Sample.does_not_exist
+end
+
+test Name
+    assert NAME(Sample) == 'a.tests.x10misc.cls#Sample'
+end
