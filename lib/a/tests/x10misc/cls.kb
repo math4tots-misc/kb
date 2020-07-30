@@ -47,4 +47,19 @@ end
 
 test Name
     assert NAME(Sample) == 'a.tests.x10misc.cls#Sample'
+    assert EndsWith(NAME(Sample), '#Sample')
+end
+
+fn EndsWith(string, suffix)
+    alen = LEN(string)
+    blen = LEN(suffix)
+    if alen < blen
+        return false
+    end
+    for i = 0 .. blen
+        if string[alen - blen + i] != suffix[i]
+            return false
+        end
+    end
+    return true
 end
