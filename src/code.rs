@@ -367,6 +367,11 @@ mod tests {
     fn enum_sizes() {
         // checking that rust will properly fold nested enums
         assert_eq!(size_of::<Binop>(), size_of::<ArithmeticBinop>());
-        assert_eq!(size_of::<Binop>(), size_of::<usize>() * 2);
+        assert_eq!(size_of::<Binop>(), 1);
+    }
+
+    #[test]
+    fn opcode_size() {
+        assert_eq!(size_of::<Opcode>(), size_of::<usize>() * 2);
     }
 }
