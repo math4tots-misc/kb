@@ -1,13 +1,11 @@
 use super::DefaultHandler;
 use super::Handler;
-use super::OtherHandler;
 
 pub fn main() {
     let mut module_name: Option<String> = None;
     let mut state = State::Normal;
     let mut test_flag = false;
     let mut source_roots = Vec::new();
-    let mut handler_type = HandlerType::Default;
 
     for argstring in std::env::args() {
         let arg: &str = &argstring;
@@ -15,20 +13,11 @@ pub fn main() {
         match &state {
             State::Normal => match arg {
                 "-m" => state = State::Module,
-                "-h" => state = State::Handler,
                 "-t" => test_flag = true,
                 _ => source_roots.push(argstring),
             },
             State::Module => {
                 module_name = Some(arg.to_owned());
-                state = State::Normal;
-            }
-            State::Handler => {
-                handler_type = match arg {
-                    "other" | "o" => HandlerType::Other,
-                    "default" | "d" => HandlerType::Default,
-                    _ => panic!("Unrecognized handler type: {:?}", arg),
-                };
                 state = State::Normal;
             }
         }
@@ -42,26 +31,13 @@ pub fn main() {
     };
 
     if test_flag {
-        match handler_type {
-            HandlerType::Default => DefaultHandler::test(source_roots, module_name),
-            HandlerType::Other => OtherHandler::test(source_roots, module_name),
-        }
+        DefaultHandler::test(source_roots, module_name)
     } else {
-        let run = match handler_type {
-            HandlerType::Default => DefaultHandler::run,
-            HandlerType::Other => OtherHandler::run,
-        };
-        run(source_roots, module_name);
+        DefaultHandler::run(source_roots, module_name);
     };
-}
-
-enum HandlerType {
-    Default,
-    Other,
 }
 
 enum State {
     Normal,
     Module,
-    Handler,
 }

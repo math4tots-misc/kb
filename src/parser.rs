@@ -55,9 +55,6 @@ const LITERAL_KEYWORDS: &[&str] = &["true", "false", "nil"];
 /// Zero argument operators
 const ZOPS: &[(&'static str, Zop)] = &[
     ("TIME", Zop::Time),
-    // video operators
-    ("FLUSH_VIDEO", Zop::FlushVideo),
-    ("POLL", Zop::Poll),
 ];
 
 const UNOPS: &[(&'static str, Unop)] = &[
@@ -85,8 +82,6 @@ const BINOPS: &[(&'static str, Binop)] = &[
     ("EXTEND", Binop::Extend),
     ("REMOVE", Binop::Remove),
     ("ATAN2", Binop::Arithmetic(ArithmeticBinop::ATan2)),
-    ("INIT_VIDEO", Binop::InitVideo),
-    ("SET_PIXEL", Binop::SetPixel),
 ];
 
 pub fn parse(source: &Rc<Source>) -> Result<File, BasicError> {
