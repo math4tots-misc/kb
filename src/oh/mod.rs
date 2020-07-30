@@ -2,12 +2,13 @@
 //! This way, it's easier to separate out dependencies in the future if needed
 use crate::rterr;
 use crate::DefaultHandler;
+use crate::VideoHandler;
 use crate::Event;
 use crate::Handler;
 use crate::Scope;
 use crate::Val;
-use std::convert::TryFrom;
 use std::sync::mpsc;
+use std::collections::HashMap;
 use winit::dpi::LogicalPosition;
 use winit::dpi::LogicalSize;
 use winit::event::ElementState;
@@ -16,6 +17,7 @@ use winit::event::WindowEvent;
 use winit::event_loop::ControlFlow;
 use winit::event_loop::EventLoop;
 use winit::window::WindowBuilder;
+use a2d::Color;
 
 mod conv;
 mod ebuf;
@@ -35,11 +37,24 @@ const EVENTS_BUFFER_SIZE: usize = 8;
 pub struct OtherHandler {
     qtx: mpsc::Sender<Request>,
     srx: mpsc::Receiver<Response>,
+
+    pending_pixel_writes: HashMap<(u32, u32), Color>,
 }
 
 impl OtherHandler {
     fn new(qtx: mpsc::Sender<Request>, srx: mpsc::Receiver<Response>) -> Self {
-        Self { qtx, srx }
+        Self { qtx, srx, pending_pixel_writes: HashMap::new() }
+    }
+
+    fn send(&mut self, req: Request) -> Result<Response, Val> {
+        match self.qtx.send(req) {
+            Ok(()) => {}
+            Err(error) => return Err(rterr(format!("{:?}", error))),
+        }
+        match self.srx.recv() {
+            Ok(resp) => Ok(resp),
+            Err(error) => return Err(rterr(format!("{:?}", error))),
+        }
     }
 }
 
@@ -57,15 +72,40 @@ impl Handler for OtherHandler {
         Ok(())
     }
 
-    fn gui_send(&mut self, message: Val) -> Result<Val, Val> {
-        match self.qtx.send(Request::try_from(message)?) {
-            Ok(()) => {}
-            Err(error) => return Err(rterr(format!("{:?}", error))),
+    fn init_video(&mut self, width: u32, height: u32) -> Result<(), Val> {
+        match self.send(Request::Init(width, height)) {
+            Ok(_response) => Ok(()),
+            Err(error) => Err(error),
         }
-        match self.srx.recv() {
-            Ok(resp) => resp.to_val(),
-            Err(error) => return Err(rterr(format!("{:?}", error))),
+    }
+
+    fn video(&mut self) -> Result<&mut dyn VideoHandler, Val> {
+        Ok(self)
+    }
+}
+
+impl VideoHandler for OtherHandler {
+    fn flush(&mut self) -> Result<(), Val> {
+        let pixel_writes = if !self.pending_pixel_writes.is_empty() {
+            Some(std::mem::replace(&mut self.pending_pixel_writes, HashMap::new()))
+        } else {
+            None
+        };
+        self.send(Request::Flush(pixel_writes))?;
+        Ok(())
+    }
+
+    fn poll(&mut self) -> Result<Vec<Event>, Val> {
+        match self.send(Request::Poll) {
+            Ok(Response::Events(events)) => Ok(events),
+            Ok(resp) => panic!("Invalid response: {:?}", resp),
+            Err(error) => Err(error),
         }
+    }
+
+    fn set_pixel(&mut self, x: u32, y: u32, color: Color) -> Result<(), Val> {
+        self.pending_pixel_writes.insert((x, y), color);
+        Ok(())
     }
 }
 
@@ -171,10 +211,17 @@ fn run(source_roots: Vec<String>, module_name: String, test: bool) {
                                     Response::Err("GUI already initialized".to_owned())
                                 }
                                 Request::Poll => Response::Events(events.clear()),
-                                Request::Flush => match graphics.flush() {
-                                    Ok(()) => Response::Ok,
-                                    Err(error) => Response::Err(format!("{:?}", error)),
-                                },
+                                Request::Flush(pixel_writes) => {
+                                    if let Some(pixel_writes) = pixel_writes {
+                                        for ((x, y), color) in pixel_writes {
+                                            graphics.set_pixel(x as usize, y as usize, color).unwrap();
+                                        }
+                                    }
+                                    match graphics.flush() {
+                                        Ok(()) => Response::Ok,
+                                        Err(error) => Response::Err(format!("{:?}", error)),
+                                    }
+                                }
                                 Request::SetPixel(x, y, color) => {
                                     match graphics.set_pixel(x as usize, y as usize, color) {
                                         Ok(()) => Response::Ok,

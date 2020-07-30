@@ -6,6 +6,8 @@ use super::RcStr;
 use super::Scope;
 use super::Val;
 use super::Vm;
+use super::Event;
+use a2d::Color;
 
 /// Interface to the outside world
 pub trait Handler
@@ -32,14 +34,25 @@ where
         std::time::UNIX_EPOCH.elapsed().unwrap().as_secs_f64()
     }
 
-    /// Interact with/send a message to the GUI
-    /// The actual semantics depend on the handler implementation
-    fn gui_send(&mut self, _message: Val) -> Result<Val, Val> {
+    fn init_video(&mut self, _width: u32, _height: u32) -> Result<(), Val> {
         Err(rterr(format!(
-            "GUI calls not supported in this environment ({:?})",
+            "Video not supported in this environment ({:?})",
             std::any::type_name::<Self>()
         )))
     }
+
+    fn video(&mut self) -> Result<&mut dyn VideoHandler, Val> {
+        Err(rterr(format!(
+            "Video not supported in this environment ({:?})",
+            std::any::type_name::<Self>()
+        )))
+    }
+}
+
+pub trait VideoHandler {
+    fn flush(&mut self) -> Result<(), Val>;
+    fn poll(&mut self) -> Result<Vec<Event>, Val>;
+    fn set_pixel(&mut self, x: u32, y: u32, color: Color) -> Result<(), Val>;
 }
 
 pub struct DefaultHandler;

@@ -1,17 +1,12 @@
-G_INIT = 0
-G_POLL = 1
-G_FLUSH = 32
-G_SET_PIXEL = 33
-
 # DPI should be invisible to the user --
 # all coordinates are in logical pixel coordinates
 
 fn Init(width = 800, height = 600)
-    GUI([G_INIT, width, height])
+    INIT_VIDEO(width, height)
 end
 
-fn Poll() = GUI([G_POLL])
+fn Poll() = POLL()
 
-fn Flush() = GUI([G_FLUSH])
+fn Flush() = FLUSH_VIDEO()
 
-fn SetPixel(x, y, color) = GUI([G_SET_PIXEL, x, y, color])
+fn SetPixel(x, y, color) = SET_PIXEL([x, y], color)

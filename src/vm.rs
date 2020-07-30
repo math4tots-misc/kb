@@ -632,6 +632,19 @@ fn step<H: Handler>(
                         handle_error!(rterr!("Cannot REMOVE from a {:?}", lhs.type_()));
                     }
                 },
+                Binop::InitVideo => {
+                    let width = get0!(lhs.expect_number()) as u32;
+                    let height = get0!(rhs.expect_number()) as u32;
+                    get0!(handler.init_video(width, height));
+                    Val::Nil
+                }
+                Binop::SetPixel => {
+                    let point = get0!(lhs.to_number_pair());
+                    let point = (point.0 as u32, point.1 as u32);
+                    let color = get0!(rhs.to_color());
+                    get0!(get0!(handler.video()).set_pixel(point.0, point.1, color));
+                    Val::Nil
+                }
             };
             frame.stack.push(ret);
         }
@@ -768,13 +781,21 @@ fn step<H: Handler>(
                     std::thread::sleep(std::time::Duration::from_secs_f64(nsec));
                     Val::Nil
                 }
-                Unop::Gui => get0!(handler.gui_send(val)),
             };
             frame.stack.push(ret);
         }
         Opcode::Zop(zop) => {
             let ret = match zop {
                 Zop::Time => handler.time().into(),
+                Zop::Poll => {
+                    let events = get0!(get0!(handler.video()).poll());
+                    let events: Vec<_> = events.into_iter().map(Val::from).collect();
+                    events.into()
+                }
+                Zop::FlushVideo => {
+                    get0!(get0!(handler.video()).flush());
+                    Val::Nil
+                }
             };
             frame.stack.push(ret);
         }

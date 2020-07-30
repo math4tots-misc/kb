@@ -2,13 +2,14 @@ use crate::rterr;
 use crate::RcStr;
 use crate::Val;
 use a2d::Color;
+use std::collections::HashMap;
 use std::convert::TryFrom;
 
 pub(super) enum Request {
     Quit,
     Init(u32, u32),
     Poll,
-    Flush,
+    Flush(Option<HashMap<(u32, u32), Color>>),
     SetPixel(u32, u32, Color),
 }
 
@@ -37,7 +38,7 @@ impl TryFrom<Val> for Request {
             }
             32 => {
                 checkargc("Flush", arr.len(), 0)?;
-                Ok(Request::Flush)
+                Ok(Request::Flush(None))
             }
             // Set pixel
             33 => {

@@ -2,6 +2,7 @@ use crate::rterr;
 use crate::Event;
 use crate::Val;
 
+#[derive(Debug)]
 pub(super) enum Response {
     Ok,
     Err(String),
@@ -11,6 +12,7 @@ pub(super) enum Response {
 }
 
 impl Response {
+    #[allow(dead_code)]
     pub fn to_val(self) -> Result<Val, Val> {
         match self {
             Response::Ok => Ok(Val::Nil),

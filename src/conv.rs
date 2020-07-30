@@ -23,6 +23,28 @@ impl Val {
             ))),
         }
     }
+
+    pub fn to_number_tuple(&self, len: usize) -> Result<Vec<f64>, Val> {
+        match self {
+            Val::List(list) if list.borrow().len() == len => {
+                let mut ret = Vec::new();
+                for x in list.borrow().iter() {
+                    ret.push(x.expect_number()?);
+                }
+                Ok(ret)
+            }
+            _ => Err(rterr(format!(
+                "Expected list of {} numbers, but got {:?}",
+                len,
+                self,
+            ))),
+        }
+    }
+
+    pub fn to_number_pair(&self) -> Result<(f64, f64), Val> {
+        let pair = self.to_number_tuple(2)?;
+        Ok((pair[0], pair[1]))
+    }
 }
 
 impl From<Event> for Val {

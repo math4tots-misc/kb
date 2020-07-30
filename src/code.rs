@@ -92,6 +92,10 @@ pub enum Binop {
     Extend,
     GetItem,
     Remove,
+
+    // Video operators
+    InitVideo,
+    SetPixel,
 }
 
 impl Binop {
@@ -155,9 +159,6 @@ pub enum Unop {
     Sort,
 
     Sleep,
-
-    // Send a message to the GUI subsystem
-    Gui,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -178,6 +179,10 @@ pub enum ArithmeticUnop {
 #[derive(Debug, Clone, Copy)]
 pub enum Zop {
     Time,
+
+    // Video operators
+    Poll,
+    FlushVideo,
 }
 
 #[derive(Clone)]

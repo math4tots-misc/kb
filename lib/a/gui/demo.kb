@@ -1,15 +1,18 @@
 import a.gui
 
-gui.Init()
+gui.Init(800, 300)
 
+start = TIME()
 print 'setting pixels'
-for x = 0 .. 100
-    for y = 0 .. 100
+for x = 0 .. 200
+    for y = 0 .. 200
         gui.SetPixel(x, y, [x/100, y/100, 0])
     end
 end
 gui.Flush()
 print 'done setting pixels'
+end_ = TIME()
+print ['time (sec)', end_ - start]
 
 Main()
 
@@ -20,6 +23,24 @@ fn Main
                 [key] = args
                 if key == 'Escape'
                     return
+                elif key == 'F' or key == 'J'
+
+                    g = if key == 'F' then 1.0 else 0.0
+
+                    print 'Pixel draw start'
+                    npixels = 0
+                    start = TIME()
+                    for x = 0 .. 200
+                        for y = 0 .. 200
+                            gui.SetPixel(x, y, [x/200, g, y/200])
+                            npixels = npixels + 1
+                        end
+                    end
+                    gui.Flush()
+                    end_ = TIME()
+                    nsec = end_ - start
+                    print ['time (sec)', nsec, 'sec/pixel=', nsec/npixels]
+
                 else
                     print ['key', key]
                 end
