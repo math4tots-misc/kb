@@ -1,3 +1,4 @@
+use super::rterr;
 use super::Code;
 use super::GenObj;
 use super::Key;
@@ -26,6 +27,7 @@ pub enum Val {
     /// without copying the String all over the place
     String(RcStr),
 
+    Bytes(Rc<Bytes>),
     List(Rc<List>),
     Set(Rc<Set>),
     Map(Rc<Map>),
@@ -44,6 +46,7 @@ impl Val {
             Self::Number(_) => ValType::Number,
             Self::Type(_) => ValType::Type,
             Self::String(_) => ValType::String,
+            Self::Bytes(_) => ValType::Bytes,
             Self::List(_) => ValType::List,
             Self::Set(_) => ValType::Set,
             Self::Map(_) => ValType::Map,
@@ -58,6 +61,7 @@ impl Val {
             Self::Bool(x) => *x,
             Self::Number(x) => *x != 0.0,
             Self::String(x) => x.len() > 0,
+            Self::Bytes(x) => x.borrow().len() > 0,
             Self::List(x) => x.borrow().len() > 0,
             Self::Set(x) => x.borrow().len() > 0,
             Self::Map(x) => x.borrow().len() > 0,
@@ -75,7 +79,7 @@ impl Val {
         if let Some(x) = self.number() {
             Ok(x)
         } else {
-            Err(Val::String("Expected number".to_owned().into()))
+            Err(rterr("Expected number"))
         }
     }
     pub fn as_type(&self) -> Option<ValType> {
@@ -89,7 +93,7 @@ impl Val {
         if let Some(x) = self.as_type() {
             Ok(x)
         } else {
-            Err(Val::String("Expected type".to_owned().into()))
+            Err(rterr("Expected type"))
         }
     }
     pub fn string(&self) -> Option<&RcStr> {
@@ -103,7 +107,7 @@ impl Val {
         if let Some(x) = self.string() {
             Ok(x)
         } else {
-            Err(Val::String("Expected string".to_owned().into()))
+            Err(rterr("Expected string"))
         }
     }
     pub fn list(&self) -> Option<&List> {
@@ -117,7 +121,7 @@ impl Val {
         if let Some(x) = self.list() {
             Ok(x)
         } else {
-            Err(Val::String("Expected list".to_owned().into()))
+            Err(rterr("Expected list"))
         }
     }
     pub fn func(&self) -> Option<&Rc<Code>> {
@@ -131,7 +135,7 @@ impl Val {
         if let Some(x) = self.func() {
             Ok(x)
         } else {
-            Err(Val::String("Expected func".to_owned().into()))
+            Err(rterr("Expected func"))
         }
     }
     pub fn genobj(&self) -> Option<&GenObjPtr> {
@@ -145,7 +149,15 @@ impl Val {
         if let Some(x) = self.genobj() {
             Ok(x)
         } else {
-            Err(Val::String("Expected generator object".to_owned().into()))
+            Err(rterr("Expected generator object"))
+        }
+    }
+    pub fn expect_byte(&self) -> Result<u8, Val> {
+        let number = self.expect_number()?;
+        if number < 0.0 || number > 255.0 {
+            Err(rterr!("Byte value out of bounds ({})", number))
+        } else {
+            Ok(number as u8)
         }
     }
     pub fn in_(&self, other: &Self) -> Result<bool, Val> {
@@ -154,15 +166,12 @@ impl Val {
                 if let Val::String(query) = self {
                     Ok(string.contains(query.as_ref()))
                 } else {
-                    Err(Val::String(
-                        format!(
-                            concat!(
-                                "'in' requires both members to be a string ",
-                                "if the second argument is a string, but got {:?}",
-                            ),
-                            other
-                        )
-                        .into(),
+                    Err(rterr!(
+                        concat!(
+                            "'in' requires both members to be a string ",
+                            "if the second argument is a string, but got {:?}",
+                        ),
+                        other
                     ))
                 }
             }
@@ -170,20 +179,18 @@ impl Val {
             Self::Set(set) => {
                 let key = match Key::from_val(self.clone()) {
                     Ok(key) => key,
-                    Err(val) => return Err(format!("{:?} is not hashable", val).into()),
+                    Err(val) => return Err(rterr!("{:?} is not hashable", val)),
                 };
                 Ok(set.borrow().contains(&key))
             }
             Self::Map(map) => {
                 let key = match Key::from_val(self.clone()) {
                     Ok(key) => key,
-                    Err(val) => return Err(format!("{:?} is not hashable", val).into()),
+                    Err(val) => return Err(rterr!("{:?} is not hashable", val)),
                 };
                 Ok(map.borrow().contains_key(&key))
             }
-            _ => Err(Val::String(
-                format!("{:?} does not support the 'in' operator", other).into(),
-            )),
+            _ => Err(rterr!("{:?} does not support the 'in' operator", other)),
         }
     }
     pub fn is(&self, other: &Self) -> bool {
@@ -219,9 +226,7 @@ impl Val {
                 a.len().cmp(&b.len())
             }),
             (Self::Set(a), Self::Set(b)) => Ok(a.sorted_keys().cmp(&b.sorted_keys())),
-            _ => Err(Val::String(
-                format!("{} and {} are not comparable", self, other).into(),
-            )),
+            _ => Err(rterr!("{} and {} are not comparable", self, other)),
         }
     }
     pub fn lt(&self, other: &Self) -> Result<bool, Val> {
@@ -241,6 +246,36 @@ impl Val {
                 Some((key, val))
             }
             _ => None,
+        }
+    }
+    fn add_to_bytes(&self, out: &mut Vec<u8>) -> Result<(), Val> {
+        match self {
+            Val::Number(_) => out.push(self.expect_byte()?),
+            Val::String(string) => out.extend(string.as_bytes()),
+            Val::Bytes(bytes) => out.extend(bytes.borrow().iter()),
+            Val::List(list) => {
+                for x in list.borrow().iter() {
+                    x.add_to_bytes(out)?;
+                }
+            }
+            val => return Err(rterr!(
+                "Expected number, string, bytes or list but got {:?}",
+                val
+            )),
+        }
+        Ok(())
+    }
+    pub fn to_bytes(self) -> Result<Vec<u8>, Val> {
+        match self {
+            Val::Bytes(bytes) => Ok(match Rc::try_unwrap(bytes) {
+                Ok(bytes) => bytes.into_inner(),
+                Err(bytes) => bytes.borrow().clone(),
+            }),
+            _ => {
+                let mut out = Vec::new();
+                self.add_to_bytes(&mut out)?;
+                Ok(out)
+            }
         }
     }
 }
@@ -278,6 +313,17 @@ impl From<&RcStr> for Val {
 impl From<RcStr> for Val {
     fn from(s: RcStr) -> Self {
         Self::String(s.into())
+    }
+}
+
+impl From<Vec<u8>> for Val {
+    fn from(vec: Vec<u8>) -> Self {
+        Self::Bytes(
+            Bytes {
+                vec: RefCell::new(vec),
+            }
+            .into(),
+        )
     }
 }
 
@@ -336,6 +382,16 @@ impl fmt::Debug for Val {
                     }
                 }
                 write!(f, "\"")
+            }
+            Val::Bytes(xs) => {
+                write!(f, "BYTES([")?;
+                for (i, x) in xs.borrow().iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{:?}", x)?;
+                }
+                write!(f, "])")
             }
             Val::List(xs) => {
                 write!(f, "[")?;
@@ -406,12 +462,37 @@ pub enum ValType {
     Number,
     Type,
     String,
+    Bytes,
     List,
     Set,
     Map,
     Func,
     GenObj,
 }
+
+pub struct Bytes {
+    vec: RefCell<Vec<u8>>,
+}
+
+impl Bytes {
+    pub fn borrow(&self) -> Ref<Vec<u8>> {
+        self.vec.borrow()
+    }
+    pub fn borrow_mut(&self) -> RefMut<Vec<u8>> {
+        self.vec.borrow_mut()
+    }
+    pub fn into_inner(self) -> Vec<u8> {
+        self.vec.into_inner()
+    }
+}
+
+impl cmp::PartialEq for Bytes {
+    fn eq(&self, other: &Self) -> bool {
+        self.vec.eq(&other.vec)
+    }
+}
+
+impl cmp::Eq for Bytes {}
 
 /// Wrapper around RefCell<Vec<Val>>
 /// Having a wrapper keeps the possibility open for e.g.

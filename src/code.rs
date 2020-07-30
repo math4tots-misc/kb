@@ -142,6 +142,7 @@ pub enum Unop {
 
     Str,
     Repr,
+    Bytes,
     List,
     Set,
     Map,

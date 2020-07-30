@@ -1,0 +1,29 @@
+test Get
+    bytes = BYTES([1, 2, 3])
+    assert bytes[0] == 1
+    assert bytes[1] == 2
+    assert bytes[2] == 3
+    assert throw bytes[3]
+    assert LEN(bytes) == 3
+
+    # Trying to use anything outside of [0, 255] will
+    # cause an error
+    assert throw
+        bytes[0] = 1000
+    end
+    assert throw
+        bytes[0] = -1
+    end
+
+    bytes[0] = 255
+    assert bytes[0] == 255
+
+    assert POP(bytes) == 3
+    assert LEN(bytes) == 2
+    assert bytes[0] == 255
+    assert bytes[1] == 2
+
+    ADD(bytes, 123)
+    assert bytes[2] == 123
+    assert bytes == BYTES([255, 2, 123])
+end

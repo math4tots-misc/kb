@@ -1,4 +1,11 @@
 //! A BASIC dialect
+
+macro_rules! rterr {
+    ( $($args:expr),+ $(,)?) => {
+        crate::rterr(format!( $($args),+ ))
+    };
+}
+
 mod ast;
 mod code;
 mod handler;

@@ -20,12 +20,6 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::rc::Rc;
 
-macro_rules! rterr {
-    ( $($args:expr),+ $(,)?) => {
-        rterr(format!( $($args),+ ))
-    };
-}
-
 pub struct Vm<H: Handler> {
     scope: Scope,
     handler: H,
@@ -514,6 +508,9 @@ fn step<H: Handler>(
                 // other
                 Binop::Add => {
                     match &lhs {
+                        Val::Bytes(bytes) => {
+                            bytes.borrow_mut().push(get0!(rhs.expect_byte()));
+                        }
                         Val::List(list) => {
                             list.borrow_mut().push(rhs);
                         }
@@ -582,6 +579,11 @@ fn step<H: Handler>(
                         let j = get0!(index(&rhs, len));
                         format!("{}", string.getchar(j).unwrap()).into()
                     }
+                    Val::Bytes(bytes) => {
+                        let len = bytes.borrow().len();
+                        let j = get0!(index(&rhs, len));
+                        (bytes.borrow()[j] as f64).into()
+                    }
                     Val::List(list) => {
                         let len = list.borrow().len();
                         let index = get0!(index(&rhs, len));
@@ -608,7 +610,7 @@ fn step<H: Handler>(
                         handle_error!(rterr!(
                             concat!(
                                 "GETITEM requries its first element to be a list, ",
-                                "string, or map but got {:?}",
+                                "string, bytes, or map but got {:?}",
                             ),
                             lhs
                         ));
@@ -665,24 +667,44 @@ fn step<H: Handler>(
                 Unop::Type => Val::Type(val.type_()),
                 Unop::Len => match val {
                     Val::String(s) => Val::Number(s.charlen() as f64),
+                    Val::Bytes(bytes) => Val::Number(bytes.borrow().len() as f64),
                     Val::List(list) => Val::Number(list.borrow().len() as f64),
                     Val::Set(set) => Val::Number(set.borrow().len() as f64),
                     Val::Map(map) => Val::Number(map.borrow().len() as f64),
                     _ => {
                         addtrace!();
                         handle_error!(rterr!(
-                            concat!("LEN requires a string, list, set or map argument but got {}"),
+                            concat!("LEN requires a string, bytes, list, set or map argument but got {}"),
                             val,
                         ));
                     }
                 },
                 Unop::Pop => {
-                    let list = get0!(val.expect_list());
-                    match list.borrow_mut().pop() {
-                        Some(val) => val,
-                        None => {
+                    match val {
+                        Val::Bytes(bytes) => {
+                            match bytes.borrow_mut().pop() {
+                                Some(byte) => (byte as f64).into(),
+                                None => {
+                                    addtrace!();
+                                    handle_error!(rterr!("Pop from empty list"));
+                                }
+                            }
+                        }
+                        Val::List(list) => {
+                            match list.borrow_mut().pop() {
+                                Some(val) => val,
+                                None => {
+                                    addtrace!();
+                                    handle_error!(rterr!("Pop from empty list"));
+                                }
+                            }
+                        }
+                        _ => {
                             addtrace!();
-                            handle_error!(rterr!("Pop from empty list"));
+                            handle_error!(rterr!(
+                                "POP expects bytes or list but got {:?}",
+                                val,
+                            ));
                         }
                     }
                 }
@@ -699,6 +721,7 @@ fn step<H: Handler>(
                 },
                 Unop::Str => format!("{}", val).into(),
                 Unop::Repr => format!("{:?}", val).into(),
+                Unop::Bytes => get0!(val.to_bytes()).into(),
                 Unop::List => get0!(to_vec(val, scope, handler)).into(),
                 Unop::Set => match val {
                     Val::Set(set) => match Rc::try_unwrap(set) {
@@ -782,6 +805,11 @@ fn step<H: Handler>(
             let owner = frame.stack.pop().unwrap();
             let val = frame.stack.pop().unwrap();
             match owner {
+                Val::Bytes(bytes) => {
+                    let len = bytes.borrow().len();
+                    let j = get0!(index(&j, len));
+                    bytes.borrow_mut()[j] = get0!(val.expect_byte());
+                }
                 Val::List(list) => {
                     let len = list.borrow().len();
                     let j = get0!(index(&j, len));
