@@ -283,6 +283,12 @@ fn prepare_vars_for_expr(
             prepare_vars_for_expr(out, arg, prefix)?;
         }
         ExprDesc::Zop(_) => {}
+        ExprDesc::Send(cexpr, aexprs) => {
+            prepare_vars_for_expr(out, cexpr, prefix)?;
+            for expr in aexprs {
+                prepare_vars_for_expr(out, expr, prefix)?;
+            }
+        }
         ExprDesc::And(a, b) => {
             prepare_vars_for_expr(out, a, prefix)?;
             prepare_vars_for_expr(out, b, prefix)?;
@@ -720,6 +726,13 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
         }
         ExprDesc::Zop(zop) => {
             code.add(Opcode::Zop(*zop), expr.mark.clone());
+        }
+        ExprDesc::Send(cexpr, aexprs) => {
+            translate_expr(code, scope, cexpr)?;
+            for arg in aexprs {
+                translate_expr(code, scope, arg)?;
+            }
+            code.add(Opcode::Send(aexprs.len() as u32), expr.mark.clone());
         }
         ExprDesc::Or(a, b) => {
             let end_label = scope.new_label();

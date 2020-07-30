@@ -1,3 +1,4 @@
+use super::rterr;
 use super::translate_files;
 use super::BasicError;
 use super::Loader;
@@ -29,6 +30,18 @@ where
     /// Returns seconds since UNIX epoch as float
     fn time(&mut self) -> f64 {
         std::time::UNIX_EPOCH.elapsed().unwrap().as_secs_f64()
+    }
+
+    /// Send a message to your host
+    ///
+    /// Mechanism to allow custom Handlers to support various
+    /// extended behaviors
+    ///
+    fn send(&mut self, _code: u32, _args: Vec<Val>) -> Result<Val, Val> {
+        Err(rterr(format!(
+            "{:?} does not support SEND-style extended features",
+            std::any::type_name::<Self>()
+        )))
     }
 }
 

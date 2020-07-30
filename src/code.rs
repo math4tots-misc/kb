@@ -55,6 +55,7 @@ pub enum Opcode {
     SetItem,
     Print,
     Disasm,
+    Send(u32),
 
     // Testing
     AddToTest,

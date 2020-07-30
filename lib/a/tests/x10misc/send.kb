@@ -1,0 +1,6 @@
+
+test DefaultHandler
+    # DefaultHandler doesn't support SEND at all
+    # However, it should at least parse
+    assert throw SEND(123, 'foo', 'bar')
+end

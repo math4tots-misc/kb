@@ -48,14 +48,12 @@ const EXPR_KEYWORDS: &[&str] = &[
 
 /// keywords for function-like builtin operators
 /// These 'pseudo-functions' are all-caps
-const OP_KEYWORDS: &[&str] = &["NEXT", "DISASM", "CAT", "DELETE", "SORTED"];
+const OP_KEYWORDS: &[&str] = &["NEXT", "DISASM", "CAT", "DELETE", "SORTED", "SEND"];
 
 const LITERAL_KEYWORDS: &[&str] = &["true", "false", "nil"];
 
 /// Zero argument operators
-const ZOPS: &[(&'static str, Zop)] = &[
-    ("TIME", Zop::Time),
-];
+const ZOPS: &[(&'static str, Zop)] = &[("TIME", Zop::Time)];
 
 const UNOPS: &[(&'static str, Unop)] = &[
     ("SLEEP", Unop::Sleep),
@@ -977,6 +975,22 @@ impl<'a> Parser<'a> {
                 Ok(Expr {
                     mark,
                     desc: ExprDesc::Disasm(fexpr.into()),
+                })
+            }
+            Token::Name("SEND") => {
+                self.gettok();
+                self.expect(Token::LParen)?;
+                let mut args = self.args()?;
+                if args.is_empty() {
+                    return Err(BasicError::new(
+                        vec![mark],
+                        format!("SEND requires at least a 'code' argument, but got no args"),
+                    ));
+                }
+                let cexpr = args.remove(0).into();
+                Ok(Expr {
+                    mark,
+                    desc: ExprDesc::Send(cexpr, args),
                 })
             }
             Token::Name(name) if self.binop_map.contains_key(name) => {

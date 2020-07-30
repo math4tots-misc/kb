@@ -824,6 +824,14 @@ fn step<H: Handler>(
                 );
             }
         }
+        Opcode::Send(argc) => {
+            let old_len = frame.stack.len();
+            let new_len = old_len - (*argc as usize);
+            let args: Vec<Val> = frame.stack.drain(new_len..).collect();
+            let code = get0!(frame.stack.pop().unwrap().expect_number()) as u32;
+            let response = get0!(handler.send(code, args));
+            frame.stack.push(response);
+        }
         Opcode::AddToTest => {
             let val = frame.stack.last().unwrap().clone();
             if let Val::Func(code) = &val {
