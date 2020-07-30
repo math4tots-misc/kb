@@ -679,35 +679,26 @@ fn step<H: Handler>(
                         ));
                     }
                 },
-                Unop::Pop => {
-                    match val {
-                        Val::Bytes(bytes) => {
-                            match bytes.borrow_mut().pop() {
-                                Some(byte) => (byte as f64).into(),
-                                None => {
-                                    addtrace!();
-                                    handle_error!(rterr!("Pop from empty list"));
-                                }
-                            }
-                        }
-                        Val::List(list) => {
-                            match list.borrow_mut().pop() {
-                                Some(val) => val,
-                                None => {
-                                    addtrace!();
-                                    handle_error!(rterr!("Pop from empty list"));
-                                }
-                            }
-                        }
-                        _ => {
+                Unop::Pop => match val {
+                    Val::Bytes(bytes) => match bytes.borrow_mut().pop() {
+                        Some(byte) => (byte as f64).into(),
+                        None => {
                             addtrace!();
-                            handle_error!(rterr!(
-                                "POP expects bytes or list but got {:?}",
-                                val,
-                            ));
+                            handle_error!(rterr!("Pop from empty list"));
                         }
+                    },
+                    Val::List(list) => match list.borrow_mut().pop() {
+                        Some(val) => val,
+                        None => {
+                            addtrace!();
+                            handle_error!(rterr!("Pop from empty list"));
+                        }
+                    },
+                    _ => {
+                        addtrace!();
+                        handle_error!(rterr!("POP expects bytes or list but got {:?}", val,));
                     }
-                }
+                },
                 Unop::Name => match val {
                     Val::Type(type_) => format!("{:?}", type_).into(),
                     Val::Func(func) => func.0.name().into(),

@@ -3,6 +3,7 @@ use super::Code;
 use super::GenObj;
 use super::Key;
 use super::RcStr;
+use std::any::Any;
 use std::cell::Ref;
 use std::cell::RefCell;
 use std::cell::RefMut;
@@ -35,6 +36,12 @@ pub enum Val {
     Func(Func),
 
     GenObj(GenObjPtr),
+
+    /// Handle to an external resource.
+    /// Effectively opaque. I would prefer passing around raw integer values
+    /// to refer to external handles for kb, but sometimes you realaly want resources to
+    /// be cleaned up for you when you run out of references to the resource
+    Handle(Rc<Handle>),
 }
 
 impl Val {
@@ -52,6 +59,7 @@ impl Val {
             Self::Map(_) => ValType::Map,
             Self::Func(_) => ValType::Func,
             Self::GenObj(_) => ValType::GenObj,
+            Self::Handle(_) => ValType::Handle,
         }
     }
     pub fn truthy(&self) -> bool {
@@ -65,7 +73,7 @@ impl Val {
             Self::List(x) => x.borrow().len() > 0,
             Self::Set(x) => x.borrow().len() > 0,
             Self::Map(x) => x.borrow().len() > 0,
-            Self::Type(_) | Self::Func(_) | Self::GenObj(_) => true,
+            Self::Type(_) | Self::Func(_) | Self::GenObj(_) | Self::Handle(_) => true,
         }
     }
     pub fn number(&self) -> Option<f64> {
@@ -159,6 +167,22 @@ impl Val {
         } else {
             Ok(number as u8)
         }
+    }
+    pub fn expect_handle_raw(&self) -> Result<&Rc<Handle>, Val> {
+        if let Self::Handle(handle) = self {
+            Ok(handle)
+        } else {
+            Err(rterr!("Expected a Handle"))
+        }
+    }
+    pub fn expect_handle<T: Any>(&self) -> Result<Ref<T>, Val> {
+        self.expect_handle_raw()?.borrow()
+    }
+    pub fn expect_handle_mut<T: Any>(&self) -> Result<RefMut<T>, Val> {
+        self.expect_handle_raw()?.borrow_mut()
+    }
+    pub fn move_handle<T: Any>(&self) -> Result<T, Val> {
+        self.expect_handle_raw()?.get()
     }
     pub fn in_(&self, other: &Self) -> Result<bool, Val> {
         match other {
@@ -258,10 +282,12 @@ impl Val {
                     x.add_to_bytes(out)?;
                 }
             }
-            val => return Err(rterr!(
-                "Expected number, string, bytes or list but got {:?}",
-                val
-            )),
+            val => {
+                return Err(rterr!(
+                    "Expected number, string, bytes or list but got {:?}",
+                    val
+                ))
+            }
         }
         Ok(())
     }
@@ -429,6 +455,17 @@ impl fmt::Debug for Val {
             }
             Val::Func(func) => write!(f, "<func {}>", func.0.name()),
             Val::GenObj(_) => write!(f, "<genobj>"),
+            Val::Handle(handle) => write!(
+                f,
+                "<handle {}/{:?}{}>",
+                handle.type_name,
+                Rc::as_ptr(handle),
+                if handle.value.borrow().is_none() {
+                    " (empty)"
+                } else {
+                    ""
+                },
+            ),
         }
     }
 }
@@ -468,6 +505,7 @@ pub enum ValType {
     Map,
     Func,
     GenObj,
+    Handle,
 }
 
 pub struct Bytes {
@@ -586,6 +624,58 @@ impl cmp::PartialEq for GenObjPtr {
 }
 
 impl cmp::Eq for GenObjPtr {}
+
+pub struct Handle {
+    type_name: &'static str,
+    value: RefCell<Option<Box<dyn Any>>>,
+}
+
+impl Handle {
+    pub fn new<T: Any>(t: T) -> Val {
+        Val::Handle(Rc::new(Handle {
+            type_name: std::any::type_name::<T>(),
+            value: RefCell::new(Some(Box::new(t))),
+        }))
+    }
+    pub fn type_name(&self) -> &'static str {
+        self.type_name
+    }
+    pub fn is_empty(&self) -> bool {
+        self.value.borrow().is_none()
+    }
+    pub fn has_type<T: Any>(&self) -> bool {
+        self.value.borrow().as_ref().map(|bx| bx.is::<T>()).unwrap_or(false)
+    }
+    pub fn borrow<T: Any>(&self) -> Result<Ref<T>, Val> {
+        if self.has_type::<T>() {
+            Ok(Ref::map(self.value.borrow(), |bx| bx.as_ref().unwrap().downcast_ref::<T>().unwrap()))
+        } else {
+            Err(rterr!("Handle does not contain {}", std::any::type_name::<T>()))
+        }
+    }
+    pub fn borrow_mut<T: Any>(&self) -> Result<RefMut<T>, Val> {
+        if self.has_type::<T>() {
+            Ok(RefMut::map(self.value.borrow_mut(), |bx| bx.as_mut().unwrap().downcast_mut::<T>().unwrap()))
+        } else {
+            Err(rterr!("Handle does not contain {}", std::any::type_name::<T>()))
+        }
+    }
+    pub fn get<T: Any>(&self) -> Result<T, Val> {
+        if self.has_type::<T>() {
+            Ok(*self.value.replace(None).unwrap().downcast().unwrap())
+        } else {
+            Err(rterr!("Handle does not contain {}", std::any::type_name::<T>()))
+        }
+    }
+}
+
+impl cmp::PartialEq for Handle {
+    fn eq(&self, other: &Self) -> bool {
+        self as *const _ == other as *const _
+    }
+}
+
+impl cmp::Eq for Handle {}
 
 #[cfg(test)]
 mod tests {
