@@ -203,6 +203,20 @@ impl Val {
             Err(rterr!("Expected an object"))
         }
     }
+    pub fn is_handle_raw(&self) -> bool {
+        if let Self::Handle(_) = self {
+            true
+        } else {
+            false
+        }
+    }
+    pub fn is_handle<T: Any>(&self) -> bool {
+        if let Self::Handle(handle) = self {
+            handle.has_type::<T>()
+        } else {
+            false
+        }
+    }
     pub fn expect_handle_raw(&self) -> Result<&Rc<Handle>, Val> {
         if let Self::Handle(handle) = self {
             Ok(handle)
