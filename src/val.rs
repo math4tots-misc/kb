@@ -139,6 +139,20 @@ impl Val {
             Err(rterr("Expected list"))
         }
     }
+    pub fn map(&self) -> Option<&Map> {
+        if let Self::Map(x) = self {
+            Some(x)
+        } else {
+            None
+        }
+    }
+    pub fn expect_map(&self) -> Result<&Map, Val> {
+        if let Some(x) = self.map() {
+            Ok(x)
+        } else {
+            Err(rterr("Expected map"))
+        }
+    }
     pub fn func(&self) -> Option<&Rc<Code>> {
         if let Self::Func(x) = self {
             Some(&x.0)

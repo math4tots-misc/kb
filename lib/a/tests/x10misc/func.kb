@@ -9,3 +9,19 @@ end
 fn SomeFunc(a, b)
     return a + b * b
 end
+
+fn SomeFuncWithDefaultArgs(a, b, c = 123, d = 'ddd')
+    return [a, b, c, d]
+end
+
+test Kwargs
+    assert SomeFuncWithDefaultArgs('a', 'b', 'c', 'd') == ["a", "b", "c", "d"]
+    assert SomeFuncWithDefaultArgs('a', 'b', d='d', c='c') == ["a", "b", "c", "d"]
+    assert SomeFuncWithDefaultArgs('a', 'b', d='d') == ["a", "b", 123, "d"]
+    assert SomeFuncWithDefaultArgs('a', 'b', c='cc') == ["a", "b", "cc", "ddd"]
+    assert SomeFuncWithDefaultArgs('a', 'b') == ["a", "b", 123, "ddd"]
+
+    assert SomeFunc(b = 4, a = 2) == 18
+    assert SomeFunc(2, b = 4) == 18
+    assert SomeFunc(a = 2, b = 4) == 18
+end

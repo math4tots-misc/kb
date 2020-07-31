@@ -179,8 +179,8 @@ pub enum ExprDesc {
     GetVar(RcStr),
     GetAttr(Box<Expr>, RcStr),
 
-    CallFunc(Box<Expr>, Vec<Expr>),
-    CallMethod(Box<Expr>, RcStr, Vec<Expr>),
+    CallFunc(Box<Expr>, Vec<Expr>, Vec<(RcStr, Expr)>),
+    CallMethod(Box<Expr>, RcStr, Vec<Expr>, Vec<(RcStr, Expr)>),
 
     Tenop(Tenop, Box<Expr>, Box<Expr>, Box<Expr>),
     Binop(Binop, Box<Expr>, Box<Expr>),

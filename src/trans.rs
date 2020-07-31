@@ -319,15 +319,21 @@ fn prepare_vars_for_expr(
         ExprDesc::GetAttr(owner, _) => {
             prepare_vars_for_expr(out, owner, prefix)?;
         }
-        ExprDesc::CallFunc(f, args) => {
+        ExprDesc::CallFunc(f, args, kwargs) => {
             prepare_vars_for_expr(out, f, prefix)?;
             for expr in args {
                 prepare_vars_for_expr(out, expr, prefix)?;
             }
+            for (_, expr) in kwargs {
+                prepare_vars_for_expr(out, expr, prefix)?;
+            }
         }
-        ExprDesc::CallMethod(owner, _method_name, args) => {
+        ExprDesc::CallMethod(owner, _method_name, args, kwargs) => {
             prepare_vars_for_expr(out, owner, prefix)?;
             for expr in args {
+                prepare_vars_for_expr(out, expr, prefix)?;
+            }
+            for (_, expr) in kwargs {
                 prepare_vars_for_expr(out, expr, prefix)?;
             }
         }
@@ -781,20 +787,40 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
                 code.add(Opcode::GetAttr(attr.clone()), expr.mark.clone());
             }
         }
-        ExprDesc::CallFunc(f, args) => {
+        ExprDesc::CallFunc(f, args, kwargs) => {
             translate_expr(code, scope, f)?;
             for arg in args {
                 translate_expr(code, scope, arg)?;
             }
-            code.add(Opcode::CallFunc(args.len() as u32), expr.mark.clone());
+            for (kwname, kwarg) in kwargs {
+                code.add(Opcode::String(kwname.clone()), expr.mark.clone());
+                translate_expr(code, scope, kwarg)?;
+            }
+            if kwargs.len() > 0 {
+                code.add(Opcode::MakeMap(kwargs.len() as u32), expr.mark.clone());
+            }
+            code.add(
+                Opcode::CallFunc(args.len() as u32, kwargs.len() > 0),
+                expr.mark.clone(),
+            );
         }
-        ExprDesc::CallMethod(owner, method_name, args) => {
+        ExprDesc::CallMethod(owner, method_name, args, kwargs) => {
             translate_expr(code, scope, owner)?;
             code.add(Opcode::GetMethod(method_name.clone()), expr.mark.clone());
             for arg in args {
                 translate_expr(code, scope, arg)?;
             }
-            code.add(Opcode::CallFunc((args.len() + 1) as u32), expr.mark.clone());
+            for (kwname, kwarg) in kwargs {
+                code.add(Opcode::String(kwname.clone()), expr.mark.clone());
+                translate_expr(code, scope, kwarg)?;
+            }
+            if kwargs.len() > 0 {
+                code.add(Opcode::MakeMap(kwargs.len() as u32), expr.mark.clone());
+            }
+            code.add(
+                Opcode::CallFunc((args.len() + 1) as u32, kwargs.len() > 0),
+                expr.mark.clone(),
+            );
         }
         ExprDesc::Binop(binop, lhs, rhs) => {
             translate_expr(code, scope, lhs)?;

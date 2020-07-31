@@ -48,7 +48,7 @@ pub enum Opcode {
 
     // operators
     Next,
-    CallFunc(u32),
+    CallFunc(u32, bool),
     Tenop(Tenop),
     Binop(Binop),
     Unop(Unop),

@@ -700,17 +700,17 @@ impl<'a> Parser<'a> {
             Token::RightArrow => {
                 let method_name = self.expect_name()?;
                 self.expect(Token::LParen)?;
-                let args = self.args()?;
+                let (args, kwargs) = self.args_with_kwargs()?;
                 Ok(Expr {
                     mark,
-                    desc: ExprDesc::CallMethod(e.into(), method_name, args),
+                    desc: ExprDesc::CallMethod(e.into(), method_name, args, kwargs),
                 })
             }
             Token::LParen => {
-                let args = self.args()?;
+                let (args, kwargs) = self.args_with_kwargs()?;
                 Ok(Expr {
                     mark,
-                    desc: ExprDesc::CallFunc(e.into(), args),
+                    desc: ExprDesc::CallFunc(e.into(), args, kwargs),
                 })
             }
             Token::LBracket => {
@@ -1203,6 +1203,34 @@ impl<'a> Parser<'a> {
             }
         }
         Ok(ret)
+    }
+    fn args_with_kwargs(&mut self) -> Result<(Vec<Expr>, Vec<(RcStr, Expr)>), BasicError> {
+        let mut args = Vec::new();
+        let mut kwargs = Vec::new();
+
+        while !self.consume(Token::RParen) {
+            if self.at(Pat::Name) && self.lookahead(1) == Some(&Token::Eq) {
+                let kw = self.expect_name()?;
+                self.expect(Token::Eq)?;
+                let arg = self.expr(0)?;
+                kwargs.push((kw, arg));
+            } else if kwargs.is_empty() {
+                args.push(self.expr(0)?);
+            } else {
+                return Err(BasicError {
+                    marks: vec![self.mark()],
+                    message: format!("Positional arguments cannot come after keyword arguments"),
+                    help: None,
+                });
+            }
+
+            if !self.consume(Token::Comma) {
+                self.expect(Token::RParen)?;
+                break;
+            }
+        }
+
+        Ok((args, kwargs))
     }
 }
 

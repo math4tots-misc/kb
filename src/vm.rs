@@ -50,7 +50,7 @@ impl<H: Handler> Vm<H> {
                 .any(|prefix| test.name().starts_with(prefix.as_ref()))
             {
                 print!("  test {}... ", test.name());
-                callfunc(&mut self.scope, &mut self.handler, &test, vec![])?;
+                callfunc(&mut self.scope, &mut self.handler, &test, vec![], None)?;
                 println!("ok");
             }
         }
@@ -76,13 +76,14 @@ pub fn applyfunc<H: Handler>(
     handler: &mut H,
     func: &Rc<Code>,
     args: Vec<Val>,
+    kwargs: Option<HashMap<RcStr, Val>>,
 ) -> Result<Val, Val> {
     if func.generator() {
         // generator; create a generator object
-        mkgenobj(func.clone(), args)
+        mkgenobj(func.clone(), args, kwargs)
     } else {
         // this is a normal function, call it
-        callfunc(scope, handler, func, args)
+        callfunc(scope, handler, func, args, kwargs)
     }
 }
 
@@ -91,10 +92,11 @@ pub fn callfunc<H: Handler>(
     handler: &mut H,
     func: &Code,
     mut args: Vec<Val>,
+    kwargs: Option<HashMap<RcStr, Val>>,
 ) -> Result<Val, Val> {
     // match args against parameters
     let spec = func.argspec();
-    prepare_args(spec, &mut args)?;
+    prepare_args(spec, &mut args, kwargs)?;
 
     // initialize args: save the values into local vars
     scope.push(func.vars());
@@ -106,8 +108,12 @@ pub fn callfunc<H: Handler>(
     Ok(ret)
 }
 
-fn mkgenobj(func: Rc<Code>, mut args: Vec<Val>) -> Result<Val, Val> {
-    prepare_args(func.argspec(), &mut args)?;
+fn mkgenobj(
+    func: Rc<Code>,
+    mut args: Vec<Val>,
+    kwargs: Option<HashMap<RcStr, Val>>,
+) -> Result<Val, Val> {
+    prepare_args(func.argspec(), &mut args, kwargs)?;
     let mut locals = new_locals_from_vars(func.vars());
     for (i, arg) in args.into_iter().enumerate() {
         locals.set_by_index(i as u32, arg);
@@ -121,7 +127,36 @@ fn mkgenobj(func: Rc<Code>, mut args: Vec<Val>) -> Result<Val, Val> {
     Ok(Val::GenObj(GenObjPtr(Rc::new(RefCell::new(genobj)))))
 }
 
-fn prepare_args(spec: &ArgSpec, args: &mut Vec<Val>) -> Result<(), Val> {
+fn prepare_args(
+    spec: &ArgSpec,
+    args: &mut Vec<Val>,
+    kwargs: Option<HashMap<RcStr, Val>>,
+) -> Result<(), Val> {
+    if let Some(mut kwargs) = kwargs {
+        // if kwargs are present, try filling it up with values from it and defaults
+        let argc = args.len();
+        let argmin = spec.req.len();
+        let argmax = argmin + spec.def.len();
+        for i in argc..argmin {
+            let argname = &spec.req[i];
+            match kwargs.remove(argname) {
+                Some(val) => args.push(val),
+                None => return Err(rterr!("Required parameter {:?} is missing", argname,)),
+            }
+        }
+        for i in args.len()..argmax {
+            let (argname, defval) = &spec.def[i - argmin];
+            match kwargs.remove(argname) {
+                Some(val) => args.push(val),
+                None => args.push(defval.clone()),
+            }
+        }
+        if !kwargs.is_empty() {
+            let mut keys: Vec<_> = kwargs.into_iter().map(|(k, _)| k).collect();
+            keys.sort();
+            return Err(rterr!("Unused keyword arguments: {:?}", keys,));
+        }
+    }
     if spec.var.is_some() || spec.def.len() > 0 {
         // has variadic parameter or at least one default parameter
         let argc = args.len();
@@ -442,7 +477,19 @@ fn step<H: Handler>(
                 }
             }
         }
-        Opcode::CallFunc(argc) => {
+        Opcode::CallFunc(argc, has_kwargs) => {
+            let kwargs = if *has_kwargs {
+                let mut map = HashMap::new();
+                let mapval = frame.stack.pop().unwrap();
+                let mapval = get0!(mapval.expect_map());
+                for (key, val) in mapval.borrow().iter() {
+                    let key = get0!(key.clone().to_val().expect_string()).clone();
+                    map.insert(key, val.clone());
+                }
+                Some(map)
+            } else {
+                None
+            };
             let old_len = frame.stack.len();
             let new_len = old_len - (*argc as usize);
             let args: Vec<Val> = frame.stack.drain(new_len..).collect();
@@ -454,7 +501,7 @@ fn step<H: Handler>(
                 handle_error!(rterr!("{} is not a function", func));
             };
 
-            let ret = get1!(applyfunc(scope, handler, &func, args));
+            let ret = get1!(applyfunc(scope, handler, &func, args, kwargs));
             frame.stack.push(ret);
         }
         Opcode::Tenop(op) => {
@@ -787,17 +834,17 @@ fn step<H: Handler>(
                     Val::GenObj(_) => val,
                     Val::List(_) => {
                         let iterlist = get0!(scope.iter_list()).clone();
-                        let gen = get0!(applyfunc(scope, handler, &iterlist, vec![val]));
+                        let gen = get0!(applyfunc(scope, handler, &iterlist, vec![val], None));
                         gen
                     }
                     Val::Set(_) => {
                         let iterset = get0!(scope.iter_set()).clone();
-                        let gen = get0!(applyfunc(scope, handler, &iterset, vec![val]));
+                        let gen = get0!(applyfunc(scope, handler, &iterset, vec![val], None));
                         gen
                     }
                     Val::Map(_) => {
                         let itermap = get0!(scope.iter_map()).clone();
-                        let gen = get0!(applyfunc(scope, handler, &itermap, vec![val]));
+                        let gen = get0!(applyfunc(scope, handler, &itermap, vec![val], None));
                         gen
                     }
                     _ => {
