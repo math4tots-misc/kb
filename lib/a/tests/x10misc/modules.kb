@@ -1,0 +1,5 @@
+import a.tests.nested
+
+test InitStyle
+    assert nested.some_data == 'some data here in __init.kb'
+end

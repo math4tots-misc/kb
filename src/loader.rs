@@ -56,26 +56,47 @@ impl Loader {
 
     pub fn find_source(&mut self, module_name: &RcStr) -> Result<Option<&Rc<Source>>, BasicError> {
         if !self.map.contains_key(module_name) {
-            let mut relpath = PathBuf::new();
             let parts: Vec<_> = module_name.split(".").collect();
-            for part in &parts[..parts.len() - 1] {
-                relpath.push(part);
-            }
-            if let Some(part) = parts.last() {
-                relpath.push(format!("{}.kb", part));
-            }
-            for root in &self.source_roots {
-                let path = root.join(&relpath);
-                if path.is_file() {
-                    let data = std::fs::read_to_string(path)?;
-                    self.map.insert(
-                        module_name.clone(),
-                        Rc::new(Source {
-                            name: module_name.clone(),
-                            data: data.into(),
-                        }),
-                    );
-                    break;
+            let relpaths = {
+                let mut relpaths = Vec::new();
+
+                // type 1: foo/bar/__init.kb
+                {
+                    let mut relpath = PathBuf::new();
+                    for part in &parts {
+                        relpath.push(part);
+                    }
+                    relpath.push("__init.kb");
+                    relpaths.push(relpath);
+                }
+
+                // type 2: foo/bar.kb
+                {
+                    let mut relpath = PathBuf::new();
+                    for part in &parts[..parts.len() - 1] {
+                        relpath.push(part);
+                    }
+                    if let Some(part) = parts.last() {
+                        relpath.push(format!("{}.kb", part));
+                    }
+                    relpaths.push(relpath);
+                }
+                relpaths
+            };
+            'search: for root in &self.source_roots {
+                for relpath in &relpaths {
+                    let path = root.join(&relpath);
+                    if path.is_file() {
+                        let data = std::fs::read_to_string(path)?;
+                        self.map.insert(
+                            module_name.clone(),
+                            Rc::new(Source {
+                                name: module_name.clone(),
+                                data: data.into(),
+                            }),
+                        );
+                        break 'search;
+                    }
                 }
             }
         }
