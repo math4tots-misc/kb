@@ -65,6 +65,9 @@ impl<H: Handler> Vm<H> {
     pub fn into_handler(self) -> H {
         self.handler
     }
+    pub fn scope(&self) -> &Scope {
+        &self.scope
+    }
 }
 
 pub fn applyfunc<H: Handler>(
@@ -1024,6 +1027,9 @@ impl Scope {
             VarScope::Global => self.globals.get_key(index).unwrap(),
             VarScope::Local => self.locals.last().unwrap().get_key(index).unwrap(),
         }
+    }
+    pub fn get_global_by_name(&self, name: &RcStr) -> Option<&Val> {
+        self.globals.get_by_key(name)
     }
     pub fn get(&self, vscope: VarScope, index: u32) -> &Val {
         match vscope {
