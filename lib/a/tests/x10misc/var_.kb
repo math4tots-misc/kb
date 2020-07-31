@@ -16,3 +16,12 @@ test GetBeforeSet
     # parse/compile time error
     x = 10
 end
+
+
+some_global = 55
+
+test AssignGlobal
+    assert some_global == 55
+    some_global <- 'new some_global value'
+    assert some_global == 'new some_global value'
+end

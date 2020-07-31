@@ -230,6 +230,9 @@ fn prepare_vars_for_stmt(
             }
             prepare_vars_for_expr(out, expr, prefix)?;
         }
+        StmtDesc::AssignGlobal(_name, expr) => {
+            prepare_vars_for_expr(out, expr, prefix)?;
+        }
         StmtDesc::Expr(expr) => {
             prepare_vars_for_expr(out, expr, prefix)?;
         }
@@ -472,6 +475,19 @@ fn translate_stmt(code: &mut Code, scope: &mut Scope, stmt: &Stmt) -> Result<(),
                 translate_assign(code, scope, target, false)?;
             }
             translate_assign(code, scope, target, true)?;
+        }
+        StmtDesc::AssignGlobal(name, expr) => {
+            translate_expr(code, scope, expr)?;
+            let var = scope.getvar_or_error(&stmt.mark, name)?;
+            if var.vscope == VarScope::Global {
+                code.add(Opcode::Set(var.vscope, var.index), stmt.mark.clone());
+            } else {
+                return Err(BasicError {
+                    marks: vec![stmt.mark.clone(), var.mark.clone()],
+                    message: format!("{:?} is not a global variable", name),
+                    help: None,
+                });
+            }
         }
         StmtDesc::Expr(expr) => {
             translate_expr(code, scope, expr)?;

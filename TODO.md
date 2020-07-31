@@ -8,4 +8,3 @@
 * Keyword parameters
 * SourceLoader should allow and prefer `foo/bar/__init.kb` over `foo/bar.kb` for
     finding the `foo.bar` module
-* Syntax for assigning global variables from inside functions

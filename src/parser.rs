@@ -622,6 +622,17 @@ impl<'a> Parser<'a> {
                     desc: StmtDesc::Label(label),
                 })
             }
+            Token::Name(name)
+                if !self.keywords.contains(name) && self.lookahead(1) == Some(&Token::LeftArrow) =>
+            {
+                let name = self.expect_name()?;
+                self.expect(Token::LeftArrow)?;
+                let expr = self.expr(0)?;
+                Ok(Stmt {
+                    mark,
+                    desc: StmtDesc::AssignGlobal(name, expr),
+                })
+            }
             _ => {
                 let expr = self.expr(0)?;
                 if self.consume(Token::Eq) {

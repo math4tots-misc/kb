@@ -128,6 +128,7 @@ pub enum StmtDesc {
     Block(Vec<Stmt>),
     Return(Option<Expr>),
     Assign(AssignTarget, Vec<AssignTarget>, Expr),
+    AssignGlobal(RcStr, Expr),
     Expr(Expr),
     Print(Expr),
     Assert(Expr),
