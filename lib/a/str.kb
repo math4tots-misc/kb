@@ -1,0 +1,31 @@
+
+fn EndsWith(string, suffix, start = 0, end_ = nil)
+    # Checks that the given string ends with the given suffix
+    end_ = if end_ is nil then LEN(string) else end_
+    alen = LEN(string)
+    blen = LEN(suffix)
+    if alen < blen
+        return false
+    end
+    for i = 0 .. blen
+        if string[alen - blen + i] != suffix[i]
+            return false
+        end
+    end
+    return true
+end
+
+fn StartsWith(string, prefix, start = 0)
+    # Checks that the given string starts with the given prefix
+    alen = LEN(string) - start
+    blen = LEN(prefix)
+    if alen < blen
+        return false
+    end
+    for i = 0 .. blen
+        if string[start + i] != prefix[i]
+            return false
+        end
+    end
+    return true
+end

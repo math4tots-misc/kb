@@ -1,7 +1,32 @@
-
+import a.str
 
 test GetUnicode
     x = "한글"
     assert x[0] == '한'
     assert x[1] == '글'
+end
+
+test StartsWith
+    x = 'abcdef'
+    assert str.StartsWith(x, '')
+    assert str.StartsWith(x, 'a')
+    assert str.StartsWith(x, 'ab')
+    assert str.StartsWith(x, 'abc')
+    assert not str.StartsWith(x, 'def')
+    assert not str.StartsWith(x, 'f')
+
+    assert str.StartsWith(x, '', 3)
+    assert not str.StartsWith(x, 'a', 3)
+    assert not str.StartsWith(x, 'ab', 3)
+    assert str.StartsWith(x, 'def', 3)
+end
+
+test EndsWith
+    x = 'abcdef'
+    assert not str.EndsWith(x, 'abc')
+    assert str.EndsWith(x, '')
+    assert str.EndsWith(x, 'f')
+    assert str.EndsWith(x, 'ef')
+    assert str.EndsWith(x, 'def')
+    assert str.EndsWith(x, 'cdef')
 end
