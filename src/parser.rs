@@ -714,12 +714,60 @@ impl<'a> Parser<'a> {
                 })
             }
             Token::LBracket => {
-                let index = self.expr(0)?;
-                self.expect(Token::RBracket)?;
-                Ok(Expr {
-                    mark,
-                    desc: ExprDesc::Binop(Binop::GetItem, e.into(), index.into()),
-                })
+                if self.consume(Token::Colon) {
+                    let upper = self.expr(0)?;
+                    self.expect(Token::RBracket)?;
+                    Ok(Expr {
+                        mark: mark.clone(),
+                        desc: ExprDesc::Tenop(
+                            Tenop::Slice,
+                            e.into(),
+                            Expr {
+                                mark: mark.clone(),
+                                desc: ExprDesc::Nil,
+                            }
+                            .into(),
+                            upper.into(),
+                        ),
+                    })
+                } else {
+                    let index = self.expr(0)?;
+                    if self.consume(Token::Colon) {
+                        if self.consume(Token::RBracket) {
+                            Ok(Expr {
+                                mark: mark.clone(),
+                                desc: ExprDesc::Tenop(
+                                    Tenop::Slice,
+                                    e.into(),
+                                    index.into(),
+                                    Expr {
+                                        mark: mark.clone(),
+                                        desc: ExprDesc::Nil,
+                                    }
+                                    .into(),
+                                ),
+                            })
+                        } else {
+                            let upper = self.expr(0)?;
+                            self.expect(Token::RBracket)?;
+                            Ok(Expr {
+                                mark,
+                                desc: ExprDesc::Tenop(
+                                    Tenop::Slice,
+                                    e.into(),
+                                    index.into(),
+                                    upper.into(),
+                                ),
+                            })
+                        }
+                    } else {
+                        self.expect(Token::RBracket)?;
+                        Ok(Expr {
+                            mark,
+                            desc: ExprDesc::Binop(Binop::GetItem, e.into(), index.into()),
+                        })
+                    }
+                }
             }
             Token::Plus
             | Token::Minus

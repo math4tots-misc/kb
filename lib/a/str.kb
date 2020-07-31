@@ -1,7 +1,7 @@
 
-fn EndsWith(string, suffix, start = 0, end_ = nil)
+fn EndsWith(string, suffix, start = 0, stop = nil)
     # Checks that the given string ends with the given suffix
-    end_ = if end_ is nil then LEN(string) else end_
+    stop = if stop is nil then LEN(string) else stop
     alen = LEN(string)
     blen = LEN(suffix)
     if alen < blen

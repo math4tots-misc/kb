@@ -37,4 +37,10 @@ test Slice
     assert SLICE(x, 1, nil) == 'bcdef'
     assert SLICE(x, 1, -1) == 'bcde'
     assert SLICE(x, 0, -1) == 'abcde'
+
+    assert x[0: nil] == x
+    assert x[1:] == 'bcdef'
+    assert x[1:-1] == 'bcde'
+    assert x[0:-1] == 'abcde'
+    assert x[:-1] == 'abcde'
 end
