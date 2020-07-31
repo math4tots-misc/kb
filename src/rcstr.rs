@@ -32,6 +32,12 @@ impl RcStr {
             chars: RefCell::new(Some(Chars::ASCII)),
         }))
     }
+    pub fn unwrap_or_clone(self) -> String {
+        match Rc::try_unwrap(self.0) {
+            Ok(string) => string.string,
+            Err(rc) => rc.string.clone(),
+        }
+    }
     pub fn len(&self) -> usize {
         self.0.string.len()
     }

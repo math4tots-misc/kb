@@ -8,7 +8,7 @@ use std::hash::Hasher;
 use std::rc::Rc;
 
 /// Hashable values
-#[derive(Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub enum Key {
     Nil,
     Bool(bool),
@@ -81,7 +81,7 @@ impl From<Key> for Val {
 }
 
 /// HashSet with that is itself hashable and orderable
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HSet(pub HashSet<Key>);
 
 impl HSet {

@@ -623,7 +623,8 @@ impl<'a> Parser<'a> {
                 })
             }
             Token::Name(name)
-                if !self.keywords.contains(name) && self.lookahead(1) == Some(&Token::LeftArrow) =>
+                if !self.keywords.contains(name)
+                    && self.lookahead(1) == Some(&Token::LeftArrow) =>
             {
                 let name = self.expect_name()?;
                 self.expect(Token::LeftArrow)?;

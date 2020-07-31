@@ -732,6 +732,18 @@ impl Map {
         vec.sort_by(|a, b| a.0.cmp(&b.0));
         vec
     }
+    pub fn to_string_keys(&self) -> Result<HashMap<RcStr, Val>, Val> {
+        let mut ret = HashMap::new();
+        for (key, val) in self.borrow().iter() {
+            match key {
+                Key::String(string) => {
+                    ret.insert(string.clone(), val.clone());
+                }
+                _ => return Err(rterr!("Expected string keys but got {:?}", key)),
+            }
+        }
+        Ok(ret)
+    }
 }
 
 #[derive(Clone)]
