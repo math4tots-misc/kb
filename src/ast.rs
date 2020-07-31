@@ -1,6 +1,7 @@
 use super::ArgSpec;
 use super::Binop;
 use super::RcStr;
+use super::Tenop;
 use super::Unop;
 use super::VarScope;
 use super::Zop;
@@ -181,6 +182,7 @@ pub enum ExprDesc {
     CallFunc(Box<Expr>, Vec<Expr>),
     CallMethod(Box<Expr>, RcStr, Vec<Expr>),
 
+    Tenop(Tenop, Box<Expr>, Box<Expr>, Box<Expr>),
     Binop(Binop, Box<Expr>, Box<Expr>),
     Unop(Unop, Box<Expr>),
     Zop(Zop),

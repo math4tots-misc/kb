@@ -49,6 +49,7 @@ pub enum Opcode {
     // operators
     Next,
     CallFunc(u32),
+    Tenop(Tenop),
     Binop(Binop),
     Unop(Unop),
     Zop(Zop),
@@ -77,6 +78,11 @@ pub enum Opcode {
     UnresolvedGotoIfFalse(RcStr),
     UnresolvedGotoIfTrueElsePop(RcStr),
     UnresolvedGotoIfFalseElsePop(RcStr),
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Tenop {
+    Slice,
 }
 
 #[derive(Debug, Clone, Copy)]

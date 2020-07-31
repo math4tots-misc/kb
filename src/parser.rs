@@ -7,6 +7,7 @@ use super::BasicError;
 use super::Binop;
 use super::Mark;
 use super::RcStr;
+use super::Tenop;
 use super::Unop;
 use super::Val;
 use super::Zop;
@@ -86,6 +87,8 @@ const BINOPS: &[(&'static str, Binop)] = &[
     ("METHOD", Binop::Method),
 ];
 
+const TENOPS: &[(&'static str, Tenop)] = &[("SLICE", Tenop::Slice)];
+
 pub fn parse(source: &Rc<Source>) -> Result<File, BasicError> {
     let toks = lex(source)?;
     let keywords: HashSet<&'static str> = CONTROL_KEYWORDS
@@ -95,6 +98,7 @@ pub fn parse(source: &Rc<Source>) -> Result<File, BasicError> {
         .chain(ZOPS.iter().map(|(name, _)| name))
         .chain(UNOPS.iter().map(|(name, _)| name))
         .chain(BINOPS.iter().map(|(name, _)| name))
+        .chain(TENOPS.iter().map(|(name, _)| name))
         .chain(LITERAL_KEYWORDS)
         .chain(RESERVED_KEYWORDS)
         .map(|s| *s)
@@ -102,6 +106,7 @@ pub fn parse(source: &Rc<Source>) -> Result<File, BasicError> {
     let zop_map: HashMap<&'static str, Zop> = ZOPS.to_vec().into_iter().collect();
     let unop_map: HashMap<&'static str, Unop> = UNOPS.to_vec().into_iter().collect();
     let binop_map: HashMap<&'static str, Binop> = BINOPS.to_vec().into_iter().collect();
+    let tenop_map: HashMap<&'static str, Tenop> = TENOPS.to_vec().into_iter().collect();
     let mut parser = Parser {
         source: source.clone(),
         toks,
@@ -110,6 +115,7 @@ pub fn parse(source: &Rc<Source>) -> Result<File, BasicError> {
         zop_map,
         unop_map,
         binop_map,
+        tenop_map,
     };
     let file = parser.file()?;
     Ok(file)
@@ -123,6 +129,7 @@ struct Parser<'a> {
     zop_map: HashMap<&'static str, Zop>,
     unop_map: HashMap<&'static str, Unop>,
     binop_map: HashMap<&'static str, Binop>,
+    tenop_map: HashMap<&'static str, Tenop>,
 }
 
 impl<'a> Parser<'a> {
@@ -1042,6 +1049,22 @@ impl<'a> Parser<'a> {
                 Ok(Expr {
                     mark,
                     desc: ExprDesc::Send(cexpr, args),
+                })
+            }
+            Token::Name(name) if self.tenop_map.contains_key(name) => {
+                let op = *self.tenop_map.get(name).unwrap();
+                self.gettok();
+                self.expect(Token::LParen)?;
+                let expr1 = self.expr(0)?;
+                self.expect(Token::Comma)?;
+                let expr2 = self.expr(0)?;
+                self.expect(Token::Comma)?;
+                let expr3 = self.expr(0)?;
+                self.consume(Token::Comma);
+                self.expect(Token::RParen)?;
+                Ok(Expr {
+                    mark,
+                    desc: ExprDesc::Tenop(op, expr1.into(), expr2.into(), expr3.into()),
                 })
             }
             Token::Name(name) if self.binop_map.contains_key(name) => {

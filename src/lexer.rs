@@ -146,7 +146,8 @@ pub fn lex(source: &Rc<Source>) -> Result<Vec<(Token, Mark)>, BasicError> {
                         ';' => Some(Token::Semicolon),
                         '+' => Some(Token::Plus),
                         '-' => Some(
-                            if ret.last().map(|p| &p.0) == Some(&Token::LessThan) && last_ig_ws < i - 1
+                            if ret.last().map(|p| &p.0) == Some(&Token::LessThan)
+                                && last_ig_ws < i - 1
                             {
                                 ret.pop().unwrap();
                                 Token::LeftArrow
@@ -169,25 +170,23 @@ pub fn lex(source: &Rc<Source>) -> Result<Vec<(Token, Mark)>, BasicError> {
                         '|' => Some(Token::Bar),
                         '!' => Some(Token::Excalamation),
                         '<' => Some(Token::LessThan),
-                        '>' => Some(
-                            if last_ig_ws < i - 1 {
-                                match ret.last() {
-                                    // old school BASIC way of spelling of '!='
-                                    Some((Token::LessThan, _)) => {
-                                        ret.pop().unwrap();
-                                        Token::Ne
-                                    }
-                                    // ->
-                                    Some((Token::Minus, _)) => {
-                                        ret.pop().unwrap();
-                                        Token::RightArrow
-                                    }
-                                    _ => Token::GreaterThan,
+                        '>' => Some(if last_ig_ws < i - 1 {
+                            match ret.last() {
+                                // old school BASIC way of spelling of '!='
+                                Some((Token::LessThan, _)) => {
+                                    ret.pop().unwrap();
+                                    Token::Ne
                                 }
-                            } else {
-                                Token::GreaterThan
-                            },
-                        ),
+                                // ->
+                                Some((Token::Minus, _)) => {
+                                    ret.pop().unwrap();
+                                    Token::RightArrow
+                                }
+                                _ => Token::GreaterThan,
+                            }
+                        } else {
+                            Token::GreaterThan
+                        }),
                         '=' => Some({
                             if last_ig_ws < i - 1 {
                                 match ret.last() {

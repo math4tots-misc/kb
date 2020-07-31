@@ -30,3 +30,11 @@ test EndsWith
     assert str.EndsWith(x, 'def')
     assert str.EndsWith(x, 'cdef')
 end
+
+test Slice
+    x = 'abcdef'
+    assert SLICE(x, 0, nil) == x
+    assert SLICE(x, 1, nil) == 'bcdef'
+    assert SLICE(x, 1, -1) == 'bcde'
+    assert SLICE(x, 0, -1) == 'abcde'
+end

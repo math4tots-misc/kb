@@ -13,6 +13,7 @@ use super::Mark;
 use super::Object;
 use super::Opcode;
 use super::RcStr;
+use super::Tenop;
 use super::Unop;
 use super::Val;
 use super::Var;
@@ -454,6 +455,34 @@ fn step<H: Handler>(
             };
 
             let ret = get1!(applyfunc(scope, handler, &func, args));
+            frame.stack.push(ret);
+        }
+        Opcode::Tenop(op) => {
+            let c = frame.stack.pop().unwrap();
+            let b = frame.stack.pop().unwrap();
+            let a = frame.stack.pop().unwrap();
+            let ret = match op {
+                Tenop::Slice => match a {
+                    Val::String(string) => {
+                        let (i, j) = get0!(slice_index(&b, &c, string.len()));
+                        string[i..j].into()
+                    }
+                    Val::Bytes(bytes) => {
+                        let bytes = bytes.borrow();
+                        let (i, j) = get0!(slice_index(&b, &c, bytes.len()));
+                        bytes[i..j].to_vec().into()
+                    }
+                    Val::List(list) => {
+                        let list = list.borrow();
+                        let (i, j) = get0!(slice_index(&b, &c, list.len()));
+                        list[i..j].to_vec().into()
+                    }
+                    _ => {
+                        addtrace!();
+                        handle_error!(rterr!("SLICE expects strin, bytes or list but got {:?}", a));
+                    }
+                },
+            };
             frame.stack.push(ret);
         }
         Opcode::Binop(op) => {
@@ -1225,6 +1254,44 @@ fn index(i: &Val, len: usize) -> Result<usize, Val> {
         }
         _ => Err(rterr!("Expected index, but got {:?}", i)),
     }
+}
+
+fn slice_index(a: &Val, b: &Val, len: usize) -> Result<(usize, usize), Val> {
+    let a = match a {
+        Val::Nil => Ok(0),
+        Val::Number(a) => {
+            let mut a = *a as i64;
+            if a < 0 {
+                a += len as i64;
+            }
+            if a < 0 {
+                Ok(0)
+            } else if a >= len as i64 {
+                Ok(len)
+            } else {
+                Ok(a as usize)
+            }
+        }
+        _ => Err(rterr!("Expected index, but got {:?}", a)),
+    }?;
+    let b = match b {
+        Val::Nil => Ok(len),
+        Val::Number(b) => {
+            let mut b = *b as i64;
+            if b < 0 {
+                b += len as i64;
+            }
+            if b < 0 {
+                Ok(0)
+            } else if b >= len as i64 {
+                Ok(len)
+            } else {
+                Ok(b as usize)
+            }
+        }
+        _ => Err(rterr!("Expected index, but got {:?}", b)),
+    }?;
+    Ok((a, b))
 }
 
 pub fn rterr<S: Into<RcStr>>(message: S) -> Val {

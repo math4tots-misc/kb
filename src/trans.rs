@@ -335,6 +335,11 @@ fn prepare_vars_for_expr(
             prepare_vars_for_expr(out, a, prefix)?;
             prepare_vars_for_expr(out, b, prefix)?;
         }
+        ExprDesc::Tenop(_, a, b, c) => {
+            prepare_vars_for_expr(out, a, prefix)?;
+            prepare_vars_for_expr(out, b, prefix)?;
+            prepare_vars_for_expr(out, c, prefix)?;
+        }
         ExprDesc::Unop(_, arg) => {
             prepare_vars_for_expr(out, arg, prefix)?;
         }
@@ -795,6 +800,12 @@ fn translate_expr(code: &mut Code, scope: &mut Scope, expr: &Expr) -> Result<(),
             translate_expr(code, scope, lhs)?;
             translate_expr(code, scope, rhs)?;
             code.add(Opcode::Binop(*binop), expr.mark.clone());
+        }
+        ExprDesc::Tenop(tenop, a, b, c) => {
+            translate_expr(code, scope, a)?;
+            translate_expr(code, scope, b)?;
+            translate_expr(code, scope, c)?;
+            code.add(Opcode::Tenop(*tenop), expr.mark.clone());
         }
         ExprDesc::Unop(unop, subexpr) => {
             translate_expr(code, scope, subexpr)?;
