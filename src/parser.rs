@@ -83,6 +83,7 @@ const BINOPS: &[(&'static str, Binop)] = &[
     ("EXTEND", Binop::Extend),
     ("REMOVE", Binop::Remove),
     ("ATAN2", Binop::Arithmetic(ArithmeticBinop::ATan2)),
+    ("METHOD", Binop::Method),
 ];
 
 pub fn parse(source: &Rc<Source>) -> Result<File, BasicError> {

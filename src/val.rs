@@ -367,7 +367,7 @@ impl Val {
         match obj.cls.methods.get(method_name) {
             Some(method) => Ok(method.clone()),
             None => Err(rterr!(
-                "Mehtod {:?} not found for {:?}",
+                "Method {:?} not found for {:?}",
                 method_name,
                 obj.cls.name
             )),

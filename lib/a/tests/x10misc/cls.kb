@@ -48,6 +48,8 @@ end
 test Name
     assert NAME(Sample) == 'a.tests.x10misc.cls#Sample'
     assert EndsWith(NAME(Sample), '#Sample')
+
+    assert NAME(METHOD(Sample, 'foo')) == 'a.tests.x10misc.cls#Sample->foo'
 end
 
 fn EndsWith(string, suffix)

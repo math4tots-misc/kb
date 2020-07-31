@@ -100,6 +100,9 @@ pub enum Binop {
     Extend,
     GetItem,
     Remove,
+
+    // For classes
+    Method, // gets a class's method with the given name
 }
 
 impl Binop {

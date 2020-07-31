@@ -639,6 +639,11 @@ fn step<H: Handler>(
                         handle_error!(rterr!("Cannot REMOVE from a {:?}", lhs.type_()));
                     }
                 },
+                Binop::Method => {
+                    let cls = lhs.expect_class()?;
+                    let name = get0!(rhs.expect_string());
+                    cls.methods().get(name).cloned().unwrap_or(Val::Nil)
+                }
             };
             frame.stack.push(ret);
         }
