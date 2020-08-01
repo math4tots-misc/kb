@@ -44,3 +44,24 @@ test Slice
     assert x[0:-1] == 'abcde'
     assert x[:-1] == 'abcde'
 end
+
+test OrdAndChr
+    assert ORD('A') == 65
+    assert ORD('B') == 66
+    assert ORD('C') == 67
+    assert ORD('D') == 68
+    assert ORD('a') == 97
+    assert ORD('b') == 98
+    assert ORD('c') == 99
+    assert ORD('d') == 100
+
+    assert CHR(65) == 'A'
+    assert CHR(66) == 'B'
+    assert CHR(67) == 'C'
+    assert CHR(68) == 'D'
+    assert CHR(96) == '`'
+    assert CHR(97) == 'a'
+    assert CHR(98) == 'b'
+    assert CHR(99) == 'c'
+    assert CHR(100) == 'd'
+end

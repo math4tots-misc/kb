@@ -170,6 +170,10 @@ pub enum Unop {
     // concatenate strings
     Cat,
 
+    // int <-> char
+    Ord,
+    Chr,
+
     GetClass, // Gets the class for an object
     New,      // instantiates a class
 

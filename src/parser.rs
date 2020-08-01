@@ -77,6 +77,9 @@ const UNOPS: &[(&'static str, Unop)] = &[
     ("ASIN", Unop::Arithmetic(ArithmeticUnop::ASin)),
     ("ACOS", Unop::Arithmetic(ArithmeticUnop::ACos)),
     ("ATAN", Unop::Arithmetic(ArithmeticUnop::ATan)),
+
+    ("ORD", Unop::Ord),
+    ("CHR", Unop::Chr),
 ];
 
 const BINOPS: &[(&'static str, Binop)] = &[

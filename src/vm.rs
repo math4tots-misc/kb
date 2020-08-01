@@ -870,6 +870,22 @@ fn step<H: Handler>(
                     cat(&mut string, &val);
                     string.into()
                 }
+                Unop::Ord => {
+                    let chars: Vec<_> = get0!(val.expect_string()).chars().collect();
+                    if chars.len() != 1 {
+                        addtrace!();
+                        handle_error!(rterr!("Ord requires a string of len 1"));
+                    }
+                    (chars[0] as u8 as f64).into()
+                }
+                Unop::Chr => {
+                    use std::convert::TryFrom;
+                    let ch = match char::try_from(get0!(val.expect_number()) as u32) {
+                        Ok(ch) => ch,
+                        Err(error) => return get0!(Err(rterr!("{:?}", error))),
+                    };
+                    format!("{}", ch).into()
+                }
                 Unop::GetClass => get0!(val.expect_object()).cls().into(),
                 Unop::New => Object::new(get0!(val.expect_class()).clone()).into(),
                 Unop::Sort => {
