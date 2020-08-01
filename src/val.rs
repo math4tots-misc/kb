@@ -968,12 +968,10 @@ impl<T: Any + Clone> HCow<T> {
     /// Like 'get', but will clone if needed
     pub fn get_or_clone(self) -> T {
         match self {
-            Self::Handle(handle) => {
-                match Rc::try_unwrap(handle.0) {
-                    Ok(handle) => *handle.value.into_inner().downcast().unwrap(),
-                    Err(handle) => handle.borrow_unchecked::<T>().clone(),
-                }
-            }
+            Self::Handle(handle) => match Rc::try_unwrap(handle.0) {
+                Ok(handle) => *handle.value.into_inner().downcast().unwrap(),
+                Err(handle) => handle.borrow_unchecked::<T>().clone(),
+            },
             Self::Owned(t) => t,
         }
     }

@@ -42,6 +42,14 @@ impl<H: Handler> Vm<H> {
         exec(&mut self.scope, &mut self.handler, code)?;
         Ok(())
     }
+    pub fn applyfunc(
+        &mut self,
+        func: &Rc<Code>,
+        args: Vec<Val>,
+        kwargs: Option<HashMap<RcStr, Val>>,
+    ) -> Result<Val, Val> {
+        applyfunc(&mut self.scope, &mut self.handler, func, args, kwargs)
+    }
     pub fn run_tests(&mut self, prefixes: &Vec<RcStr>) -> Result<(), Val> {
         let tests = std::mem::replace(&mut self.scope.tests, vec![]);
         for test in tests {
