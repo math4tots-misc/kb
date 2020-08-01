@@ -11,6 +11,7 @@ use std::cmp;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fmt;
+use std::marker::PhantomData;
 use std::rc::Rc;
 
 #[derive(Clone, PartialEq)]
@@ -230,8 +231,24 @@ impl Val {
     pub fn expect_handle_mut<T: Any>(&self) -> Result<RefMut<T>, Val> {
         self.expect_handle_raw()?.borrow_mut()
     }
-    pub fn move_handle<T: Any>(&self) -> Result<T, Val> {
-        self.expect_handle_raw()?.get()
+    pub fn into_handle<T: Any>(self) -> Result<TypedHandle<T>, Val> {
+        match self {
+            Self::Handle(handle) => {
+                if handle.has_type::<T>() {
+                    Ok(TypedHandle(handle, PhantomData))
+                } else {
+                    Err(rterr!(
+                        "Expected {:?}, but {:?}",
+                        handle.type_name(),
+                        std::any::type_name::<T>()
+                    ))
+                }
+            }
+            _ => Err(rterr!("Expected a Handle")),
+        }
+    }
+    pub fn into_hcow<T: Any>(self) -> Result<HCow<T>, Val> {
+        Ok(HCow::Handle(self.into_handle()?))
     }
     pub fn in_(&self, other: &Self) -> Result<bool, Val> {
         match other {
@@ -584,17 +601,9 @@ impl fmt::Debug for Val {
             Val::GenObj(_) => write!(f, "<genobj>"),
             Val::Class(cls) => write!(f, "<class {}>", cls.name),
             Val::Object(obj) => write!(f, "<object {}/{:?}>", obj.cls.name, Rc::as_ptr(obj)),
-            Val::Handle(handle) => write!(
-                f,
-                "<handle {}/{:?}{}>",
-                handle.type_name,
-                Rc::as_ptr(handle),
-                if handle.value.borrow().is_none() {
-                    " (empty)"
-                } else {
-                    ""
-                },
-            ),
+            Val::Handle(handle) => {
+                write!(f, "<handle {}/{:?}>", handle.type_name, Rc::as_ptr(handle),)
+            }
         }
     }
 }
@@ -841,46 +850,41 @@ impl cmp::Eq for Object {}
 
 pub struct Handle {
     type_name: &'static str,
-    value: RefCell<Option<Box<dyn Any>>>,
+    value: RefCell<Box<dyn Any>>,
 }
 
 impl Handle {
     pub fn new<T: Any>(t: T) -> Val {
         Val::Handle(Rc::new(Handle {
             type_name: std::any::type_name::<T>(),
-            value: RefCell::new(Some(Box::new(t))),
+            value: RefCell::new(Box::new(t)),
         }))
     }
     pub fn type_name(&self) -> &'static str {
         self.type_name
     }
-    pub fn is_empty(&self) -> bool {
-        self.value.borrow().is_none()
-    }
     pub fn has_type<T: Any>(&self) -> bool {
-        self.value
-            .borrow()
-            .as_ref()
-            .map(|bx| bx.is::<T>())
-            .unwrap_or(false)
+        self.value.borrow().as_ref().is::<T>()
     }
     pub fn borrow<T: Any>(&self) -> Result<Ref<T>, Val> {
         if self.has_type::<T>() {
-            Ok(Ref::map(self.value.borrow(), |bx| {
-                bx.as_ref().unwrap().downcast_ref::<T>().unwrap()
-            }))
+            Ok(self.borrow_unchecked())
         } else {
             Err(rterr!(
                 "Handle does not contain {}",
                 std::any::type_name::<T>()
             ))
         }
+    }
+    /// like borrow, but will panic on error
+    pub fn borrow_unchecked<T: Any>(&self) -> Ref<T> {
+        Ref::map(self.value.borrow(), |bx| {
+            bx.as_ref().downcast_ref::<T>().unwrap()
+        })
     }
     pub fn borrow_mut<T: Any>(&self) -> Result<RefMut<T>, Val> {
         if self.has_type::<T>() {
-            Ok(RefMut::map(self.value.borrow_mut(), |bx| {
-                bx.as_mut().unwrap().downcast_mut::<T>().unwrap()
-            }))
+            Ok(self.borrow_mut_unchecked())
         } else {
             Err(rterr!(
                 "Handle does not contain {}",
@@ -888,15 +892,11 @@ impl Handle {
             ))
         }
     }
-    pub fn get<T: Any>(&self) -> Result<T, Val> {
-        if self.has_type::<T>() {
-            Ok(*self.value.replace(None).unwrap().downcast().unwrap())
-        } else {
-            Err(rterr!(
-                "Handle does not contain {}",
-                std::any::type_name::<T>()
-            ))
-        }
+    /// like borrow_mut, but will panic on error
+    pub fn borrow_mut_unchecked<T: Any>(&self) -> RefMut<T> {
+        RefMut::map(self.value.borrow_mut(), |bx| {
+            bx.as_mut().downcast_mut::<T>().unwrap()
+        })
     }
 }
 
@@ -907,6 +907,51 @@ impl cmp::PartialEq for Handle {
 }
 
 impl cmp::Eq for Handle {}
+
+/// Like Rc<Handle>, but type has already been checked
+pub struct TypedHandle<T: Any>(Rc<Handle>, PhantomData<T>);
+
+impl<T: Any> TypedHandle<T> {
+    pub fn type_name(&self) -> &'static str {
+        self.0.type_name()
+    }
+    pub fn borrow(&self) -> Ref<T> {
+        self.0.borrow_unchecked()
+    }
+    pub fn borrow_mut(&self) -> RefMut<T> {
+        self.0.borrow_mut_unchecked()
+    }
+    pub fn get(self) -> Result<T, Val> {
+        match Rc::try_unwrap(self.0) {
+            Ok(handle) => Ok(*handle.value.into_inner().downcast().unwrap()),
+            Err(_) => Err(rterr!("Could not move handle (other references exist)")),
+        }
+    }
+}
+
+/// Like Rust's Cow, but instead of reference, the value may be held in a Handle
+pub enum HCow<T: Any> {
+    Handle(TypedHandle<T>),
+    Owned(T),
+}
+
+impl<T: Any> HCow<T> {
+    pub fn new(t: T) -> Self {
+        Self::Owned(t)
+    }
+    pub fn map_ref<F: FnOnce(&T) -> R, R>(&self, f: F) -> R {
+        match self {
+            Self::Handle(handle) => f(&handle.borrow()),
+            Self::Owned(t) => f(&t),
+        }
+    }
+    pub fn map_mut<F: FnOnce(&mut T) -> R, R>(&mut self, f: F) -> R {
+        match self {
+            Self::Handle(handle) => f(&mut handle.borrow_mut()),
+            Self::Owned(ref mut t) => f(t),
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
