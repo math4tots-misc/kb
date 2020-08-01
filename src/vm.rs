@@ -104,7 +104,7 @@ pub fn callfunc<H: Handler>(
 ) -> Result<Val, Val> {
     // match args against parameters
     let spec = func.argspec();
-    prepare_args(spec, &mut args, kwargs)?;
+    prepare_args(func.name(), spec, &mut args, kwargs)?;
 
     // initialize args: save the values into local vars
     scope.push(func.vars());
@@ -121,7 +121,7 @@ fn mkgenobj(
     mut args: Vec<Val>,
     kwargs: Option<HashMap<RcStr, Val>>,
 ) -> Result<Val, Val> {
-    prepare_args(func.argspec(), &mut args, kwargs)?;
+    prepare_args(func.name(), func.argspec(), &mut args, kwargs)?;
     let mut locals = new_locals_from_vars(func.vars());
     for (i, arg) in args.into_iter().enumerate() {
         locals.set_by_index(i as u32, arg);
@@ -136,6 +136,7 @@ fn mkgenobj(
 }
 
 fn prepare_args(
+    func_name: &str,
     spec: &ArgSpec,
     args: &mut Vec<Val>,
     kwargs: Option<HashMap<RcStr, Val>>,
@@ -149,7 +150,7 @@ fn prepare_args(
             let argname = &spec.req[i];
             match kwargs.remove(argname) {
                 Some(val) => args.push(val),
-                None => return Err(rterr!("Required parameter {:?} is missing", argname,)),
+                None => return Err(rterr!("Required parameter {:?} is missing (for {})", argname, func_name)),
             }
         }
         for i in args.len()..argmax {
@@ -162,7 +163,7 @@ fn prepare_args(
         if !kwargs.is_empty() {
             let mut keys: Vec<_> = kwargs.into_iter().map(|(k, _)| k).collect();
             keys.sort();
-            return Err(rterr!("Unused keyword arguments: {:?}", keys,));
+            return Err(rterr!("Unused keyword arguments: {:?} (for {})", keys, func_name));
         }
     }
     if spec.var.is_some() || spec.def.len() > 0 {
@@ -172,12 +173,13 @@ fn prepare_args(
         let argmax = argmin + spec.def.len();
         if spec.var.is_some() {
             if argc < argmin {
-                return Err(rterr!("Expected at least {} args but got {}", argmin, argc));
+                return Err(rterr!("{} expects at least {} args but got {}", func_name, argmin, argc));
             }
         } else {
             if argc < argmin || argc > argmax {
                 return Err(rterr!(
-                    "Expected {} to {} args but got {}",
+                    "{} expects {} to {} args but got {}",
+                    func_name,
                     argmin,
                     argmax,
                     argc
@@ -201,7 +203,8 @@ fn prepare_args(
         // no variadic parameter and no default parameters
         if args.len() != spec.req.len() {
             return Err(rterr!(
-                "Expected {} args but got {}",
+                "{} expects {} args but got {}",
+                func_name,
                 spec.req.len(),
                 args.len()
             ));
