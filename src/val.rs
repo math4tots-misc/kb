@@ -877,7 +877,7 @@ impl Handle {
         }
     }
     /// like borrow, but will panic on error
-    pub fn borrow_unchecked<T: Any>(&self) -> Ref<T> {
+    fn borrow_unchecked<T: Any>(&self) -> Ref<T> {
         Ref::map(self.value.borrow(), |bx| {
             bx.as_ref().downcast_ref::<T>().unwrap()
         })
@@ -893,7 +893,7 @@ impl Handle {
         }
     }
     /// like borrow_mut, but will panic on error
-    pub fn borrow_mut_unchecked<T: Any>(&self) -> RefMut<T> {
+    fn borrow_mut_unchecked<T: Any>(&self) -> RefMut<T> {
         RefMut::map(self.value.borrow_mut(), |bx| {
             bx.as_mut().downcast_mut::<T>().unwrap()
         })
@@ -949,6 +949,32 @@ impl<T: Any> HCow<T> {
         match self {
             Self::Handle(handle) => f(&mut handle.borrow_mut()),
             Self::Owned(ref mut t) => f(t),
+        }
+    }
+    /// Tries to get the underlying value of this HCow.
+    /// if owned, will return the owned value,
+    /// if under handle, will try to move the handled value,
+    ///     failing if there are other references preventing
+    ///     this value from being moved
+    pub fn get(self) -> Result<T, Val> {
+        match self {
+            Self::Handle(handle) => handle.get(),
+            Self::Owned(t) => Ok(t),
+        }
+    }
+}
+
+impl<T: Any + Clone> HCow<T> {
+    /// Like 'get', but will clone if needed
+    pub fn get_or_clone(self) -> T {
+        match self {
+            Self::Handle(handle) => {
+                match Rc::try_unwrap(handle.0) {
+                    Ok(handle) => *handle.value.into_inner().downcast().unwrap(),
+                    Err(handle) => handle.borrow_unchecked::<T>().clone(),
+                }
+            }
+            Self::Owned(t) => t,
         }
     }
 }
